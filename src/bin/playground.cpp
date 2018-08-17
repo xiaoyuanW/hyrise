@@ -342,9 +342,9 @@ std::vector<std::pair<T, uint64_t>> calculate_value_counts(const std::shared_ptr
 }
 
 std::unordered_map<ColumnID, std::unordered_map<PredicateCondition, std::unordered_map<AllTypeVariant, int64_t>>>
-get_row_count_for_smaller_than_filters(
-    const std::shared_ptr<Table>& table, const ColumnID column_id,
-    const std::vector<std::tuple<ColumnID, PredicateCondition, AllTypeVariant>>& filters) {
+get_row_count_for_filters(const std::shared_ptr<Table>& table, const ColumnID column_id,
+                          const PredicateCondition predicate_type,
+                          const std::vector<std::tuple<ColumnID, PredicateCondition, AllTypeVariant>>& filters) {
   std::unordered_map<ColumnID, std::unordered_map<PredicateCondition, std::unordered_map<AllTypeVariant, int64_t>>>
       row_count_by_filter;
 
@@ -361,11 +361,28 @@ get_row_count_for_smaller_than_filters(
     for (const auto& filter : filters) {
       const auto value = std::get<2>(filter);
       const auto t_value = type_cast<T>(value);
-      const auto it = std::lower_bound(value_counts.cbegin(), value_counts.cend(), t_value,
-                                       [](const std::pair<T, uint64_t>& lhs, const T& rhs) { return lhs.first < rhs; });
-      const auto row_count = std::accumulate(value_counts.cbegin(), it, uint64_t{0},
-                                             [](uint64_t a, const std::pair<T, uint64_t>& b) { return a + b.second; });
-      row_count_by_filter[column_id][PredicateCondition::LessThan][value] = row_count;
+
+      switch (predicate_type) {
+        case PredicateCondition::Equals: {
+          const auto it = std::find_if(value_counts.cbegin(), value_counts.cend(),
+                                       [&](const std::pair<T, uint64_t>& p) { return p.first == t_value; });
+          if (it != value_counts.cend()) {
+            row_count_by_filter[column_id][predicate_type][value] = (*it).second;
+          }
+          break;
+        }
+        case PredicateCondition::LessThan: {
+          const auto it =
+              std::lower_bound(value_counts.cbegin(), value_counts.cend(), t_value,
+                               [](const std::pair<T, uint64_t>& lhs, const T& rhs) { return lhs.first < rhs; });
+          row_count_by_filter[column_id][predicate_type][value] =
+              std::accumulate(value_counts.cbegin(), it, uint64_t{0},
+                              [](uint64_t a, const std::pair<T, uint64_t>& b) { return a + b.second; });
+          break;
+        }
+        default:
+          Fail("Predicate type not supported.");
+      }
     }
   });
 
@@ -375,6 +392,47 @@ get_row_count_for_smaller_than_filters(
 
   return row_count_by_filter;
 };
+
+template <typename T>
+std::unordered_set<T> get_distinct_values(const std::shared_ptr<const BaseColumn>& column) {
+  std::unordered_set<T> distinct_values;
+
+  resolve_column_type<T>(*column, [&](auto& typed_column) {
+    auto iterable = create_iterable_from_column<T>(typed_column);
+    iterable.for_each([&](const auto& value) {
+      if (!value.is_null()) {
+        distinct_values.insert(value.value());
+      }
+    });
+  });
+
+  return distinct_values;
+}
+
+std::vector<std::tuple<ColumnID, PredicateCondition, AllTypeVariant>> generate_filters(
+    const std::shared_ptr<Table>& table, const ColumnID column_id, const PredicateCondition predicate_type,
+    const std::optional<uint32_t> num_filters = std::nullopt) {
+  Assert(table->chunk_count() == 1u, "Table has more than one chunk.");
+
+  std::vector<std::tuple<ColumnID, PredicateCondition, AllTypeVariant>> filters;
+
+  resolve_data_type(table->column_data_types()[column_id], [&](auto type) {
+    using T = typename decltype(type)::type;
+    const auto distinct_values = get_distinct_values<T>(table->get_chunk(ChunkID{0})->get_column(column_id));
+
+    auto i = 0u;
+    for (const auto& v : distinct_values) {
+      if (num_filters && i >= *num_filters) {
+        break;
+      }
+
+      filters.emplace_back(std::tuple<ColumnID, PredicateCondition, AllTypeVariant>{column_id, predicate_type, v});
+      i++;
+    }
+  });
+
+  return filters;
+}
 
 template <typename T>
 float estimate_cardinality(const std::shared_ptr<AbstractHistogram<T>>& hist,
@@ -401,9 +459,11 @@ int main() {
 
   const auto num_bucket_combinations = {
       // 1u, 2u, 5u, 10u, 25u, 50u, 100u, 150u, 200u, 250u, 300u, 400u, 500u, 750u, 1000u,
-      1u, 10u, 25u, 100u, 250u, 1000u,
+      1u, 10u, 25u, 100u, 250u, 1'000u, 2'500u, 5'000u, 7'500u, 10'000u,
       // 10u, 50u, 250u,
   };
+
+  const auto predicate_type = PredicateCondition::Equals;
 
   auto results_log = std::ofstream("../estimation_results.log", std::ios_base::out | std::ios_base::trunc);
   results_log << "total_count,distinct_count,num_buckets,column_name,predicate_condition,value,actual_count,equal_"
@@ -418,11 +478,13 @@ int main() {
   // std::mt19937 gen(rd());
   // std::uniform_real_distribution<> dis(0.f, 70'000.f);
   // const auto filters = generate_filters(ColumnID{3}, PredicateCondition::LessThan, gen, dis, 700000);
-  const auto filters = generate_filters(ColumnID{3}, PredicateCondition::LessThan, 1'000.f, 700'500.f, 6'995'000);
+  // const auto filters = generate_filters(ColumnID{3}, PredicateCondition::LessThan, 1'000.f, 700'500.f, 6'995'000);
+  const auto filters = generate_filters(table, ColumnID{3}, predicate_type);
   const auto filters_by_column = get_filters_by_column(filters);
-  const auto row_count_by_filter = get_row_count_for_smaller_than_filters(table, ColumnID{3}, filters);
-  const auto distinct_count_by_column = get_distinct_count_by_column(table, filters_by_column);
 
+  const auto row_count_by_filter = get_row_count_for_filters(table, ColumnID{3}, predicate_type, filters);
+
+  const auto distinct_count_by_column = get_distinct_count_by_column(table, filters_by_column);
   const auto total_count = table->row_count();
 
   for (auto num_buckets : num_bucket_combinations) {
