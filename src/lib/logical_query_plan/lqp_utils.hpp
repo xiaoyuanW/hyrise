@@ -5,6 +5,7 @@
 #include <queue>
 #include <unordered_map>
 #include <unordered_set>
+#include <functional>
 
 namespace opossum {
 
@@ -46,7 +47,10 @@ bool lqp_is_validated(const std::shared_ptr<AbstractLQPNode>& lqp);
  * Create a boolean expression from an LQP by considering PredicateNodes and UnionNodes
  * @return      the expression, or nullptr if no expression could be created
  */
-std::shared_ptr<AbstractExpression> lqp_subplan_to_boolean_expression(const std::shared_ptr<AbstractLQPNode>& lqp);
+std::shared_ptr<AbstractExpression> lqp_subplan_to_boolean_expression(
+    const std::shared_ptr<AbstractLQPNode>& lqp,
+    const std::function<bool(const std::shared_ptr<AbstractLQPNode>& lqp)>& node_is_allowed =
+        [](const std::shared_ptr<AbstractLQPNode>& lqp) { return true; });
 
 enum class LQPVisitation { VisitInputs, DoNotVisitInputs };
 

@@ -1,6 +1,7 @@
 #include "jit_read_tuples.hpp"
 
 #include "../jit_types.hpp"
+#include "constant_mappings.hpp"
 #include "expression/evaluation/expression_evaluator.hpp"
 #include "resolve_type.hpp"
 #include "storage/create_iterable_from_column.hpp"
@@ -14,10 +15,21 @@ std::string JitReadTuples::description() const {
   std::stringstream desc;
   desc << "[ReadTuple] ";
   for (const auto& input_column : _input_columns) {
-    desc << "(x" << input_column.tuple_value.tuple_index() << " = Col#" << input_column.column_id << "), ";
+    desc << "(" << data_type_to_string.left.at(input_column.tuple_value.data_type()) << " x"
+         << input_column.tuple_value.tuple_index() << " = Col#" << input_column.column_id << "), ";
   }
   for (const auto& input_literal : _input_literals) {
-    desc << "x" << input_literal.tuple_value.tuple_index() << " = " << input_literal.value << ", ";
+    desc << (input_literal.tuple_value.data_type() == DataType::Null
+                 ? "null"
+                 : data_type_to_string.left.at(input_literal.tuple_value.data_type()))
+         << " x" << input_literal.tuple_value.tuple_index() << " = " << input_literal.value << ", ";
+  }
+  for (const auto& input_parameter : _input_parameters) {
+    desc << (input_parameter.tuple_value.data_type() == DataType::Null
+                 ? "null"
+                 : data_type_to_string.left.at(input_parameter.tuple_value.data_type()))
+         << " x" << input_parameter.tuple_value.tuple_index() << " = Par#" << input_parameter.parameter_id
+         << " with val=" << (input_parameter.value ? *input_parameter.value : "not set") << ", ";
   }
   return desc.str();
 }
@@ -31,20 +43,32 @@ void JitReadTuples::before_query(const Table& in_table, JitRuntimeContext& conte
     context.limit_rows = num_rows_expression_result->value(0);
   }
 
-  // Copy all input literals to the runtime tuple
-  for (const auto& input_literal : _input_literals) {
-    auto data_type = input_literal.tuple_value.data_type();
+  const auto set_value_from_input = [&context](const JitTupleValue& tuple_value, const AllTypeVariant& value) {
+    auto data_type = tuple_value.data_type();
     // If data_type is null, there is nothing to do as is_null() check on null check will always return true
     if (data_type != DataType::Null) {
       resolve_data_type(data_type, [&](auto type) {
         using DataType = typename decltype(type)::type;
-        context.tuple.set<DataType>(input_literal.tuple_value.tuple_index(), boost::get<DataType>(input_literal.value));
+        context.tuple.set<DataType>(tuple_value.tuple_index(), boost::get<DataType>(value));
+        if (tuple_value.is_nullable()) {
+          context.tuple.set_is_null(tuple_value.tuple_index(), variant_is_null(value));
+        }
         // Non-jit operators store bool values as int values
         if constexpr (std::is_same_v<DataType, Bool>) {
-          context.tuple.set<bool>(input_literal.tuple_value.tuple_index(), boost::get<DataType>(input_literal.value));
+          context.tuple.set<bool>(tuple_value.tuple_index(), boost::get<DataType>(value));
         }
       });
     }
+  };
+
+  // Copy all input literals to the runtime tuple
+  for (const auto& input_literal : _input_literals)
+    set_value_from_input(input_literal.tuple_value, input_literal.value);
+  // Copy all parameter values to the runtime tuple
+  for (const auto& input_parameter : _input_parameters) {
+    DebugAssert(input_parameter.value,
+                "Value for parameter with id #" + std::to_string(input_parameter.parameter_id) + " has not been set.");
+    set_value_from_input(input_parameter.tuple_value, *input_parameter.value);
   }
 }
 
@@ -115,10 +139,37 @@ JitTupleValue JitReadTuples::add_input_column(const DataType data_type, const bo
 JitTupleValue JitReadTuples::add_literal_value(const AllTypeVariant& value) {
   // Somebody needs a literal value. We assign it a position in the runtime tuple and store the literal value,
   // so we can initialize the corresponding tuple value to the correct literal value later.
+  const auto it = std::find_if(_input_literals.begin(), _input_literals.end(),
+                               [&value](const auto& literal_value) { return literal_value.value == value; });
+  if (it != _input_literals.end()) {
+    return it->tuple_value;
+  }
+
   const auto data_type = data_type_from_all_type_variant(value);
   const auto tuple_value = JitTupleValue(data_type, false, _num_tuple_values++);
   _input_literals.push_back({value, tuple_value});
   return tuple_value;
+}
+
+JitTupleValue JitReadTuples::add_parameter_value(const DataType data_type, const bool is_nullable,
+                                                 const ParameterID parameter_id) {
+  const auto it =
+      std::find_if(_input_parameters.begin(), _input_parameters.end(),
+                   [&parameter_id](const auto& parameter) { return parameter.parameter_id == parameter_id; });
+  if (it != _input_parameters.end()) {
+    return it->tuple_value;
+  }
+
+  const auto tuple_value = JitTupleValue(data_type, is_nullable, _num_tuple_values++);
+  _input_parameters.push_back({parameter_id, tuple_value, std::nullopt});
+  return tuple_value;
+}
+
+void JitReadTuples::set_parameters(const std::unordered_map<ParameterID, AllTypeVariant>& parameters) {
+  for (auto& parameter : _input_parameters) {
+    auto search = parameters.find(parameter.parameter_id);
+    if (search != parameters.end()) parameter.value = search->second;
+  }
 }
 
 size_t JitReadTuples::add_temporary_value() {
@@ -130,6 +181,8 @@ size_t JitReadTuples::add_temporary_value() {
 std::vector<JitInputColumn> JitReadTuples::input_columns() const { return _input_columns; }
 
 std::vector<JitInputLiteral> JitReadTuples::input_literals() const { return _input_literals; }
+
+std::vector<JitInputParameter> JitReadTuples::input_parameters() const { return _input_parameters; }
 
 std::optional<ColumnID> JitReadTuples::find_input_column(const JitTupleValue& tuple_value) const {
   const auto it = std::find_if(_input_columns.begin(), _input_columns.end(), [&tuple_value](const auto& input_column) {

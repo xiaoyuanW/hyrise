@@ -20,9 +20,11 @@ enum class JitExecutionMode { Interpret, Compile };
  */
 class JitOperatorWrapper : public AbstractReadOnlyOperator {
  public:
-  explicit JitOperatorWrapper(const std::shared_ptr<const AbstractOperator>& left,
-                              const JitExecutionMode execution_mode = JitExecutionMode::Compile,
-                              const std::list<std::shared_ptr<AbstractJittable>>& jit_operators = {});
+  explicit JitOperatorWrapper(
+      const std::shared_ptr<const AbstractOperator>& left,
+      const JitExecutionMode execution_mode = JitExecutionMode::Compile,
+      const std::list<std::shared_ptr<AbstractJittable>>& jit_operators = {},
+      const std::function<void(const JitReadTuples*, JitRuntimeContext&)>& execute_func = nullptr);
 
   const std::string name() const final;
   const std::string description(DescriptionMode description_mode) const final;
@@ -47,6 +49,7 @@ class JitOperatorWrapper : public AbstractReadOnlyOperator {
   const std::shared_ptr<JitReadTuples> _source() const;
   const std::shared_ptr<AbstractJittableSink> _sink() const;
   void insert_loads(const bool lazy);
+  void _choose_execute_func();
 
   JitExecutionMode _execution_mode;
   JitCodeSpecializer _module;

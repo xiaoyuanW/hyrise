@@ -151,15 +151,19 @@ bool lqp_is_validated(const std::shared_ptr<AbstractLQPNode>& lqp) {
   return lqp_is_validated(lqp->left_input()) && lqp_is_validated(lqp->right_input());
 }
 
-std::shared_ptr<AbstractExpression> lqp_subplan_to_boolean_expression(const std::shared_ptr<AbstractLQPNode>& lqp) {
+std::shared_ptr<AbstractExpression> lqp_subplan_to_boolean_expression(
+    const std::shared_ptr<AbstractLQPNode>& lqp,
+    const std::function<bool(const std::shared_ptr<AbstractLQPNode>& lqp)>& node_is_allowed) {
+  if (!node_is_allowed(lqp)) return nullptr;
+
   static const auto whitelist = std::set<LQPNodeType>{LQPNodeType::Projection, LQPNodeType::Sort};
 
-  if (whitelist.count(lqp->type)) return lqp_subplan_to_boolean_expression(lqp->left_input());
+  if (whitelist.count(lqp->type)) return lqp_subplan_to_boolean_expression(lqp->left_input(), node_is_allowed);
 
   switch (lqp->type) {
     case LQPNodeType::Predicate: {
       const auto predicate_node = std::dynamic_pointer_cast<PredicateNode>(lqp);
-      const auto left_input_expression = lqp_subplan_to_boolean_expression(lqp->left_input());
+      const auto left_input_expression = lqp_subplan_to_boolean_expression(lqp->left_input(), node_is_allowed);
       if (left_input_expression) {
         return and_(predicate_node->predicate, left_input_expression);
       } else {
@@ -169,8 +173,8 @@ std::shared_ptr<AbstractExpression> lqp_subplan_to_boolean_expression(const std:
 
     case LQPNodeType::Union: {
       const auto union_node = std::dynamic_pointer_cast<UnionNode>(lqp);
-      const auto left_input_expression = lqp_subplan_to_boolean_expression(lqp->left_input());
-      const auto right_input_expression = lqp_subplan_to_boolean_expression(lqp->right_input());
+      const auto left_input_expression = lqp_subplan_to_boolean_expression(lqp->left_input(), node_is_allowed);
+      const auto right_input_expression = lqp_subplan_to_boolean_expression(lqp->right_input(), node_is_allowed);
       if (left_input_expression && right_input_expression) {
         return or_(left_input_expression, right_input_expression);
       } else {
@@ -180,7 +184,7 @@ std::shared_ptr<AbstractExpression> lqp_subplan_to_boolean_expression(const std:
 
     case LQPNodeType::Projection:
     case LQPNodeType::Sort:
-      return lqp_subplan_to_boolean_expression(lqp->left_input());
+      return lqp_subplan_to_boolean_expression(lqp->left_input(), node_is_allowed);
 
     default:
       return nullptr;

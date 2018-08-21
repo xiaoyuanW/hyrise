@@ -24,6 +24,7 @@
 #include "expression/pqp_select_expression.hpp"
 #include "expression/value_expression.hpp"
 #include "expression_functors.hpp"
+#include "global.hpp"
 #include "like_matcher.hpp"
 #include "operators/abstract_operator.hpp"
 #include "resolve_type.hpp"
@@ -679,6 +680,8 @@ std::shared_ptr<ExpressionResult<Result>> ExpressionEvaluator::_evaluate_select_
 
 std::vector<std::shared_ptr<const Table>> ExpressionEvaluator::_evaluate_select_expression_to_tables(
     const PQPSelectExpression& expression) {
+  Global::get().deep_copy_exists = true;
+
   // If the SelectExpression is uncorrelated, evaluating it once is sufficient
   if (expression.parameters.empty()) {
     return {_evaluate_select_expression_for_row(expression, ChunkOffset{0})};
@@ -694,6 +697,8 @@ std::vector<std::shared_ptr<const Table>> ExpressionEvaluator::_evaluate_select_
   for (auto chunk_offset = ChunkOffset{0}; chunk_offset < _output_row_count; ++chunk_offset) {
     results[chunk_offset] = _evaluate_select_expression_for_row(expression, chunk_offset);
   }
+
+  Global::get().deep_copy_exists = false;
 
   return results;
 }

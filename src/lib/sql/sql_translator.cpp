@@ -29,6 +29,7 @@
 #include "expression/lqp_select_expression.hpp"
 #include "expression/unary_minus_expression.hpp"
 #include "expression/value_expression.hpp"
+#include "global.hpp"
 #include "logical_query_plan/abstract_lqp_node.hpp"
 #include "logical_query_plan/aggregate_node.hpp"
 #include "logical_query_plan/alias_node.hpp"
@@ -1175,9 +1176,17 @@ std::shared_ptr<AbstractExpression> SQLTranslator::_translate_hsql_expr(
           return equals_(left, 0);
         }
 
-        case hsql::kOpExists:
+        case hsql::kOpExists: {
           AssertInput(expr.select, "Expected SELECT argument for EXISTS");
+          if (Global::get().jit) {
+            if (!expr.select->limit) {
+              expr.select->limit = new hsql::LimitDescription(1, -1);
+            } else if (expr.select->limit->limit > 1) {
+              expr.select->limit->limit = 1;
+            }
+          }
           return std::make_shared<ExistsExpression>(_translate_hsql_sub_select(*expr.select, sql_identifier_resolver));
+        }
 
         default:
           FailInput("Not handling this OperatorType yet");

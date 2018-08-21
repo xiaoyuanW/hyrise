@@ -15,6 +15,8 @@ class JitFilter : public AbstractJittable {
 
   JitTupleValue condition();
 
+  std::map<size_t, bool> accessed_column_ids() const final;
+
  private:
   void _consume(JitRuntimeContext& context) const final;
 

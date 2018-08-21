@@ -75,6 +75,13 @@ class SQLiteTestRunner : public BaseTestWithParam<TestConfiguration> {
     SQLQueryCache<SQLQueryPlan>::get().clear();
   }
 
+  void TearDown() override {
+    auto& global = Global::get();
+    global.jit = false;
+    global.lazy_load = false;
+    global.jit_validate = false;
+  }
+
   std::unique_ptr<SQLiteWrapper> _sqlite;
 };
 

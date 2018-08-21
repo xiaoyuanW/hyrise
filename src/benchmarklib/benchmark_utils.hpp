@@ -51,7 +51,8 @@ using BenchmarkResults = std::unordered_map<std::string, QueryBenchmarkResult>;
 struct BenchmarkState {
   enum class State { NotStarted, Running, Over };
 
-  BenchmarkState(const size_t max_num_iterations, const Duration max_duration);
+  BenchmarkState(const size_t min_num_iterations, const size_t max_num_iterations, const Duration min_duration,
+                 const Duration max_duration);
 
   bool keep_running();
 
@@ -61,7 +62,9 @@ struct BenchmarkState {
   TimePoint benchmark_end = TimePoint{};
 
   size_t num_iterations = 0;
+  size_t min_num_iterations;
   size_t max_num_iterations;
+  Duration min_duration;
   Duration max_duration;
   std::vector<Duration> iteration_durations;
 };
@@ -97,7 +100,8 @@ class BenchmarkTableEncoder {
 // View BenchmarkConfig::description to see format of the JSON-version
 struct BenchmarkConfig {
   BenchmarkConfig(const BenchmarkMode benchmark_mode, const bool verbose, const ChunkOffset chunk_size,
-                  const EncodingConfig& encoding_config, const size_t max_num_query_runs, const Duration& max_duration,
+                  const EncodingConfig& encoding_config, const size_t min_num_query_runs,
+                  const size_t max_num_query_runs, const Duration& min_duration, const Duration& max_duration,
                   const UseMvcc use_mvcc, const std::optional<std::string>& output_file_path,
                   const bool enable_scheduler, const bool enable_visualization, std::ostream& out);
 
@@ -107,7 +111,9 @@ struct BenchmarkConfig {
   const bool verbose = false;
   const ChunkOffset chunk_size = Chunk::MAX_SIZE;
   const EncodingConfig encoding_config = EncodingConfig{};
+  const size_t min_num_query_runs = 1;
   const size_t max_num_query_runs = 1000;
+  const Duration min_duration = std::chrono::seconds(0);
   const Duration max_duration = std::chrono::seconds(5);
   const UseMvcc use_mvcc = UseMvcc::No;
   const std::optional<std::string> output_file_path = std::nullopt;

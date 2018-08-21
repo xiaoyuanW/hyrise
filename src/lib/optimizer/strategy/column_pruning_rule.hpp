@@ -16,7 +16,7 @@ class AbstractLQPNode;
  * Does NOT eliminate columns added as temporary columns later in the plan or columns that become useless after a
  * certain point in the LQP. *
  * E.g. `SELECT * FROM t WHERE a + 5 > b AND a + 6 > c`: Here `a + 5` and `a + 6` introduce temporary columns that will
- * NOT be removed by this Rule. But it `t` contains a column "d", which is obviously never used in this query, this
+ * NOT be removed by this Rule. But if `t` contains a column "d", which is obviously never used in this query, this
  * column "d" will be pruned.
  */
 class ColumnPruningRule : public AbstractRule {

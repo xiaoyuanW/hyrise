@@ -135,7 +135,8 @@ TEST_F(JitAwareLQPTranslatorTest, JitOperatorsRejectIndexScan) {
 TEST_F(JitAwareLQPTranslatorTest, InputColumnsAreAddedToJitReadTupleAdapter) {
   // The query reads two columns from the input table. These input columns must be added to the JitReadTuples adapter to
   // make their data accessible by other JitOperators.
-  const auto jit_operator_wrapper = translate_query("SELECT a, b FROM table_b WHERE a > 1");
+  // Query has second predicate as translator only uses jit for at least two predicates
+  const auto jit_operator_wrapper = translate_query("SELECT a, b FROM table_b WHERE a > 1 and a != 1");
   ASSERT_TRUE(jit_operator_wrapper);
   const auto jit_operators = jit_operator_wrapper->jit_operators();
   ASSERT_EQ(jit_operators.size(), 4u);
@@ -203,7 +204,8 @@ TEST_F(JitAwareLQPTranslatorTest, ColumnSubsetIsOutputCorrectly) {
 
 TEST_F(JitAwareLQPTranslatorTest, AllColumnsAreOutputCorrectly) {
   // Select all columns
-  const auto jit_operator_wrapper = translate_query("SELECT * FROM table_a WHERE a > 1");
+  // Query has second predicate as translator only uses jit for at least two predicates
+  const auto jit_operator_wrapper = translate_query("SELECT * FROM table_a WHERE a > 1 and a != 1");
   ASSERT_TRUE(jit_operator_wrapper);
   const auto jit_operators = jit_operator_wrapper->jit_operators();
   ASSERT_EQ(jit_operators.size(), 4u);

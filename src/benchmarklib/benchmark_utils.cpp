@@ -30,8 +30,12 @@ std::ostream& get_out_stream(const bool verbose) {
   return null_stream;
 }
 
-BenchmarkState::BenchmarkState(const size_t max_num_iterations, const opossum::Duration max_duration)
-    : max_num_iterations(max_num_iterations), max_duration(max_duration) {
+BenchmarkState::BenchmarkState(const size_t min_num_iterations, const size_t max_num_iterations,
+                               const Duration min_duration, const Duration max_duration)
+    : min_num_iterations(min_num_iterations),
+      max_num_iterations(max_num_iterations),
+      min_duration(min_duration),
+      max_duration(max_duration) {
   iteration_durations.reserve(max_num_iterations);
 }
 
@@ -61,17 +65,20 @@ bool BenchmarkState::keep_running() {
   benchmark_end = now;
   iteration_begin = now;
 
-  // Stop execution if we reached the maximum number of iterations
-  if (num_iterations >= max_num_iterations) {
-    state = State::Over;
-    return false;
-  }
-
-  // Stop execution if we reached the time limit
   const auto benchmark_duration = now - benchmark_begin;
-  if (benchmark_duration >= max_duration) {
-    state = State::Over;
-    return false;
+  // ensure that the min numbers are reached
+  if (num_iterations >= min_num_iterations && benchmark_duration >= min_duration) {
+    // Stop execution if we reached the maximum number of iterations
+    if (num_iterations >= max_num_iterations) {
+      state = State::Over;
+      return false;
+    }
+
+    // Stop execution if we reached the time limit
+    if (benchmark_duration >= max_duration) {
+      state = State::Over;
+      return false;
+    }
   }
 
   num_iterations++;
@@ -80,7 +87,8 @@ bool BenchmarkState::keep_running() {
 }
 
 BenchmarkConfig::BenchmarkConfig(const BenchmarkMode benchmark_mode, const bool verbose, const ChunkOffset chunk_size,
-                                 const EncodingConfig& encoding_config, const size_t max_num_query_runs,
+                                 const EncodingConfig& encoding_config, const size_t min_num_query_runs,
+                                 const size_t max_num_query_runs, const Duration& min_duration,
                                  const Duration& max_duration, const UseMvcc use_mvcc,
                                  const std::optional<std::string>& output_file_path, const bool enable_scheduler,
                                  const bool enable_visualization, std::ostream& out)
@@ -88,7 +96,9 @@ BenchmarkConfig::BenchmarkConfig(const BenchmarkMode benchmark_mode, const bool 
       verbose(verbose),
       chunk_size(chunk_size),
       encoding_config(encoding_config),
+      min_num_query_runs(min_num_query_runs),
       max_num_query_runs(max_num_query_runs),
+      min_duration(min_duration),
       max_duration(max_duration),
       use_mvcc(use_mvcc),
       output_file_path(output_file_path),
@@ -177,17 +187,36 @@ BenchmarkConfig CLIConfigParser::parse_basic_options_json_config(const nlohmann:
   const auto chunk_size = json_config.value("chunk_size", default_config.chunk_size);
   out << "- Chunk size is " << chunk_size << std::endl;
 
+  const auto min_runs = json_config.value("min_runs", default_config.min_num_query_runs);
+  out << "- Min runs per query is " << min_runs << std::endl;
+
   const auto max_runs = json_config.value("runs", default_config.max_num_query_runs);
   out << "- Max runs per query is " << max_runs << std::endl;
+
+  const auto default_min_duration_seconds =
+      std::chrono::duration_cast<std::chrono::seconds>(default_config.min_duration);
+  const auto min_duration = json_config.value("min_time", default_min_duration_seconds.count());
+  out << "- Min duration per query is " << min_duration << " seconds" << std::endl;
+  const Duration minimum_duration = std::chrono::duration_cast<opossum::Duration>(std::chrono::seconds{min_duration});
 
   const auto default_duration_seconds = std::chrono::duration_cast<std::chrono::seconds>(default_config.max_duration);
   const auto max_duration = json_config.value("time", default_duration_seconds.count());
   out << "- Max duration per query is " << max_duration << " seconds" << std::endl;
   const Duration timeout_duration = std::chrono::duration_cast<opossum::Duration>(std::chrono::seconds{max_duration});
 
-  return BenchmarkConfig{
-      benchmark_mode, verbose,          chunk_size,       *encoding_config,     max_runs, timeout_duration,
-      use_mvcc,       output_file_path, enable_scheduler, enable_visualization, out};
+  return BenchmarkConfig{benchmark_mode,
+                         verbose,
+                         chunk_size,
+                         *encoding_config,
+                         min_runs,
+                         max_runs,
+                         minimum_duration,
+                         timeout_duration,
+                         use_mvcc,
+                         output_file_path,
+                         enable_scheduler,
+                         enable_visualization,
+                         out};
 }
 
 BenchmarkConfig CLIConfigParser::parse_basic_cli_options(const cxxopts::ParseResult& parse_result) {
@@ -198,8 +227,10 @@ nlohmann::json CLIConfigParser::basic_cli_options_to_json(const cxxopts::ParseRe
   nlohmann::json json_config;
 
   json_config.emplace("verbose", parse_result["verbose"].as<bool>());
+  json_config.emplace("min_runs", parse_result["min_runs"].as<size_t>());
   json_config.emplace("runs", parse_result["runs"].as<size_t>());
   json_config.emplace("chunk_size", parse_result["chunk_size"].as<ChunkOffset>());
+  json_config.emplace("min_time", parse_result["min_time"].as<size_t>());
   json_config.emplace("time", parse_result["time"].as<size_t>());
   json_config.emplace("mode", parse_result["mode"].as<std::string>());
   json_config.emplace("encoding", parse_result["encoding"].as<std::string>());

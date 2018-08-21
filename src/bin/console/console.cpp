@@ -816,7 +816,7 @@ bool Console::_handle_rollback() {
 int main(int argc, char** argv) {
   auto& global = opossum::Global::get();
   global.jit = true;
-  global.lazy_load = false;
+  global.lazy_load = true;
   global.jit_validate = true;
 
   using Return = opossum::Console::ReturnCode;

@@ -41,6 +41,7 @@ STRONG_TYPEDEF(uint32_t, ValueID);  // Cannot be larger than ChunkOffset
 STRONG_TYPEDEF(uint32_t, NodeID);
 STRONG_TYPEDEF(uint32_t, CpuID);
 STRONG_TYPEDEF(uint16_t, ValuePlaceholderID);
+STRONG_TYPEDEF(size_t, ParameterID);
 
 namespace opossum {
 

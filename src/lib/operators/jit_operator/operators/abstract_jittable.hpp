@@ -23,6 +23,7 @@ class AbstractJittable {
 
   virtual std::string description() const = 0;
 
+  // if bool is true, it means that loading the value can be pushed into the operator
   virtual std::map<size_t, bool> accessed_column_ids() const { return std::map<size_t, bool>(); }
 
  protected:
