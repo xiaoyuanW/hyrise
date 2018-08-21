@@ -40,6 +40,7 @@
 #include <map>
 
 #include "jit_evaluation_helper.hpp"
+#include "global.hpp"
 
 using namespace llvm;
 
@@ -393,12 +394,12 @@ void PruningFunctionCloner::CloneBlock(const BasicBlock *BB,
       if (!Cond) {
         Value *V = VMap.lookup(BI->getCondition());
         Cond = dyn_cast_or_null<ConstantInt>(V);
-        if (Cond) opossum::JitEvaluationHelper::get().result()["static_resolved"] = opossum::JitEvaluationHelper::get().result()["static_resolved"].get<int32_t>() + 1;
+        if (opossum::Global::get().jit_evaluate && Cond) opossum::JitEvaluationHelper::get().result()["static_resolved"] = opossum::JitEvaluationHelper::get().result()["static_resolved"].get<int32_t>() + 1;
       }
 
       if (!Cond) {
         Cond = dyn_cast_or_null<ConstantInt>(opossum::ResolveCondition(BI->getCondition(), Context));
-        if (Cond) opossum::JitEvaluationHelper::get().result()["dynamic_resolved"] = opossum::JitEvaluationHelper::get().result()["dynamic_resolved"].get<int32_t>() + 1;
+        if (opossum::Global::get().jit_evaluate && Cond) opossum::JitEvaluationHelper::get().result()["dynamic_resolved"] = opossum::JitEvaluationHelper::get().result()["dynamic_resolved"].get<int32_t>() + 1;
       }
 
       // Constant fold to uncond branch!
@@ -415,12 +416,12 @@ void PruningFunctionCloner::CloneBlock(const BasicBlock *BB,
     if (!Cond) { // Or known constant after constant prop in the callee...
       Value *V = VMap.lookup(SI->getCondition());
       Cond = dyn_cast_or_null<ConstantInt>(V);
-      if (Cond) opossum::JitEvaluationHelper::get().result()["static_resolved"] = opossum::JitEvaluationHelper::get().result()["static_resolved"].get<int32_t>() + 1;
+      if (opossum::Global::get().jit_evaluate && Cond) opossum::JitEvaluationHelper::get().result()["static_resolved"] = opossum::JitEvaluationHelper::get().result()["static_resolved"].get<int32_t>() + 1;
     }
 
     if (!Cond) {
       Cond = dyn_cast_or_null<ConstantInt>(opossum::ResolveCondition(SI->getCondition(), Context));
-      if (Cond) opossum::JitEvaluationHelper::get().result()["dynamic_resolved"] = opossum::JitEvaluationHelper::get().result()["dynamic_resolved"].get<int32_t>() + 1;
+      if (opossum::Global::get().jit_evaluate && Cond) opossum::JitEvaluationHelper::get().result()["dynamic_resolved"] = opossum::JitEvaluationHelper::get().result()["dynamic_resolved"].get<int32_t>() + 1;
     }
 
     if (Cond) {     // Constant fold to uncond branch!

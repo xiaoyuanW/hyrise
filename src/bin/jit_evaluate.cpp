@@ -195,6 +195,8 @@ int main(int argc, char* argv[]) {
   std::cerr << "  supports " << PAPI_num_counters() << " event counters" << std::endl;
   std::cout << "{" << std::endl << "\"results\":[" << std::endl;
 
+  opossum::Global::get().jit_evaluate = true;
+
   const size_t num_experiments = config["experiments"].size();
   for (size_t current_experiment = 0; current_experiment < num_experiments; ++current_experiment) {
     auto& experiment = config["experiments"][current_experiment];

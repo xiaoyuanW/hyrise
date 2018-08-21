@@ -20,6 +20,7 @@
 #include "jit_evaluation_helper.hpp"
 #include "jit_runtime_pointer.hpp"
 #include "llvm_extensions.hpp"
+#include "global.hpp"
 
 namespace opossum {
 
@@ -174,12 +175,12 @@ void JitCodeSpecializer::_inline_function_calls(SpecializationContext& context) 
         // that function.
         if (const auto repo_function = _repository.get_vtable_entry(class_name, vtable_index)) {
           call_site.setCalledFunction(repo_function);
-          JitEvaluationHelper::get().result()["resolved_vtables"] = JitEvaluationHelper::get().result()["resolved_vtables"].get<int32_t>() + 1;
+          if (Global::get().jit_evaluate) JitEvaluationHelper::get().result()["resolved_vtables"] = JitEvaluationHelper::get().result()["resolved_vtables"].get<int32_t>() + 1;
           virtual_resolved = true;
         }
       } else {
         // The virtual call could not be resolved. There is nothing we can inline so we move on.
-        JitEvaluationHelper::get().result()["not_resolved_vtables"] = JitEvaluationHelper::get().result()["not_resolved_vtables"].get<int32_t>() + 1;
+        if (Global::get().jit_evaluate) JitEvaluationHelper::get().result()["not_resolved_vtables"] = JitEvaluationHelper::get().result()["not_resolved_vtables"].get<int32_t>() + 1;
         call_sites.pop();
         continue;
       }
@@ -258,7 +259,7 @@ void JitCodeSpecializer::_inline_function_calls(SpecializationContext& context) 
     // Instruct LLVM to perform the function inlining and push all new call sites to the working queue
     llvm::InlineFunctionInfo info;
     if (InlineFunction(call_site, info, nullptr, false, nullptr, context)) {
-      JitEvaluationHelper::get().result()["inlined_functions"] = JitEvaluationHelper::get().result()["inlined_functions"].get<int32_t>() + 1;
+      if (Global::get().jit_evaluate) JitEvaluationHelper::get().result()["inlined_functions"] = JitEvaluationHelper::get().result()["inlined_functions"].get<int32_t>() + 1;
       if (print) std::cout << "Func: " << function_name << " inlined" << std::endl;
       // std::cout << "+++     inlined func: " << function_name << std::endl;
       for (const auto& new_call_site : info.InlinedCallSites) {
@@ -298,15 +299,15 @@ void JitCodeSpecializer::_perform_load_substitution(SpecializationContext& conte
     if (inst.getType()->isIntegerTy()) {
       const auto value = dereference_flexible_width_int_pointer(address, inst.getType()->getIntegerBitWidth());
       inst.replaceAllUsesWith(llvm::ConstantInt::get(inst.getType(), value));
-      JitEvaluationHelper::get().result()["replaced_values"] = JitEvaluationHelper::get().result()["replaced_values"].get<int32_t>() + 1;
+      if (Global::get().jit_evaluate) JitEvaluationHelper::get().result()["replaced_values"] = JitEvaluationHelper::get().result()["replaced_values"].get<int32_t>() + 1;
     } else if (inst.getType()->isFloatTy()) {
       const auto value = *reinterpret_cast<float*>(address);
       inst.replaceAllUsesWith(llvm::ConstantFP::get(inst.getType(), value));
-      JitEvaluationHelper::get().result()["replaced_values"] = JitEvaluationHelper::get().result()["replaced_values"].get<int32_t>() + 1;
+      if (Global::get().jit_evaluate) JitEvaluationHelper::get().result()["replaced_values"] = JitEvaluationHelper::get().result()["replaced_values"].get<int32_t>() + 1;
     } else if (inst.getType()->isDoubleTy()) {
       const auto value = *reinterpret_cast<double*>(address);
       inst.replaceAllUsesWith(llvm::ConstantFP::get(inst.getType(), value));
-      JitEvaluationHelper::get().result()["replaced_values"] = JitEvaluationHelper::get().result()["replaced_values"].get<int32_t>() + 1;
+      if (Global::get().jit_evaluate) JitEvaluationHelper::get().result()["replaced_values"] = JitEvaluationHelper::get().result()["replaced_values"].get<int32_t>() + 1;
     }
   });
 }
