@@ -24,7 +24,8 @@ CardinalityCache::CardinalityCache(const std::shared_ptr<AbstractEngagedCardinal
   _engaged_cache(engaged_cache) {}
 
 std::optional<Cardinality> CardinalityCache::get_cardinality(const BaseJoinGraph& join_graph) {
-  auto entry = _get_entry(join_graph);
+  const auto normalized = join_graph.normalized();
+  auto entry = _get_entry(normalized);
 
   if (_log) (*_log) << "CardinalityCache [" << (entry->request_count == 0 ? "I" : "S") << "]";
 
@@ -41,7 +42,7 @@ std::optional<Cardinality> CardinalityCache::get_cardinality(const BaseJoinGraph
     ++_miss_count;
   }
 
-  if (_log) (*_log) << join_graph.description();
+  if (_log) (*_log) << normalized.description();
 
   if (entry->cardinality) {
     if (_log) (*_log) << ": " << *entry->cardinality;
@@ -53,12 +54,14 @@ std::optional<Cardinality> CardinalityCache::get_cardinality(const BaseJoinGraph
 }
 
 void CardinalityCache::set_cardinality(const BaseJoinGraph& join_graph, const Cardinality cardinality, const Cardinality cardinality_estimation) {
-  auto entry = _engaged_cache->get(join_graph);
+  const auto normalized_join_graph = join_graph.normalized();
+  auto entry = _engaged_cache->get(normalized_join_graph);
+
+
 
   if (entry) {
     Assert(entry->cardinality && entry->cardinality == cardinality, "Can't change cardinality");
   } else {
-    const auto normalized_join_graph = join_graph.normalized();
     const auto iter = _disengaged_cache.find(normalized_join_graph);
     if (iter != _disengaged_cache.end()) {
       entry = iter->second;
@@ -76,10 +79,24 @@ void CardinalityCache::set_cardinality(const BaseJoinGraph& join_graph, const Ca
       disengaged->second->estimated_cardinality.reset();
       const auto emplaced = _disengaged_cache.emplace(disengaged->first, disengaged->second).second;
       Assert(emplaced, "Entry was already disengaged");
+
     }
 
     if (_log) {
-      (*_log) << "CardinalityCache [" << (entry->request_count == 0 ? "I" : "S") << "][PUT ]: " << join_graph.description() << ": " << cardinality << std::endl;
+      if (std::hash<BaseJoinGraph>{}(normalized_join_graph) == 4984748667107325363) {
+        std::cout << "Here we are" << std::endl;
+      }
+
+      if (disengaged && disengaged->first == normalized_join_graph) {
+        (*_log) << "CardinalityCache [" << (entry->request_count == 0 ? "I" : "S") << "][REJC]: " << normalized_join_graph.description() << ": " << cardinality << " / " << cardinality_estimation << std::endl;
+      } else {
+        (*_log) << "CardinalityCache [" << (entry->request_count == 0 ? "I" : "S") << "][PUT ]: "
+                << normalized_join_graph.description() << ": " << cardinality << " / " << cardinality_estimation << std::endl;
+      }
+
+      if (disengaged && !(disengaged->first == normalized_join_graph)) {
+        (*_log) << "CardinalityCache [" << (entry->request_count == 0 ? "I" : "S") << "][DROP]: " << disengaged->first.description() << ": " << *disengaged->second->cardinality << " / " << *disengaged->second->estimated_cardinality << std::endl;
+      }
     }
   }
 }
@@ -94,15 +111,23 @@ void CardinalityCache::set_timeout(const BaseJoinGraph& join_graph, const std::o
 
 std::shared_ptr<CardinalityCacheEntry> CardinalityCache::_get_entry(const BaseJoinGraph &join_graph) {
   auto entry = _engaged_cache->get(join_graph);
-  if (entry) return entry;
+
+  if (entry) {
+    Assert(entry->cardinality, "Cache entry has no associated cardinality");
+    return entry;
+  }
 
   const auto normalized_join_graph = join_graph.normalized();
 
   const auto iter = _disengaged_cache.find(normalized_join_graph);
-  if (iter != _disengaged_cache.end()) return iter->second;
+  if (iter != _disengaged_cache.end()) {
+    entry = iter->second;
+  } else {
+    entry = std::make_shared<CardinalityCacheEntry>();
+    _disengaged_cache.emplace(normalized_join_graph, entry);
+  }
 
-  entry = std::make_shared<CardinalityCacheEntry>();
-  _disengaged_cache.emplace(normalized_join_graph, entry);
+  Assert(!entry->cardinality && !entry->estimated_cardinality, "Disengaged entry contains value");
 
   return entry;
 }
@@ -157,7 +182,7 @@ void CardinalityCache::print(std::ostream& stream) const {
   stream << "-------------------- ENGAGED ENTRIES ------------------------" << std::endl;
   visit_entries([&](const auto& key, const auto& value) {
     if (value->cardinality) {
-      stream << key.description() << ": " << *value->cardinality << std::endl;
+      stream << key.description() << ": " << *value->cardinality << " / " << *value->estimated_cardinality << std::endl;
     }
   });
   stream << std::endl;

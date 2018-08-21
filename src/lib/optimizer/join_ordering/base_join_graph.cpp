@@ -43,7 +43,8 @@ std::string BaseJoinGraph::description() const {
     predicate->print(stream);
     stream << "; ";
   }
-  stream << "]";
+  stream << "] (";
+  stream << std::hash<BaseJoinGraph>{}(*this) << ")";
   return stream.str();
 }
 
@@ -148,6 +149,10 @@ std::shared_ptr<const AbstractJoinPlanPredicate> BaseJoinGraph::normalize(const 
 
 BaseJoinGraph BaseJoinGraph::normalized() const {
   auto normalized_join_graph = *this;
+
+  std::sort(normalized_join_graph.vertices.begin(), normalized_join_graph.vertices.end(), [](const auto& lhs, const auto& rhs) {
+    return lhs->hash() < rhs->hash();
+  });
 
   for (auto& predicate : normalized_join_graph.predicates) {
     predicate = normalize(predicate);
