@@ -60,7 +60,7 @@ void JoeQuery::run() {
                 prefix() + "Iterations.csv");
     }
 
-    if (config->visualize && !join_graph_visualized) {
+    if (config->visualize && !join_graph_visualized && query_iteration.join_graph) {
       visualize_join_graph(query_iteration.join_graph);
       join_graph_visualized = true;
     }

@@ -61,6 +61,7 @@ void JoeConfig::add_options(cxxopts::Options& cli_options_description) {
   ("lqp-blacklist", "Blacklist LQPs that timed out", cxxopts::value(lqp_blacklist_enabled)->default_value("false"))  // NOLINT
   ("cardinality-cache-eviction", "CardinalityCache eviction strategy (random, lru, lag, uncapped)", cxxopts::value(cardinality_cache_eviction_str)->default_value("uncapped"))  // NOLINT
   ("cardinality-cache-capacity", "CardinalityCache capacity", cxxopts::value(cardinality_cache_capacity_str)->default_value("inf"))  // NOLINT
+  ("join-ordering", "Enable join ordering or use default optimizer", cxxopts::value(join_ordering)->default_value("true"))  // NOLINT
   ("queries", "Specify queries to run, default is all of the workload that are supported", cxxopts::value<std::vector<std::string>>()); // NOLINT
   ;
   // clang-format on
@@ -326,8 +327,16 @@ void JoeConfig::parse(const cxxopts::ParseResult& cli_parse_result) {
     out() << "-- CardinalityCache capacity: " << cardinality_cache_capacity << std::endl;
   }
 
+  if (join_ordering) {
+    out() << "-- Join ordering enabled" << std::endl;
+  } else {
+    out() << "-- Join ordering disabled, using default optimizer" << std::endl;
+  }
+
   Assert(cardinality_cache_eviction == CardinalityCacheEviction::Uncapped ||
          cardinality_estimation_cache_access != CardinalityEstimationCacheAccess::ReadAndWrite, "Cannot evict from R/W persistent cache");
+  Assert(join_ordering || max_plan_generation_count.value_or(1) == 1, "Cannot create multiple plans without join ordering enabled");
+  Assert(join_ordering || max_plan_execution_count.value_or(1) == 1, "Cannot create multiple plans without join ordering enabled");
   Assert(cardinality_estimation_mode != CardinalityEstimationMode::CacheOnly || !isolate_queries, "Isolating queries in cache only mode is not intended");
   Assert(!lqp_blacklist_enabled || plan_timeout_seconds.has_value(), "Can't blacklist LQPs without timeout");
 }

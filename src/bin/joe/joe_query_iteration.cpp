@@ -49,19 +49,29 @@ void JoeQueryIteration::run() {
 
   Timer timer;
 
+  DpSubplanCacheTopK::JoinPlanSet join_plans;
+  std::shared_ptr<AbstractLQPNode> optimized_plan;
+  std::shared_ptr<AbstractLQPNode> lqp_root;
+
   /**
    * Plan Generation
    */
-  auto sql_pipeline_statement = SQL{query.sql}.disable_mvcc().pipeline_statement();
-  const auto unoptimized_lqp = sql_pipeline_statement.get_unoptimized_logical_plan();
-  const auto lqp_root = std::shared_ptr<AbstractLQPNode>(LogicalPlanRootNode::make(unoptimized_lqp));
-  join_graph = JoinGraph::from_lqp(unoptimized_lqp);
-  const auto plan_generation_count = config->max_plan_generation_count ? *config->max_plan_generation_count : DpSubplanCacheTopK::NO_ENTRY_LIMIT;
-  DpCcpTopK dp_ccp_top_k{plan_generation_count, config->cost_model, config->lqp_blacklist, config->main_cardinality_estimator};
-  dp_ccp_top_k(join_graph);
-  JoinVertexSet all_vertices{join_graph->vertices.size()};
-  all_vertices.flip();
-  const auto join_plans = dp_ccp_top_k.subplan_cache()->get_best_plans(all_vertices);
+  if (config->join_ordering) {
+    auto sql_pipeline_statement = SQL{query.sql}.disable_mvcc().pipeline_statement();
+    const auto unoptimized_lqp = sql_pipeline_statement.get_unoptimized_logical_plan();
+    lqp_root = std::shared_ptr<AbstractLQPNode>(LogicalPlanRootNode::make(unoptimized_lqp));
+    join_graph = JoinGraph::from_lqp(unoptimized_lqp);
+    const auto plan_generation_count = config->max_plan_generation_count ? *config->max_plan_generation_count
+                                                                         : DpSubplanCacheTopK::NO_ENTRY_LIMIT;
+    DpCcpTopK dp_ccp_top_k{plan_generation_count, config->cost_model, config->lqp_blacklist,
+                           config->main_cardinality_estimator};
+    dp_ccp_top_k(join_graph);
+    JoinVertexSet all_vertices{join_graph->vertices.size()};
+    all_vertices.flip();
+    join_plans = dp_ccp_top_k.subplan_cache()->get_best_plans(all_vertices);
+  } else {
+    optimized_plan = SQL{query.sql}.disable_mvcc().pipeline_statement().get_optimized_logical_plan();
+  }
 
   /**
    * Take measurements about Plan Generation
@@ -75,21 +85,27 @@ void JoeQueryIteration::run() {
   sample.ce_cache_memory_consumption = config->cardinality_estimation_cache->memory_consumption();
   sample.ce_cache_memory_consumption_alt = config->cardinality_estimation_cache->memory_consumption_alt();
 
-  out() << "---- Generated " << join_plans.size() << " plans in " << format_duration(std::chrono::duration_cast<std::chrono::nanoseconds>(sample.planning_duration)) << std::endl;
-
   /**
    * Initialise the plans
    */
-  auto join_plan_iter = join_plans.begin();
-  for (auto join_plan_idx = size_t{0}; join_plan_idx < join_plans.size(); ++join_plan_idx, ++join_plan_iter) {
-     // Create LQP from join plan
-    const auto& join_plan = *join_plan_iter;
-    const auto join_ordered_sub_lqp = join_plan.lqp;
-    for (const auto &parent_relation : join_graph->output_relations) {
-      parent_relation.output->set_input(parent_relation.input_side, join_ordered_sub_lqp);
-    }
+  if (config->join_ordering) {
+    out() << "---- Generated " << join_plans.size() << " plans in " << format_duration(std::chrono::duration_cast<std::chrono::nanoseconds>(sample.planning_duration)) << std::endl;
 
-    plans.emplace_back(std::make_shared<JoePlan>(*this, join_plan.plan_cost, lqp_root->left_input()->deep_copy(), join_plan_idx));
+    auto join_plan_iter = join_plans.begin();
+    for (auto join_plan_idx = size_t{0}; join_plan_idx < join_plans.size(); ++join_plan_idx, ++join_plan_iter) {
+      // Create LQP from join plan
+      const auto &join_plan = *join_plan_iter;
+      const auto join_ordered_sub_lqp = join_plan.lqp;
+      for (const auto &parent_relation : join_graph->output_relations) {
+        parent_relation.output->set_input(parent_relation.input_side, join_ordered_sub_lqp);
+      }
+
+      plans.emplace_back(
+      std::make_shared<JoePlan>(*this, join_plan.plan_cost, lqp_root->left_input()->deep_copy(), join_plan_idx));
+    }
+  } else {
+    plans.emplace_back(
+    std::make_shared<JoePlan>(*this, 0, optimized_plan->deep_copy(), 0));
   }
 
   if (!plans.empty()) {
@@ -99,7 +115,7 @@ void JoeQueryIteration::run() {
   /**
    * Establish the order of plans to evaluate
    */
-  std::vector<size_t> plan_indices(join_plans.size());
+  std::vector<size_t> plan_indices(plans.size());
   std::iota(plan_indices.begin(), plan_indices.end(), 0);
 
   if (config->plan_order_shuffling) {

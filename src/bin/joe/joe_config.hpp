@@ -55,6 +55,7 @@ struct JoeConfig final {
   bool join_graph_log{true};
   bool cache_cardinalities{false};
   bool lqp_blacklist_enabled{false};
+  bool join_ordering{true};
   std::string evaluation_name;
   std::optional<std::string> cost_sample_dir{""};
   std::string cardinality_cache_eviction_str;
