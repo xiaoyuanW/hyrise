@@ -134,7 +134,7 @@ class AbstractOperator : public std::enable_shared_from_this<AbstractOperator>, 
   // execute and get_output are split into two methods to allow for easier
   // asynchronous execution
   virtual std::shared_ptr<const Table> _on_execute(std::shared_ptr<TransactionContext> context) = 0;
-  virtual void _prepare(){};
+  virtual void _prepare() {}
 
   // method that allows operator-specific cleanups for temporary data.
   // separate from _on_execute for readability and as a reminder to
