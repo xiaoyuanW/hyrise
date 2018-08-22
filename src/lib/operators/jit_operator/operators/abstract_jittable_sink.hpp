@@ -24,7 +24,7 @@ class AbstractJittableSink : public AbstractJittable {
   // This function is called by the JitOperatorWrapper after all operators in the chain have been connected and just
   // before the execution of the pipeline starts (i.e. _execute() is called on the first operator for the first Chunk).
   // It is used for operator initializations.
-  virtual void before_query(Table& out_table, JitRuntimeContext& context) const {}
+  virtual void before_query(const Table& in_table, Table& out_table, JitRuntimeContext& context) const {}
 
   // This function is called by the JitOperatorWrapper after all chunks have been pushed through the pipeline.
   // It is used for finalizing the output table.
@@ -32,7 +32,8 @@ class AbstractJittableSink : public AbstractJittable {
 
   // This function is called by the JitOperatorWrapper after each Chunk that has been pushed through the pipeline.
   // It is used to create a new chunk in the output table for each input chunk.
-  virtual void after_chunk(Table& out_table, JitRuntimeContext& context) const {}
+  virtual void after_chunk(const std::shared_ptr<const Table>& in_table, Table& out_table,
+                           JitRuntimeContext& context) const {}
 };
 
 }  // namespace opossum

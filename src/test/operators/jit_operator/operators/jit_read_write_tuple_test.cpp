@@ -92,13 +92,14 @@ TEST_F(JitReadWriteTupleTest, CopyTable) {
   auto input_table = load_table("src/test/tables/int_float_null_sorted_asc.tbl", 2);
   auto output_table = write_tuples->create_output_table(2);
   read_tuples->before_query(*input_table, context);
-  write_tuples->before_query(*output_table, context);
+  const auto dummy_table = Table::create_dummy_table(TableColumnDefinitions());
+  write_tuples->before_query(*dummy_table, *output_table, context);
 
   // Pass each chunk through the pipeline
-  for (const auto& chunk : input_table->chunks()) {
-    read_tuples->before_chunk(*input_table, *chunk, context);
+  for (ChunkID chunk_id{0}; chunk_id < input_table->chunk_count(); ++chunk_id) {
+    read_tuples->before_chunk(*input_table, chunk_id, context);
     read_tuples->execute(context);
-    write_tuples->after_chunk(*output_table, context);
+    write_tuples->after_chunk(dummy_table, *output_table, context);
   }
   write_tuples->after_query(*output_table, context);
 

@@ -72,10 +72,12 @@ void JitReadTuples::before_query(const Table& in_table, JitRuntimeContext& conte
   }
 }
 
-void JitReadTuples::before_chunk(const Table& in_table, const Chunk& in_chunk, JitRuntimeContext& context) const {
+void JitReadTuples::before_chunk(const Table& in_table, const ChunkID chunk_id, JitRuntimeContext& context) const {
+  const auto& in_chunk = *in_table.get_chunk(chunk_id);
   context.inputs.clear();
   context.chunk_offset = 0;
   context.chunk_size = in_chunk.size();
+  context.chunk_id = chunk_id;
   if (_has_validate) {
     if (in_chunk.has_mvcc_columns()) {
       auto mvcc_columns = in_chunk.mvcc_columns();

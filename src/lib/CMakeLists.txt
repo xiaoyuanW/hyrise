@@ -557,6 +557,8 @@ if (${ENABLE_JIT_SUPPORT})
         operators/jit_operator/operators/jit_read_value.hpp
         operators/jit_operator/operators/jit_validate.cpp
         operators/jit_operator/operators/jit_validate.hpp
+        operators/jit_operator/operators/jit_write_offset.cpp
+        operators/jit_operator/operators/jit_write_offset.hpp
         operators/jit_operator/operators/jit_write_tuples.cpp
         operators/jit_operator/operators/jit_write_tuples.hpp
     )

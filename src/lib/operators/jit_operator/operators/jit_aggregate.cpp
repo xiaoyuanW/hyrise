@@ -47,7 +47,7 @@ std::shared_ptr<Table> JitAggregate::create_output_table(const ChunkOffset input
   return std::make_shared<Table>(column_definitions, TableType::Data);
 }
 
-void JitAggregate::before_query(Table& out_table, JitRuntimeContext& context) const {
+void JitAggregate::before_query(const Table& in_table, Table& out_table, JitRuntimeContext& context) const {
   // Resize the hashmap data structure.
   context.hashmap.columns.resize(_num_hashmap_columns);
 }

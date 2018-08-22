@@ -23,7 +23,7 @@ struct JitOutputColumn {
  * It is responsible for
  * 1) adding column definitions to the output table
  * 2) appending the current tuple to the current output chunk
- * 3) creating a new output chunks and adding output chunks to the output table
+ * 3) creating a new output chunk and adding output chunks to the output table
  */
 class JitWriteTuples : public AbstractJittableSink {
   /* JitColumnWriters provide a template-free interface to store tuple values in ValueColumns in the output table.
@@ -63,8 +63,9 @@ class JitWriteTuples : public AbstractJittableSink {
   std::string description() const final;
 
   std::shared_ptr<Table> create_output_table(const ChunkOffset input_table_chunk_size) const final;
-  void before_query(Table& out_table, JitRuntimeContext& context) const override;
-  void after_chunk(Table& out_table, JitRuntimeContext& context) const override;
+  void before_query(const Table& in_table, Table& out_table, JitRuntimeContext& context) const override;
+  void after_chunk(const std::shared_ptr<const Table>& in_table, Table& out_table,
+                   JitRuntimeContext& context) const override;
 
   void add_output_column(const std::string& column_name, const JitTupleValue& value);
 

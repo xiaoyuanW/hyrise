@@ -28,6 +28,7 @@
 #include "operators/jit_operator/operators/jit_limit.hpp"
 #include "operators/jit_operator/operators/jit_read_tuples.hpp"
 #include "operators/jit_operator/operators/jit_validate.hpp"
+#include "operators/jit_operator/operators/jit_write_offset.hpp"
 #include "operators/jit_operator/operators/jit_write_tuples.hpp"
 #include "operators/operator_scan_predicate.hpp"
 #include "resolve_type.hpp"
@@ -225,7 +226,9 @@ std::shared_ptr<JitOperatorWrapper> JitAwareLQPTranslator::_try_translate_sub_pl
     if (use_limit) jit_operator->add_jit_operator(std::make_shared<JitLimit>());
 
     // Add a compute operator for each computed output column (i.e., a column that is not from a stored table).
-    auto write_table = std::make_shared<JitWriteTuples>();
+    std::vector<std::pair<const std::string, const JitTupleValue>> output_columns;
+    output_columns.reserve(node->column_expressions().size());
+    bool materialize = false;
     for (const auto& column_expression : node->column_expressions()) {
       const auto jit_expression =
           _try_translate_expression_to_jit_expression(*column_expression, *read_tuples, input_node);
@@ -234,11 +237,29 @@ std::shared_ptr<JitOperatorWrapper> JitAwareLQPTranslator::_try_translate_sub_pl
       // would not compute anything anyway
       if (jit_expression->expression_type() != JitExpressionType::Column) {
         jit_operator->add_jit_operator(std::make_shared<JitCompute>(jit_expression));
+        materialize = true;
+
+        // Check if column is literal
+      } else if (!read_tuples->find_input_column(jit_expression->result())) {
+        materialize = true;
       }
-      write_table->add_output_column(column_expression->as_column_name(), jit_expression->result());
+
+      output_columns.emplace_back(column_expression->as_column_name(), jit_expression->result());
     }
 
-    jit_operator->add_jit_operator(write_table);
+    if (materialize) {
+      auto write_table = std::make_shared<JitWriteTuples>();
+      for (const auto& column : output_columns) write_table->add_output_column(column.first, column.second);
+      jit_operator->add_jit_operator(write_table);
+    } else {
+      auto write_table = std::make_shared<JitWriteOffset>();
+      for (const auto& column : output_columns) {
+        const auto column_id = read_tuples->find_input_column(column.second);
+        DebugAssert(column_id, "Output column must reference an input column");
+        write_table->add_output_column(column.first, column.second, *column_id);
+      }
+      jit_operator->add_jit_operator(write_table);
+    }
   }
 
   return jit_operator;

@@ -19,6 +19,7 @@ class MockSource : public AbstractJittable {
 
 class JitAggregateTest : public BaseTest {
  protected:
+  JitAggregateTest() : _dummy_table(Table::create_dummy_table(TableColumnDefinitions())) {}
   void SetUp() override {
     // Create a chain of two operators.
     _source = std::make_shared<MockSource>();
@@ -28,6 +29,7 @@ class JitAggregateTest : public BaseTest {
 
   std::shared_ptr<MockSource> _source;
   std::shared_ptr<JitAggregate> _aggregate;
+  const std::shared_ptr<const Table> _dummy_table;
 };
 
 // Make sure, that groupby columns are properly added to the output table
@@ -123,7 +125,7 @@ TEST_F(JitAggregateTest, GroupsByMultipleColumns) {
   _aggregate->add_groupby_column("b", value_b);
 
   auto output_table = _aggregate->create_output_table(Chunk::MAX_SIZE);
-  _aggregate->before_query(*output_table, context);
+  _aggregate->before_query(*_dummy_table, *output_table, context);
 
   // We pass tuples with three value-combinations through the operator chain.
   // Each value combination should create one row in the output table.
@@ -163,7 +165,7 @@ TEST_F(JitAggregateTest, GroupsNullValues) {
   _aggregate->add_groupby_column("b", value_b);
 
   auto output_table = _aggregate->create_output_table(Chunk::MAX_SIZE);
-  _aggregate->before_query(*output_table, context);
+  _aggregate->before_query(*_dummy_table, *output_table, context);
 
   value_a.set<int32_t>(1, context);
   value_b.set<int32_t>(1, context);
@@ -199,7 +201,7 @@ TEST_F(JitAggregateTest, CorrectlyComputesAggregates) {
   _aggregate->add_aggregate_column("avg", value_b, AggregateFunction::Avg);
 
   auto output_table = _aggregate->create_output_table(Chunk::MAX_SIZE);
-  _aggregate->before_query(*output_table, context);
+  _aggregate->before_query(*_dummy_table, *output_table, context);
 
   // Group 1
   value_a.set<int32_t>(1, context);
@@ -261,7 +263,7 @@ TEST_F(JitAggregateTest, NoGroupByColumns) {
   _aggregate->add_aggregate_column("avg", value, AggregateFunction::Avg);
 
   auto output_table = _aggregate->create_output_table(Chunk::MAX_SIZE);
-  _aggregate->before_query(*output_table, context);
+  _aggregate->before_query(*_dummy_table, *output_table, context);
 
   value.set<int32_t>(1, context);
   _source->emit(context);
@@ -300,7 +302,7 @@ TEST_F(JitAggregateTest, EmptyInputTable) {
   _aggregate->add_aggregate_column("avg", value_b, AggregateFunction::Avg);
 
   auto output_table = _aggregate->create_output_table(Chunk::MAX_SIZE);
-  _aggregate->before_query(*output_table, context);
+  _aggregate->before_query(*_dummy_table, *output_table, context);
   _aggregate->after_query(*output_table, context);
 
   const auto expected_column_definitions = TableColumnDefinitions({{"groupby", DataType::Int, false},
@@ -330,7 +332,7 @@ TEST_F(JitAggregateTest, EmptyInputTableNoGroupbyColumns) {
   _aggregate->add_aggregate_column("avg", value, AggregateFunction::Avg);
 
   auto output_table = _aggregate->create_output_table(Chunk::MAX_SIZE);
-  _aggregate->before_query(*output_table, context);
+  _aggregate->before_query(*_dummy_table, *output_table, context);
   _aggregate->after_query(*output_table, context);
 
   const auto expected_column_definitions = TableColumnDefinitions({{"count", DataType::Long, false},
@@ -358,7 +360,7 @@ TEST_F(JitAggregateTest, LimitJitAggregate) {
   _aggregate->add_groupby_column("a", value_a);
 
   auto output_table = _aggregate->create_output_table(Chunk::MAX_SIZE);
-  _aggregate->before_query(*output_table, context);
+  _aggregate->before_query(*_dummy_table, *output_table, context);
 
   // Emit (1) tuple - adding row is possible as limit has not been reached yet
   value_a.set<int32_t>(1, context);
