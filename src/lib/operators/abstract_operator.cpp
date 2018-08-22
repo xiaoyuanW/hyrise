@@ -7,12 +7,12 @@
 
 #include "abstract_read_only_operator.hpp"
 #include "concurrency/transaction_context.hpp"
+#include "global.hpp"
 #include "storage/table.hpp"
 #include "utils/assert.hpp"
 #include "utils/format_duration.hpp"
 #include "utils/print_directed_acyclic_graph.hpp"
 #include "utils/timer.hpp"
-#include "global.hpp"
 
 namespace opossum {
 
@@ -23,39 +23,39 @@ AbstractOperator::AbstractOperator(const OperatorType type, const std::shared_pt
 OperatorType AbstractOperator::type() const { return _type; }
 
 const std::unordered_map<OperatorType, std::string> operator_type_to_string = {
-        {OperatorType::Aggregate, "Aggregate"},
-        {OperatorType::Alias, "Alias"},
-        {OperatorType::Delete, "Delete"},
-        {OperatorType::Difference, "Difference"},
-        {OperatorType::ExportBinary, "ExportBinary"},
-        {OperatorType::ExportCsv, "ExportCsv"},
-        {OperatorType::GetTable, "GetTable"},
-        {OperatorType::ImportBinary, "ImportBinary"},
-        {OperatorType::ImportCsv, "ImportCsv"},
-        {OperatorType::IndexScan, "IndexScan"},
-        {OperatorType::Insert, "Insert"},
-        {OperatorType::JitOperatorWrapper, "JitOperatorWrapper"},
-        {OperatorType::JoinHash, "JoinHash"},
-        {OperatorType::JoinIndex, "JoinIndex"},
-        {OperatorType::JoinMPSM, "JoinMPSM"},
-        {OperatorType::JoinNestedLoop, "JoinNestedLoop"},
-        {OperatorType::JoinSortMerge, "JoinSortMerge"},
-        {OperatorType::Limit, "Limit"},
-        {OperatorType::Print, "Print"},
-        {OperatorType::Product, "Product"},
-        {OperatorType::Projection, "Projection"},
-        {OperatorType::Sort, "Sort"},
-        {OperatorType::TableScan, "TableScan"},
-        {OperatorType::TableWrapper, "TableWrapper"},
-        {OperatorType::UnionAll, "UnionAll"},
-        {OperatorType::UnionPositions, "UnionPositions"},
-        {OperatorType::Update, "Update"},
-        {OperatorType::Validate, "Validate"},
-        {OperatorType::CreateView, "CreateView"},
-        {OperatorType::DropView, "DropView"},
-        {OperatorType::ShowColumns, "ShowColumns"},
-        {OperatorType::ShowTables, "ShowTables"},
-        {OperatorType::Mock, "Mock"},
+    {OperatorType::Aggregate, "Aggregate"},
+    {OperatorType::Alias, "Alias"},
+    {OperatorType::Delete, "Delete"},
+    {OperatorType::Difference, "Difference"},
+    {OperatorType::ExportBinary, "ExportBinary"},
+    {OperatorType::ExportCsv, "ExportCsv"},
+    {OperatorType::GetTable, "GetTable"},
+    {OperatorType::ImportBinary, "ImportBinary"},
+    {OperatorType::ImportCsv, "ImportCsv"},
+    {OperatorType::IndexScan, "IndexScan"},
+    {OperatorType::Insert, "Insert"},
+    {OperatorType::JitOperatorWrapper, "JitOperatorWrapper"},
+    {OperatorType::JoinHash, "JoinHash"},
+    {OperatorType::JoinIndex, "JoinIndex"},
+    {OperatorType::JoinMPSM, "JoinMPSM"},
+    {OperatorType::JoinNestedLoop, "JoinNestedLoop"},
+    {OperatorType::JoinSortMerge, "JoinSortMerge"},
+    {OperatorType::Limit, "Limit"},
+    {OperatorType::Print, "Print"},
+    {OperatorType::Product, "Product"},
+    {OperatorType::Projection, "Projection"},
+    {OperatorType::Sort, "Sort"},
+    {OperatorType::TableScan, "TableScan"},
+    {OperatorType::TableWrapper, "TableWrapper"},
+    {OperatorType::UnionAll, "UnionAll"},
+    {OperatorType::UnionPositions, "UnionPositions"},
+    {OperatorType::Update, "Update"},
+    {OperatorType::Validate, "Validate"},
+    {OperatorType::CreateView, "CreateView"},
+    {OperatorType::DropView, "DropView"},
+    {OperatorType::ShowColumns, "ShowColumns"},
+    {OperatorType::ShowTables, "ShowTables"},
+    {OperatorType::Mock, "Mock"},
 };
 
 void AbstractOperator::execute() {
@@ -66,7 +66,6 @@ void AbstractOperator::execute() {
   Timer performance_timer;
   _prepare();
   const auto preparation_time = performance_timer.lap();
-
 
   auto transaction_context = this->transaction_context();
 

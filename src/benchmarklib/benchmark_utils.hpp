@@ -7,10 +7,10 @@
 #include <iostream>
 #include <unordered_map>
 
+#include "global.hpp"
 #include "storage/chunk.hpp"
 #include "storage/chunk_encoder.hpp"
 #include "storage/encoding_type.hpp"
-#include "global.hpp"
 
 namespace opossum {
 

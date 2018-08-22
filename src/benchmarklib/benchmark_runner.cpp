@@ -5,6 +5,7 @@
 #include "benchmark_runner.hpp"
 #include "constant_mappings.hpp"
 #include "import_export/csv_parser.hpp"
+#include "operators/abstract_operator.hpp"
 #include "planviz/lqp_visualizer.hpp"
 #include "planviz/sql_query_plan_visualizer.hpp"
 #include "scheduler/current_scheduler.hpp"
@@ -16,7 +17,6 @@
 #include "utils/filesystem.hpp"
 #include "utils/load_table.hpp"
 #include "version.hpp"
-#include "operators/abstract_operator.hpp"
 
 namespace opossum {
 
@@ -141,10 +141,10 @@ void BenchmarkRunner::_benchmark_individual_queries() {
     result.iteration_durations = state.iteration_durations;
     result.times = Global::get().times;
     Global::get().times.clear();
-//    for (auto pair : Global::get().times) {
-//      pair.second.preparation_time = std::chrono::microseconds{0};
-//      pair.second.execution_time = std::chrono::microseconds{0};
-//    }
+    //    for (auto pair : Global::get().times) {
+    //      pair.second.preparation_time = std::chrono::microseconds{0};
+    //      pair.second.execution_time = std::chrono::microseconds{0};
+    //    }
 
     _query_results_by_query_name.emplace(name, result);
   }
@@ -196,22 +196,20 @@ void BenchmarkRunner::_create_report(std::ostream& stream) const {
     nlohmann::json operators;
     for (const auto& pair : query_result.times) {
       operators.push_back({
-         {"name", operator_type_to_string.at(pair.first)},
-         {"preparation_time", static_cast<size_t>(pair.second.preparation_time.count() / query_result.num_iterations)},
-         {"execution_time", static_cast<size_t>(pair.second.execution_time.count() / query_result.num_iterations)},
-         {"time_unit", "micro s"},
+          {"name", operator_type_to_string.at(pair.first)},
+          {"preparation_time", static_cast<size_t>(pair.second.preparation_time.count() / query_result.num_iterations)},
+          {"execution_time", static_cast<size_t>(pair.second.execution_time.count() / query_result.num_iterations)},
+          {"time_unit", "micro s"},
       });
     }
 
-    nlohmann::json benchmark{
-        {"name", name},
-        {"iterations", query_result.num_iterations},
-        {"iteration_durations", iteration_durations},
-        {"avg_real_time_per_iteration", time_per_query},
-        {"items_per_second", items_per_second},
-        {"time_unit", "ns"},
-        {"operators", operators}
-    };
+    nlohmann::json benchmark{{"name", name},
+                             {"iterations", query_result.num_iterations},
+                             {"iteration_durations", iteration_durations},
+                             {"avg_real_time_per_iteration", time_per_query},
+                             {"items_per_second", items_per_second},
+                             {"time_unit", "ns"},
+                             {"operators", operators}};
 
     benchmarks.push_back(benchmark);
   }
