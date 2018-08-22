@@ -10,6 +10,7 @@
 #include "storage/chunk.hpp"
 #include "storage/chunk_encoder.hpp"
 #include "storage/encoding_type.hpp"
+#include "global.hpp"
 
 namespace opossum {
 
@@ -39,6 +40,7 @@ struct QueryBenchmarkResult {
   size_t num_iterations = 0;
   Duration duration = Duration{};
   std::vector<Duration> iteration_durations;
+  std::map<OperatorType, OperatorTimes> times;
 };
 
 using QueryID = size_t;

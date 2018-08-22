@@ -53,6 +53,8 @@ enum class OperatorType {
   Mock  // for Tests that need to Mock operators
 };
 
+extern const std::unordered_map<OperatorType, std::string> operator_type_to_string;
+
 // AbstractOperator is the abstract super class for all operators.
 // All operators have up to two input tables and one output table.
 // Their lifecycle has three phases:
@@ -132,6 +134,7 @@ class AbstractOperator : public std::enable_shared_from_this<AbstractOperator>, 
   // execute and get_output are split into two methods to allow for easier
   // asynchronous execution
   virtual std::shared_ptr<const Table> _on_execute(std::shared_ptr<TransactionContext> context) = 0;
+  virtual void _prepare() {};
 
   // method that allows operator-specific cleanups for temporary data.
   // separate from _on_execute for readability and as a reminder to

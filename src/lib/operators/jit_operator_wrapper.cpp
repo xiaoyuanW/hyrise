@@ -90,40 +90,11 @@ void JitOperatorWrapper::insert_loads(const bool lazy) {
   _jit_operators = jit_operators;
 }
 
-std::shared_ptr<const Table> JitOperatorWrapper::_on_execute() {
+void JitOperatorWrapper::_prepare() {
   Assert(_source(), "JitOperatorWrapper does not have a valid source node.");
   Assert(_sink(), "JitOperatorWrapper does not have a valid sink node.");
 
-  // const_cast<JitExecutionMode&>(_execution_mode) = JitExecutionMode::Interpret;
-
-  // std::cout << description(DescriptionMode::MultiLine) << std::endl;
-
-  const auto& in_table = *input_left()->get_output();
-
-  auto out_table = _sink()->create_output_table(in_table.max_chunk_size());
-
-  JitRuntimeContext context;
-  if (transaction_context_is_set()) {
-    context.transaction_id = transaction_context()->transaction_id();
-    context.snapshot_commit_id = transaction_context()->snapshot_commit_id();
-  }
-  _source()->before_query(in_table, context);
-  _sink()->before_query(*out_table, context);
-
   _choose_execute_func();
-
-  for (opossum::ChunkID chunk_id{0}; chunk_id < in_table.chunk_count(); ++chunk_id) {
-    const auto& in_chunk = *in_table.get_chunk(chunk_id);
-    _source()->before_chunk(in_table, in_chunk, context);
-    _execute_func(_source().get(), context);
-    _sink()->after_chunk(*out_table, context);
-    // break, if limit is reached
-    if (context.chunk_offset == std::numeric_limits<ChunkOffset>::max()) break;
-  }
-
-  _sink()->after_query(*out_table, context);
-
-  return out_table;
 }
 
 void JitOperatorWrapper::_choose_execute_func() {
@@ -155,6 +126,32 @@ void JitOperatorWrapper::_choose_execute_func() {
       _execute_func = &JitReadTuples::execute;
       break;
   }
+}
+
+std::shared_ptr<const Table> JitOperatorWrapper::_on_execute() {
+  const auto& in_table = *input_left()->get_output();
+  auto out_table = _sink()->create_output_table(in_table.max_chunk_size());
+
+  JitRuntimeContext context;
+  if (transaction_context_is_set()) {
+    context.transaction_id = transaction_context()->transaction_id();
+    context.snapshot_commit_id = transaction_context()->snapshot_commit_id();
+  }
+  _source()->before_query(in_table, context);
+  _sink()->before_query(*out_table, context);
+
+  for (opossum::ChunkID chunk_id{0}; chunk_id < in_table.chunk_count(); ++chunk_id) {
+    const auto& in_chunk = *in_table.get_chunk(chunk_id);
+    _source()->before_chunk(in_table, in_chunk, context);
+    _execute_func(_source().get(), context);
+    _sink()->after_chunk(*out_table, context);
+    // break, if limit is reached
+    if (context.chunk_offset == std::numeric_limits<ChunkOffset>::max()) break;
+  }
+
+  _sink()->after_query(*out_table, context);
+
+  return out_table;
 }
 
 std::shared_ptr<AbstractOperator> JitOperatorWrapper::_on_deep_copy(
