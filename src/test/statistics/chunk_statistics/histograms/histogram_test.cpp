@@ -4,6 +4,7 @@
 #include "statistics/chunk_statistics/histograms/equal_height_histogram.hpp"
 #include "statistics/chunk_statistics/histograms/equal_num_elements_histogram.hpp"
 #include "statistics/chunk_statistics/histograms/equal_width_histogram.hpp"
+#include "statistics/chunk_statistics/histograms/histogram_helper.hpp"
 #include "utils/load_table.hpp"
 
 namespace opossum {
@@ -980,11 +981,11 @@ class HistogramPrivateTest : public BaseTest {
   }
 
  protected:
-  int64_t _convert_string_to_number_representation(const std::string& value) {
+  uint64_t _convert_string_to_number_representation(const std::string& value) {
     return _hist->_convert_string_to_number_representation(value);
   }
 
-  std::string _convert_number_representation_to_string(const int64_t value) {
+  std::string _convert_number_representation_to_string(const uint64_t value) {
     return _hist->_convert_number_representation_to_string(value);
   }
 
@@ -997,73 +998,61 @@ TEST_F(HistogramPrivateTest, PreviousValueString) {
   EXPECT_EQ(_hist->get_previous_value(""), "");
 
   EXPECT_EQ(_hist->get_previous_value("a"), "");
-  EXPECT_EQ(_convert_string_to_number_representation("a"),
-            _convert_string_to_number_representation(_hist->get_previous_value("a")) + 1);
-  EXPECT_EQ(_hist->get_previous_value("aaa"), "");
-  EXPECT_EQ(_convert_string_to_number_representation("aaa"),
-            _convert_string_to_number_representation(_hist->get_previous_value("aaa")) + 1);
+  EXPECT_EQ(_hist->get_previous_value("b"), "azzz");
+  EXPECT_EQ(_hist->get_previous_value("z"), "yzzz");
+  EXPECT_EQ(_hist->get_previous_value("az"), "ayzz");
+  EXPECT_EQ(_hist->get_previous_value("aaa"), "aa");
   EXPECT_EQ(_hist->get_previous_value("abcd"), "abcc");
-  EXPECT_EQ(_convert_string_to_number_representation("abcd"),
-            _convert_string_to_number_representation(_hist->get_previous_value("abcd")) + 1);
   EXPECT_EQ(_hist->get_previous_value("abzz"), "abzy");
-  EXPECT_EQ(_convert_string_to_number_representation("abzz"),
-            _convert_string_to_number_representation(_hist->get_previous_value("abzz")) + 1);
-  EXPECT_EQ(_hist->get_previous_value("abca"), "abbz");
-  EXPECT_EQ(_convert_string_to_number_representation("abca"),
-            _convert_string_to_number_representation(_hist->get_previous_value("abca")) + 1);
-  EXPECT_EQ(_hist->get_previous_value("abaa"), "aazz");
-  EXPECT_EQ(_convert_string_to_number_representation("abaa"),
-            _convert_string_to_number_representation(_hist->get_previous_value("abaa")) + 1);
-  EXPECT_EQ(_hist->get_previous_value("aba"), "aazz");
-  EXPECT_EQ(_convert_string_to_number_representation("aba"),
-            _convert_string_to_number_representation(_hist->get_previous_value("aba")) + 1);
+  EXPECT_EQ(_hist->get_previous_value("abca"), "abc");
+  EXPECT_EQ(_hist->get_previous_value("abaa"), "aba");
+  EXPECT_EQ(_hist->get_previous_value("aba"), "ab");
 }
 
 TEST_F(HistogramPrivateTest, NextValueString) {
   EXPECT_EQ(_hist->get_next_value(""), "a");
-  EXPECT_EQ(_convert_string_to_number_representation(""),
-            _convert_string_to_number_representation(_hist->get_next_value("")) - 1);
-  EXPECT_EQ(_hist->get_next_value("a"), "aaab");
-  EXPECT_EQ(_convert_string_to_number_representation("a"),
-            _convert_string_to_number_representation(_hist->get_next_value("a")) - 1);
+  EXPECT_EQ(_hist->get_next_value("a"), "aa");
+  EXPECT_EQ(_hist->get_next_value("ayz"), "ayza");
+  EXPECT_EQ(_hist->get_next_value("ayzz"), "az");
+  EXPECT_EQ(_hist->get_next_value("azzz"), "b");
+  EXPECT_EQ(_hist->get_next_value("z"), "za");
+  EXPECT_EQ(_hist->get_next_value("df"), "dfa");
   EXPECT_EQ(_hist->get_next_value("abcd"), "abce");
-  EXPECT_EQ(_convert_string_to_number_representation("abcd"),
-            _convert_string_to_number_representation(_hist->get_next_value("abcd")) - 1);
-  EXPECT_EQ(_hist->get_next_value("abaz"), "abba");
-  EXPECT_EQ(_convert_string_to_number_representation("abaz"),
-            _convert_string_to_number_representation(_hist->get_next_value("abaz")) - 1);
-  EXPECT_EQ(_hist->get_next_value("abzz"), "acaa");
-  EXPECT_EQ(_convert_string_to_number_representation("abzz"),
-            _convert_string_to_number_representation(_hist->get_next_value("abzz")) - 1);
+  EXPECT_EQ(_hist->get_next_value("abaz"), "abb");
+  EXPECT_EQ(_hist->get_next_value("abzz"), "ac");
   EXPECT_EQ(_hist->get_next_value("abca"), "abcb");
-  EXPECT_EQ(_convert_string_to_number_representation("abca"),
-            _convert_string_to_number_representation(_hist->get_next_value("abca")) - 1);
   EXPECT_EQ(_hist->get_next_value("abaa"), "abab");
-  EXPECT_EQ(_convert_string_to_number_representation("abaa"),
-            _convert_string_to_number_representation(_hist->get_next_value("abaa")) - 1);
 
   // Special case.
   EXPECT_EQ(_hist->get_next_value("zzzz"), "zzzza");
 }
 
 TEST_F(HistogramPrivateTest, StringToNumber) {
-  EXPECT_EQ(_convert_string_to_number_representation(""), -1l);
-  EXPECT_EQ(_convert_string_to_number_representation("aaaa"), 0l);
-  EXPECT_EQ(_convert_string_to_number_representation("aaab"), 1l);
-  EXPECT_EQ(_convert_string_to_number_representation("bhja"), 26l * 26l * 26l + 7l * 26l * 26l + 9l * 26l);
-  EXPECT_EQ(_convert_string_to_number_representation("zzzz"), 26l * 26l * 26l * 26l - 1l);
-
-  EXPECT_EQ(_convert_string_to_number_representation("aaaa"), _convert_string_to_number_representation("a"));
-  EXPECT_EQ(_convert_string_to_number_representation("dcba"), _convert_string_to_number_representation("dcb"));
-  EXPECT_NE(_convert_string_to_number_representation("abcd"), _convert_string_to_number_representation("bcd"));
+  EXPECT_EQ(_convert_string_to_number_representation(""), 0ul);
+  EXPECT_EQ(_convert_string_to_number_representation("a"), 1ul);
+  EXPECT_EQ(_convert_string_to_number_representation("aa"), 2ul);
+  EXPECT_EQ(_convert_string_to_number_representation("aaaa"), 4ul);
+  EXPECT_EQ(_convert_string_to_number_representation("aaab"), 5ul);
+  EXPECT_EQ(_convert_string_to_number_representation("azzz"), 18'279ul);
+  EXPECT_EQ(_convert_string_to_number_representation("b"), 18'280ul);
+  EXPECT_EQ(_convert_string_to_number_representation("ba"), 18'281ul);
+  EXPECT_EQ(_convert_string_to_number_representation("bhja"), 23'447ul);
+  EXPECT_EQ(_convert_string_to_number_representation("cde"), 38'778ul);
+  EXPECT_EQ(_convert_string_to_number_representation("zzzz"), 475'254ul);
 }
 
 TEST_F(HistogramPrivateTest, NumberToString) {
-  EXPECT_EQ(_convert_number_representation_to_string(-1l), "");
-  EXPECT_EQ(_convert_number_representation_to_string(0l), "aaaa");
-  EXPECT_EQ(_convert_number_representation_to_string(1l), "aaab");
-  EXPECT_EQ(_convert_number_representation_to_string(26l * 26l * 26l + 7l * 26l * 26l + 9l * 26l), "bhja");
-  EXPECT_EQ(_convert_number_representation_to_string(26l * 26l * 26l * 26l - 1l), "zzzz");
+  EXPECT_EQ(_convert_number_representation_to_string(0ul), "");
+  EXPECT_EQ(_convert_number_representation_to_string(1ul), "a");
+  EXPECT_EQ(_convert_number_representation_to_string(2ul), "aa");
+  EXPECT_EQ(_convert_number_representation_to_string(4ul), "aaaa");
+  EXPECT_EQ(_convert_number_representation_to_string(5ul), "aaab");
+  EXPECT_EQ(_convert_number_representation_to_string(18'279ul), "azzz");
+  EXPECT_EQ(_convert_number_representation_to_string(18'280ul), "b");
+  EXPECT_EQ(_convert_number_representation_to_string(18'281ul), "ba");
+  EXPECT_EQ(_convert_number_representation_to_string(23'447ul), "bhja");
+  EXPECT_EQ(_convert_number_representation_to_string(38'778ul), "cde");
+  EXPECT_EQ(_convert_number_representation_to_string(475'254ul), "zzzz");
 }
 
 // TODO(tim): remove

@@ -27,17 +27,19 @@ std::enable_if_t<std::is_floating_point_v<T>, T> next_value(const T value) {
 }
 
 std::string previous_value(const std::string& value, const std::string& supported_characters,
-                           const uint64_t string_prefix_length, const bool pad_and_trim = true);
+                           const uint64_t string_prefix_length);
 
 std::string next_value(const std::string& value, const std::string& supported_characters,
-                       const uint64_t string_prefix_length, const bool pad_and_trim = true);
+                       const uint64_t string_prefix_length);
 
 uint64_t ipow(uint64_t base, uint64_t exp);
 
-int64_t convert_string_to_number_representation(const std::string& value, const std::string& supported_characters,
-                                                const uint64_t string_prefix_length);
+uint64_t base_value_for_prefix_length(const uint64_t string_prefix_length, const std::string& supported_characters);
 
-std::string convert_number_representation_to_string(const int64_t value, const std::string& supported_characters,
+uint64_t convert_string_to_number_representation(const std::string& value, const std::string& supported_characters,
+                                                 const uint64_t string_prefix_length);
+
+std::string convert_number_representation_to_string(const uint64_t value, const std::string& supported_characters,
                                                     const uint64_t string_prefix_length);
 
 }  // namespace opossum

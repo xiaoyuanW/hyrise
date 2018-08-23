@@ -46,8 +46,8 @@ class AbstractHistogram : public AbstractFilter {
   T min() const;
   T max() const;
 
-  T get_previous_value(const T value, const bool pad_and_trim = true) const;
-  T get_next_value(const T value, const bool pad_and_trim = true) const;
+  T get_previous_value(const T value) const;
+  T get_next_value(const T value) const;
 
   virtual size_t num_buckets() const = 0;
   virtual uint64_t total_count() const = 0;
@@ -70,8 +70,8 @@ class AbstractHistogram : public AbstractFilter {
                          const std::shared_ptr<const ValueColumn<int64_t>> count_column,
                          const size_t max_num_buckets) = 0;
 
-  int64_t _convert_string_to_number_representation(const std::string& value) const;
-  std::string _convert_number_representation_to_string(const int64_t value) const;
+  uint64_t _convert_string_to_number_representation(const std::string& value) const;
+  std::string _convert_number_representation_to_string(const uint64_t value) const;
   float _bucket_share(const BucketID bucket_id, const T value) const;
 
   virtual T _bucket_width(const BucketID index) const;

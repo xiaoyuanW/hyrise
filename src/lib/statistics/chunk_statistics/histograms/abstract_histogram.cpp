@@ -32,7 +32,8 @@ AbstractHistogram<std::string>::AbstractHistogram(const std::shared_ptr<const Ta
     : _table(table),
       _supported_characters(
           " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~") {
-  _string_prefix_length = static_cast<uint64_t>(std::log(std::pow(2, 63)) / std::log(_supported_characters.length()));
+  _string_prefix_length =
+      static_cast<uint64_t>(std::log(ipow(2ul, 63ul)) / std::log(_supported_characters.length() + 1));
 }
 
 template <>
@@ -49,7 +50,8 @@ AbstractHistogram<std::string>::AbstractHistogram(const std::shared_ptr<const Ta
            "Non-consecutive string ranges are not supported.");
   }
 
-  _string_prefix_length = static_cast<uint64_t>(std::log(std::pow(2, 63)) / std::log(_supported_characters.length()));
+  _string_prefix_length =
+      static_cast<uint64_t>(std::log(ipow(2ul, 63ul)) / std::log(_supported_characters.length() + 1));
 }
 
 template <>
@@ -59,7 +61,7 @@ AbstractHistogram<std::string>::AbstractHistogram(const std::shared_ptr<const Ta
     : _table(table), _string_prefix_length(string_prefix_length) {
   Assert(string_prefix_length > 0, "Invalid prefix length.");
   Assert(supported_characters.length() > 1, "String range must consist of more than one character.");
-  Assert(std::pow(supported_characters.length(), string_prefix_length) < std::pow(2, 63), "Prefix too long.");
+  Assert(ipow(supported_characters.length() + 1, string_prefix_length) < ipow(2ul, 63ul), "Prefix too long.");
 
   _supported_characters = supported_characters;
   std::sort(_supported_characters.begin(), _supported_characters.end());
@@ -307,32 +309,32 @@ T AbstractHistogram<T>::_bucket_width(const BucketID index) const {
 }
 
 template <>
-std::string AbstractHistogram<std::string>::get_previous_value(const std::string value, const bool pad_and_trim) const {
-  return previous_value(value, _supported_characters, _string_prefix_length, pad_and_trim);
+std::string AbstractHistogram<std::string>::get_previous_value(const std::string value) const {
+  return previous_value(value, _supported_characters, _string_prefix_length);
 }
 
 template <typename T>
-T AbstractHistogram<T>::get_previous_value(const T value, const bool /*pad_and_trim*/) const {
+T AbstractHistogram<T>::get_previous_value(const T value) const {
   return previous_value(value);
 }
 
 template <>
-std::string AbstractHistogram<std::string>::get_next_value(const std::string value, const bool pad_and_trim) const {
-  return next_value(value, _supported_characters, _string_prefix_length, pad_and_trim);
+std::string AbstractHistogram<std::string>::get_next_value(const std::string value) const {
+  return next_value(value, _supported_characters, _string_prefix_length);
 }
 
 template <typename T>
-T AbstractHistogram<T>::get_next_value(const T value, const bool /*pad_and_trim*/) const {
+T AbstractHistogram<T>::get_next_value(const T value) const {
   return next_value(value);
 }
 
 template <>
-int64_t AbstractHistogram<std::string>::_convert_string_to_number_representation(const std::string& value) const {
+uint64_t AbstractHistogram<std::string>::_convert_string_to_number_representation(const std::string& value) const {
   return convert_string_to_number_representation(value, _supported_characters, _string_prefix_length);
 }
 
 template <>
-std::string AbstractHistogram<std::string>::_convert_number_representation_to_string(const int64_t value) const {
+std::string AbstractHistogram<std::string>::_convert_number_representation_to_string(const uint64_t value) const {
   return convert_number_representation_to_string(value, _supported_characters, _string_prefix_length);
 }
 
