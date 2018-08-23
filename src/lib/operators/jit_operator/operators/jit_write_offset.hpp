@@ -6,7 +6,8 @@ namespace opossum {
 
 struct JitOutputReferenceColumn {
   const std::string column_name;
-  const JitTupleValue tuple_value;
+  const DataType data_type;
+  const bool is_nullable;
   const ColumnID referenced_column_id;
 };
 
@@ -25,8 +26,7 @@ class JitWriteOffset : public AbstractJittableSink {
   void after_chunk(const std::shared_ptr<const Table>& in_table, Table& out_table,
                    JitRuntimeContext& context) const final;
 
-  void add_output_column(const std::string& column_name, const JitTupleValue& value,
-                         const ColumnID referenced_column_id);
+  void add_output_column(const JitOutputReferenceColumn& output_column);
 
   std::vector<JitOutputReferenceColumn> output_columns() const;
 

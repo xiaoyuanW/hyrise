@@ -12,7 +12,7 @@ std::string JitWriteOffset::description() const {
   std::stringstream desc;
   desc << "[WriteOffset] ";
   for (const auto& output_column : _output_columns) {
-    desc << output_column.column_name << " = x" << output_column.tuple_value.tuple_index() << ", ";
+    desc << output_column.column_name << " = Col#" << output_column.referenced_column_id << ", ";
   }
   return desc.str();
 }
@@ -22,9 +22,9 @@ std::shared_ptr<Table> JitWriteOffset::create_output_table(const ChunkOffset inp
 
   for (const auto& output_column : _output_columns) {
     // Add a column definition for each output column
-    const auto data_type = output_column.tuple_value.data_type();
+    const auto data_type = output_column.data_type;
     DebugAssert(data_type != DataType::Bool, "Jit columns cannot be added to a reference table");
-    const auto is_nullable = output_column.tuple_value.is_nullable();
+    const auto is_nullable = output_column.is_nullable;
     column_definitions.emplace_back(output_column.column_name, data_type, is_nullable);
   }
 
@@ -86,9 +86,8 @@ void JitWriteOffset::after_chunk(const std::shared_ptr<const Table>& in_table, T
   }
 }
 
-void JitWriteOffset::add_output_column(const std::string& column_name, const JitTupleValue& value,
-                                       const ColumnID referenced_column_id) {
-  _output_columns.push_back({column_name, value, referenced_column_id});
+void JitWriteOffset::add_output_column(const JitOutputReferenceColumn& output_column) {
+  _output_columns.emplace_back(output_column);
 }
 
 std::vector<JitOutputReferenceColumn> JitWriteOffset::output_columns() const { return _output_columns; }

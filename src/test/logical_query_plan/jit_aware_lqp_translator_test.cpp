@@ -137,7 +137,7 @@ TEST_F(JitAwareLQPTranslatorTest, InputColumnsAreAddedToJitReadTupleAdapter) {
   // The query reads two columns from the input table. These input columns must be added to the JitReadTuples adapter to
   // make their data accessible by other JitOperators.
   // Query has second predicate as translator only uses jit for at least two predicates
-  const auto jit_operator_wrapper = translate_query("SELECT a, b FROM table_b WHERE a > 1 and a != 1");
+  const auto jit_operator_wrapper = translate_query("SELECT a, b, 1 FROM table_b WHERE a > 1 and a != 1");
   ASSERT_TRUE(jit_operator_wrapper);
   const auto jit_operators = jit_operator_wrapper->jit_operators();
   ASSERT_EQ(jit_operators.size(), 4u);
@@ -186,18 +186,19 @@ TEST_F(JitAwareLQPTranslatorTest, LiteralValuesAreAddedToJitReadTupleAdapter) {
 
 TEST_F(JitAwareLQPTranslatorTest, ColumnSubsetIsOutputCorrectly) {
   // Select a subset of columns
-  const auto jit_operator_wrapper = translate_query("SELECT a FROM table_a WHERE a > 1");
+  // A column '1' is added to the output, if it should be materialized
+  const auto jit_operator_wrapper = translate_query("SELECT a, 1 FROM table_a WHERE a > 1");
   ASSERT_TRUE(jit_operator_wrapper);
   const auto jit_operators = jit_operator_wrapper->jit_operators();
   ASSERT_EQ(jit_operators.size(), 4u);
 
   const auto jit_read_tuples = std::dynamic_pointer_cast<JitReadTuples>(jit_operators.front());
   ASSERT_NE(jit_read_tuples, nullptr);
-  const auto jit_write_tuples = std::dynamic_pointer_cast<JitWriteOffset>(jit_operators.back());
+  const auto jit_write_tuples = std::dynamic_pointer_cast<JitWriteTuples>(jit_operators.back());
   ASSERT_NE(jit_write_tuples, nullptr);
 
   const auto output_columns = jit_write_tuples->output_columns();
-  ASSERT_EQ(output_columns.size(), 1u);
+  ASSERT_EQ(output_columns.size(), 2u);
 
   // The column output in the JitWriteTuples adapter should match the column read by the JitReadTuples adapter
   ASSERT_EQ(jit_read_tuples->find_input_column(output_columns[0].tuple_value), ColumnID{0});
@@ -206,18 +207,18 @@ TEST_F(JitAwareLQPTranslatorTest, ColumnSubsetIsOutputCorrectly) {
 TEST_F(JitAwareLQPTranslatorTest, AllColumnsAreOutputCorrectly) {
   // Select all columns
   // Query has second predicate as translator only uses jit for at least two predicates
-  const auto jit_operator_wrapper = translate_query("SELECT * FROM table_a WHERE a > 1 and a != 1");
+  const auto jit_operator_wrapper = translate_query("SELECT *, 1 FROM table_a WHERE a > 1 and a != 1");
   ASSERT_TRUE(jit_operator_wrapper);
   const auto jit_operators = jit_operator_wrapper->jit_operators();
   ASSERT_EQ(jit_operators.size(), 4u);
 
   const auto jit_read_tuples = std::dynamic_pointer_cast<JitReadTuples>(jit_operators.front());
   ASSERT_NE(jit_read_tuples, nullptr);
-  const auto jit_write_tuples = std::dynamic_pointer_cast<JitWriteOffset>(jit_operators.back());
+  const auto jit_write_tuples = std::dynamic_pointer_cast<JitWriteTuples>(jit_operators.back());
   ASSERT_NE(jit_write_tuples, nullptr);
 
   const auto output_columns = jit_write_tuples->output_columns();
-  ASSERT_EQ(output_columns.size(), 3u);
+  ASSERT_EQ(output_columns.size(), 4u);
   ASSERT_EQ(jit_read_tuples->find_input_column(output_columns[0].tuple_value), ColumnID{0});
   ASSERT_EQ(jit_read_tuples->find_input_column(output_columns[1].tuple_value), ColumnID{1});
   ASSERT_EQ(jit_read_tuples->find_input_column(output_columns[2].tuple_value), ColumnID{2});
@@ -225,18 +226,18 @@ TEST_F(JitAwareLQPTranslatorTest, AllColumnsAreOutputCorrectly) {
 
 TEST_F(JitAwareLQPTranslatorTest, ReorderedColumnsAreOutputCorrectly) {
   // Select columns in different order
-  const auto jit_operator_wrapper = translate_query("SELECT c, a FROM table_a WHERE a > 1");
+  const auto jit_operator_wrapper = translate_query("SELECT c, a, 1 FROM table_a WHERE a > 1");
   ASSERT_TRUE(jit_operator_wrapper);
   const auto jit_operators = jit_operator_wrapper->jit_operators();
   ASSERT_EQ(jit_operators.size(), 4u);
 
   const auto jit_read_tuples = std::dynamic_pointer_cast<JitReadTuples>(jit_operators.front());
   ASSERT_NE(jit_read_tuples, nullptr);
-  const auto jit_write_tuples = std::dynamic_pointer_cast<JitWriteOffset>(jit_operators.back());
+  const auto jit_write_tuples = std::dynamic_pointer_cast<JitWriteTuples>(jit_operators.back());
   ASSERT_NE(jit_write_tuples, nullptr);
 
   const auto output_columns = jit_write_tuples->output_columns();
-  ASSERT_EQ(output_columns.size(), 2u);
+  ASSERT_EQ(output_columns.size(), 3u);
   ASSERT_EQ(jit_read_tuples->find_input_column(output_columns[0].tuple_value), ColumnID{2});
   ASSERT_EQ(jit_read_tuples->find_input_column(output_columns[1].tuple_value), ColumnID{0});
 }

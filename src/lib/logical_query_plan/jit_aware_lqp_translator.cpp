@@ -225,39 +225,37 @@ std::shared_ptr<JitOperatorWrapper> JitAwareLQPTranslator::_try_translate_sub_pl
   } else {
     if (use_limit) jit_operator->add_jit_operator(std::make_shared<JitLimit>());
 
-    // Add a compute operator for each computed output column (i.e., a column that is not from a stored table).
-    std::vector<std::pair<const std::string, const JitTupleValue>> output_columns;
-    output_columns.reserve(node->column_expressions().size());
-    bool materialize = false;
-    for (const auto& column_expression : node->column_expressions()) {
-      const auto jit_expression =
-          _try_translate_expression_to_jit_expression(*column_expression, *read_tuples, input_node);
-      if (!jit_expression) return nullptr;
-      // If the JitExpression is of type JitExpressionType::Column, there is no need to add a compute node, since it
-      // would not compute anything anyway
-      if (jit_expression->expression_type() != JitExpressionType::Column) {
-        jit_operator->add_jit_operator(std::make_shared<JitCompute>(jit_expression));
-        materialize = true;
+    // check, if output has to be materialized
+    const auto output_must_be_materialized = std::find_if(
+        node->column_expressions().begin(), node->column_expressions().end(),
+        [&input_node](const auto& column_expression) { return !input_node->find_column_id(*column_expression); });
 
-        // Check if column is literal
-      } else if (!read_tuples->find_input_column(jit_expression->result())) {
-        materialize = true;
-      }
-
-      output_columns.emplace_back(column_expression->as_column_name(), jit_expression->result());
-    }
-
-    if (materialize) {
+    if (output_must_be_materialized != node->column_expressions().end()) {
+      // Add a compute operator for each computed output column (i.e., a column that is not from a stored table).
       auto write_table = std::make_shared<JitWriteTuples>();
-      for (const auto& column : output_columns) write_table->add_output_column(column.first, column.second);
+      for (const auto& column_expression : node->column_expressions()) {
+        const auto jit_expression =
+            _try_translate_expression_to_jit_expression(*column_expression, *read_tuples, input_node);
+        if (!jit_expression) return nullptr;
+        // If the JitExpression is of type JitExpressionType::Column, there is no need to add a compute node, since it
+        // would not compute anything anyway
+        if (jit_expression->expression_type() != JitExpressionType::Column) {
+          jit_operator->add_jit_operator(std::make_shared<JitCompute>(jit_expression));
+        }
+
+        write_table->add_output_column(column_expression->as_column_name(), jit_expression->result());
+      }
       jit_operator->add_jit_operator(write_table);
     } else {
       auto write_table = std::make_shared<JitWriteOffset>();
-      for (const auto& column : output_columns) {
-        const auto column_id = read_tuples->find_input_column(column.second);
+
+      for (const auto& column : node->column_expressions()) {
+        const auto column_id = input_node->find_column_id(*column);
         DebugAssert(column_id, "Output column must reference an input column");
-        write_table->add_output_column(column.first, column.second, *column_id);
+        write_table->add_output_column(
+            {column->as_column_name(), column->data_type(), column->is_nullable(), *column_id});
       }
+
       jit_operator->add_jit_operator(write_table);
     }
   }
