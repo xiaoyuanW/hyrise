@@ -1259,6 +1259,28 @@ TEST_F(HistogramPrivateTest, NumberToString) {
             "zzzz");
 }
 
+TEST_F(HistogramPrivateTest, NumberToStringBruteForce) {
+  constexpr auto max = 475'254ul;
+
+  EXPECT_EQ(_convert_string_to_number_representation(""), 0ul);
+  EXPECT_EQ(_convert_string_to_number_representation("zzzz"), max);
+
+  for (auto number = 0u; number < max; number++) {
+    EXPECT_LT(_convert_number_representation_to_string(number), _convert_number_representation_to_string(number + 1));
+  }
+}
+
+TEST_F(HistogramPrivateTest, StringToNumberBruteForce) {
+  constexpr auto max = 475'254ul;
+
+  EXPECT_EQ(_convert_string_to_number_representation(""), 0ul);
+  EXPECT_EQ(_convert_string_to_number_representation("zzzz"), max);
+
+  for (auto number = 0u; number < max; number++) {
+    EXPECT_EQ(_convert_string_to_number_representation(_convert_number_representation_to_string(number)), number);
+  }
+}
+
 // TODO(tim): remove
 TEST_F(HistogramTest, StringComparisonTest) {
   EXPECT_TRUE(std::string("abcd") < std::string("abce"));
