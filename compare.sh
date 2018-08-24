@@ -1,3 +1,11 @@
+compare () {
+	if [ -f $2 ]; then
+		if [ -f $3 ]; then
+			echo $1
+			python scripts/compare_benchmarks.py $2 $3
+		fi
+	fi
+}
 if [ "$#" -lt 1 ]; then
     echo "Provide dir for results"
 else
@@ -11,22 +19,14 @@ else
 	fi
 	if [ "$#" -eq 1 ]; then
 		cat ${dir}*.txt
-		echo no jit vs jit without mvcc
-	    python scripts/compare_benchmarks.py ${dir}result_wo_jit_wo_mvcc.json ${dir}result_w_jit_wo_mvcc.json
-		echo no jit vs jit with mvcc
-	    python scripts/compare_benchmarks.py ${dir}result_wo_jit_w_mvcc.json ${dir}result_w_ll_w_jv.json
-		echo no jit vs jit with mvcc but not jit validate
-	    python scripts/compare_benchmarks.py ${dir}result_wo_jit_w_mvcc.json ${dir}result_w_ll_wo_jv.json
-		echo lazy load
-		python scripts/compare_benchmarks.py ${dir}result_wo_ll_wo_jv.json ${dir}result_w_ll_wo_jv.json
-		echo jit validate
-		python scripts/compare_benchmarks.py ${dir}result_wo_ll_wo_jv.json ${dir}result_wo_ll_w_jv.json
-		echo lazy load with jit validate enabled
-		python scripts/compare_benchmarks.py ${dir}result_wo_ll_w_jv.json ${dir}result_w_ll_w_jv.json
-		echo jit validate with lazy load enabled
-		python scripts/compare_benchmarks.py ${dir}result_w_ll_wo_jv.json ${dir}result_w_ll_w_jv.json
-		echo lazy load and jit validate
-		python scripts/compare_benchmarks.py ${dir}result_wo_ll_wo_jv.json ${dir}result_w_ll_w_jv.json
+		compare "no jit vs jit without mvcc" ${dir}result_wo_jit_wo_mvcc.json ${dir}result_w_jit_wo_mvcc.json
+		compare "no jit vs jit with mvcc" ${dir}result_wo_jit_w_mvcc.json ${dir}result_w_ll_w_jv.json
+		compare "no jit vs jit with mvcc but not jit validate" ${dir}result_wo_jit_w_mvcc.json ${dir}result_w_ll_wo_jv.json
+		compare "lazy load" ${dir}result_wo_ll_wo_jv.json ${dir}result_w_ll_wo_jv.json
+		compare "jit validate" ${dir}result_wo_ll_wo_jv.json ${dir}result_wo_ll_w_jv.json
+		compare "lazy load with jit validate enabled" ${dir}result_wo_ll_w_jv.json ${dir}result_w_ll_w_jv.json
+		compare "jit validate with lazy load enabled" ${dir}result_w_ll_wo_jv.json ${dir}result_w_ll_w_jv.json
+		compare "lazy load and jit validate" ${dir}result_wo_ll_wo_jv.json ${dir}result_w_ll_w_jv.json
 	else
 		r_dir=$2
 		if [ ! -d $r_dir ]; then
@@ -48,4 +48,5 @@ else
 		done
 	fi
 fi
+
 
