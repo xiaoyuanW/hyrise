@@ -18,6 +18,7 @@
 #include <sql/sql_pipeline_builder.hpp>
 #include "types.hpp"
 #include "global.hpp"
+#include "sql/sql_query_cache.hpp"
 
 const size_t cache_line = 64;
 
@@ -122,7 +123,7 @@ void run() {
   auto& result = opossum::JitEvaluationHelper::get().result();
 
   result = nlohmann::json::object();
-  if (opossum::JitEvaluationHelper::get().experiment().at("engine") == "jit") {
+  if (experiment.at("engine") == "jit") {
     opossum::JitEvaluationHelper::get().result()["dynamic_resolved"] = 0;
     opossum::JitEvaluationHelper::get().result()["static_resolved"] = 0;
     opossum::JitEvaluationHelper::get().result()["resolved_vtables"] = 0;
@@ -232,6 +233,7 @@ int main(int argc, char* argv[]) {
       }
       output["results"].push_back(opossum::JitEvaluationHelper::get().result());
     }
+    SQLQueryCache<SQLQueryPlan>::get().clear();
     std::cout << output;
     bool not_last = current_experiment + 1 < num_experiments;
     if (not_last) std::cout << ",";
