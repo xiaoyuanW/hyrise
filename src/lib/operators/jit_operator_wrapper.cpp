@@ -107,7 +107,7 @@ void JitOperatorWrapper::_choose_execute_func() {
   if (_execute_func) return;
 
   // std::cout << "Before make loads lazy:" << std::endl << description(DescriptionMode::MultiLine) << std::endl;
-  insert_loads(Global::get().lazy_load);
+  // insert_loads(Global::get().lazy_load);
   // std::cout << "Specialising: " << (_execution_mode == JitExecutionMode::Compile ? "true" : "false") << std::endl;
 
   // Connect operators to a chain

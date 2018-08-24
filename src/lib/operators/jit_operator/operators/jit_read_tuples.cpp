@@ -112,10 +112,16 @@ void JitReadTuples::before_chunk(const Table& in_table, const Chunk& in_chunk, J
 
 void JitReadTuples::execute(JitRuntimeContext& context) const {
   for (; context.chunk_offset < context.chunk_size; ++context.chunk_offset) {
+    /*
     _emit(context);
     for (const auto& input : context.inputs) {
       input->increment();
     }
+     */
+    for (const auto& input : context.inputs) {
+      input->read_value(context);
+    }
+    _emit(context);
   }
 }
 
