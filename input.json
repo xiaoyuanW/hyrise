@@ -8,9 +8,9 @@
       "PAPI_SR_INS"
     ],
     "papi_events": [],
-    "scale_factor": 0.0006,
+    "scale_factor": 1,
     "use_other_tables": true,
-    "use_tpch_tables": true
+    "use_tpch_tables": false
   },
   "queries": {
     "0": {
@@ -26,7 +26,7 @@
       ]
     },
     "Q-E": {
-      "query": "SELECT A + B + C + D + E + F FROM TABLE_AGGREGATE WHERE A + B + C + D + E + F > X1; --X1 should be 0",
+      "query": "SELECT A + B + C + D + E + F FROM TABLE_AGGREGATE WHERE (A + B + C + D + E + F) > 0",
       "tables": [
         "TABLE_AGGREGATE"
       ]
@@ -62,7 +62,7 @@
       ]
     },
     "Q-K": {
-      "query": "SELECT A + B + C + D + E FROM TABLE_AGGREGATE WHERE A + B + C + D + E - 10 > X1; -- should be ...E > 10;",
+      "query": "SELECT A + B + C + D + E FROM TABLE_AGGREGATE WHERE (A + B + C + D + E) > 10;",
       "tables": [
         "TABLE_AGGREGATE"
       ]
@@ -71,123 +71,104 @@
   "experiments": [
     {
       "engine": "jit",
-      "lqp_file": "lqp",
+      "lqp_file": "Q-D-lqp",
       "optimize": true,
-      "query_id": "0",
+      "query_id": "Q-D",
       "task": "lqp"
     },
     {
       "engine": "jit",
       "optimize": true,
-      "pqp_file": "pqp",
-      "query_id": "0",
+      "pqp_file": "Q-D-pqp",
+      "query_id": "Q-D",
+      "task": "pqp"
+    },
+    {
+      "engine": "jit",
+      "lqp_file": "Q-E-lqp",
+      "optimize": true,
+      "query_id": "Q-E",
+      "task": "lqp"
+    },
+    {
+      "engine": "jit",
+      "optimize": true,
+      "pqp_file": "Q-E-pqp",
+      "query_id": "Q-E",
+      "task": "pqp"
+    },
+    {
+      "engine": "jit",
+      "lqp_file": "Q-K-lqp",
+      "optimize": true,
+      "query_id": "Q-K",
+      "task": "lqp"
+    },
+    {
+      "engine": "jit",
+      "optimize": true,
+      "pqp_file": "Q-K-pqp",
+      "query_id": "Q-K",
       "task": "pqp"
     },
     {
       "engine": "jit",
       "jit_predicate": true,
-      "jit_second_pass": true,
-      "jit_use_jit": true,
-      "optimize": true,
-      "print": false,
-      "query_id": "0",
-      "repetitions": 1,
-      "task": "run"
-    },
-    {
-      "engine": "opossum",
-      "optimize": true,
-      "print": false,
-      "query_id": "0",
-      "repetitions": 1,
-      "task": "run"
-    },
-    {
-      "engine": "jit",
-      "jit_predicate": true,
-      "jit_second_pass": true,
       "jit_use_jit": true,
       "optimize": true,
       "print": false,
       "query_id": "Q-D",
-      "repetitions": 1,
+      "repetitions": 10,
       "task": "run"
     },
     {
       "engine": "jit",
       "jit_predicate": true,
-      "jit_second_pass": true,
       "jit_use_jit": true,
       "optimize": true,
       "print": false,
       "query_id": "Q-E",
-      "repetitions": 1,
+      "repetitions": 10,
       "task": "run"
     },
     {
       "engine": "jit",
       "jit_predicate": true,
-      "jit_second_pass": true,
-      "jit_use_jit": true,
-      "optimize": true,
-      "print": false,
-      "query_id": "Q-F",
-      "repetitions": 1,
-      "task": "run"
-    },
-    {
-      "engine": "jit",
-      "jit_predicate": true,
-      "jit_second_pass": true,
-      "jit_use_jit": true,
-      "optimize": true,
-      "print": false,
-      "query_id": "Q-G",
-      "repetitions": 1,
-      "task": "run"
-    },
-    {
-      "engine": "jit",
-      "jit_predicate": true,
-      "jit_second_pass": true,
-      "jit_use_jit": true,
-      "optimize": true,
-      "print": false,
-      "query_id": "Q-H",
-      "repetitions": 1,
-      "task": "run"
-    },
-    {
-      "engine": "jit",
-      "jit_predicate": true,
-      "jit_second_pass": true,
-      "jit_use_jit": true,
-      "optimize": true,
-      "print": false,
-      "query_id": "Q-I",
-      "repetitions": 1,
-      "task": "run"
-    },
-    {
-      "engine": "jit",
-      "jit_predicate": true,
-      "jit_second_pass": true,
-      "jit_use_jit": true,
-      "optimize": true,
-      "print": false,
-      "query_id": "Q-J",
-      "repetitions": 1,
-      "task": "run"
-    },
-    {
-      "engine": "jit",
-      "jit_predicate": true,
-      "jit_second_pass": true,
       "jit_use_jit": true,
       "optimize": true,
       "print": false,
       "query_id": "Q-K",
-      "repetitions": 1,
+      "repetitions": 10,
+      "task": "run"
+    },
+    {
+      "engine": "opossum",
+      "jit_predicate": true,
+      "jit_use_jit": true,
+      "optimize": true,
+      "print": false,
+      "query_id": "Q-D",
+      "repetitions": 10,
+      "task": "run"
+    },
+    {
+      "engine": "opossum",
+      "jit_predicate": true,
+      "jit_use_jit": true,
+      "optimize": true,
+      "print": false,
+      "query_id": "Q-E",
+      "repetitions": 10,
+      "task": "run"
+    },
+    {
+      "engine": "opossum",
+      "jit_predicate": true,
+      "jit_use_jit": true,
+      "optimize": true,
+      "print": false,
+      "query_id": "Q-K",
+      "repetitions": 10,
       "task": "run"
     }
   ]
