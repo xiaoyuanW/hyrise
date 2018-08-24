@@ -198,26 +198,42 @@ TEST_F(HistogramTest, EqualNumElementsStringLessThan) {
       _string3->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 4u, "abcdefghijklmnopqrstuvwxyz", 4u);
 
   // "abcd"
-  constexpr auto bucket_1_lower = 26 * 26 + 2 * 26 + 3;
+  const auto bucket_1_lower = 0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                              1 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 2 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                              3 * (ipow(26, 0)) + 1;
   // "efgh"
-  constexpr auto bucket_1_upper = 4 * 26 * 26 * 26 + 5 * 26 * 26 + 6 * 26 + 7;
+  const auto bucket_1_upper = 4 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                              5 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 6 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                              7 * (ipow(26, 0)) + 1;
   // "ijkl"
-  constexpr auto bucket_2_lower = 8 * 26 * 26 * 26 + 9 * 26 * 26 + 10 * 26 + 11;
+  const auto bucket_2_lower = 8 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                              9 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 10 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                              11 * (ipow(26, 0)) + 1;
   // "mnop"
-  constexpr auto bucket_2_upper = 12 * 26 * 26 * 26 + 13 * 26 * 26 + 14 * 26 + 15;
+  const auto bucket_2_upper = 12 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                              13 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 14 * (ipow(26, 1) + ipow(26, 0)) +
+                              1 + 15 * (ipow(26, 0)) + 1;
   // "oopp"
-  constexpr auto bucket_3_lower = 14 * 26 * 26 * 26 + 14 * 26 * 26 + 15 * 26 + 15;
+  const auto bucket_3_lower = 14 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                              14 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 15 * (ipow(26, 1) + ipow(26, 0)) +
+                              1 + 15 * (ipow(26, 0)) + 1;
   // "qrst"
-  constexpr auto bucket_3_upper = 16 * 26 * 26 * 26 + 17 * 26 * 26 + 18 * 26 + 19;
+  const auto bucket_3_upper = 16 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                              17 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 18 * (ipow(26, 1) + ipow(26, 0)) +
+                              1 + 19 * (ipow(26, 0)) + 1;
   // "uvwx"
-  constexpr auto bucket_4_lower = 20 * 26 * 26 * 26 + 21 * 26 * 26 + 22 * 26 + 23;
+  const auto bucket_4_lower = 20 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                              21 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 22 * (ipow(26, 1) + ipow(26, 0)) +
+                              1 + 23 * (ipow(26, 0)) + 1;
   // "yyzz"
-  constexpr auto bucket_4_upper = 24 * 26 * 26 * 26 + 24 * 26 * 26 + 25 * 26 + 25;
+  const auto bucket_4_upper = 24 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                              24 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 25 * (ipow(26, 1) + ipow(26, 0)) +
+                              1 + 25 * (ipow(26, 0)) + 1;
 
-  constexpr auto bucket_1_width = (bucket_1_upper - bucket_1_lower + 1.f);
-  constexpr auto bucket_2_width = (bucket_2_upper - bucket_2_lower + 1.f);
-  constexpr auto bucket_3_width = (bucket_3_upper - bucket_3_lower + 1.f);
-  constexpr auto bucket_4_width = (bucket_4_upper - bucket_4_lower + 1.f);
+  const auto bucket_1_width = (bucket_1_upper - bucket_1_lower + 1.f);
+  const auto bucket_2_width = (bucket_2_upper - bucket_2_lower + 1.f);
+  const auto bucket_3_width = (bucket_3_upper - bucket_3_lower + 1.f);
+  const auto bucket_4_width = (bucket_4_upper - bucket_4_lower + 1.f);
 
   constexpr auto bucket_1_count = 4.f;
   constexpr auto bucket_2_count = 6.f;
@@ -232,10 +248,16 @@ TEST_F(HistogramTest, EqualNumElementsStringLessThan) {
                   1 / bucket_1_width * bucket_1_count);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "abcf"),
                   2 / bucket_1_width * bucket_1_count);
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "cccc"),
-                  (2 * 26 * 26 * 26 + 2 * 26 * 26 + 2 * 26 + 2 - bucket_1_lower) / bucket_1_width * bucket_1_count);
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "dddd"),
-                  (3 * 26 * 26 * 26 + 3 * 26 * 26 + 3 * 26 + 3 - bucket_1_lower) / bucket_1_width * bucket_1_count);
+  EXPECT_FLOAT_EQ(
+      hist->estimate_cardinality(PredicateCondition::LessThan, "cccc"),
+      (2 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 2 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) +
+       1 + 2 * (ipow(26, 1) + ipow(26, 0)) + 1 + 2 * (ipow(26, 0)) + 1 - bucket_1_lower) /
+          bucket_1_width * bucket_1_count);
+  EXPECT_FLOAT_EQ(
+      hist->estimate_cardinality(PredicateCondition::LessThan, "dddd"),
+      (3 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 3 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) +
+       1 + 3 * (ipow(26, 1) + ipow(26, 0)) + 1 + 3 * (ipow(26, 0)) + 1 - bucket_1_lower) /
+          bucket_1_width * bucket_1_count);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "efgg"),
                   (bucket_1_width - 2) / bucket_1_width * bucket_1_count);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "efgh"),
@@ -248,14 +270,23 @@ TEST_F(HistogramTest, EqualNumElementsStringLessThan) {
                   1 / bucket_2_width * bucket_2_count + bucket_1_count);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "ijkn"),
                   2 / bucket_2_width * bucket_2_count + bucket_1_count);
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "jjjj"),
-                  (9 * 26 * 26 * 26 + 9 * 26 * 26 + 9 * 26 + 9 - bucket_2_lower) / bucket_2_width * bucket_2_count +
-                      bucket_1_count);
+  EXPECT_FLOAT_EQ(
+      hist->estimate_cardinality(PredicateCondition::LessThan, "jjjj"),
+      (9 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 9 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) +
+       1 + 9 * (ipow(26, 1) + ipow(26, 0)) + 1 + 9 * (ipow(26, 0)) + 1 - bucket_2_lower) /
+              bucket_2_width * bucket_2_count +
+          bucket_1_count);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "kkkk"),
-                  (10 * 26 * 26 * 26 + 10 * 26 * 26 + 10 * 26 + 10 - bucket_2_lower) / bucket_2_width * bucket_2_count +
+                  (10 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                   10 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 10 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                   10 * (ipow(26, 0)) + 1 - bucket_2_lower) /
+                          bucket_2_width * bucket_2_count +
                       bucket_1_count);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "lzzz"),
-                  (11 * 26 * 26 * 26 + 25 * 26 * 26 + 25 * 26 + 25 - bucket_2_lower) / bucket_2_width * bucket_2_count +
+                  (11 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                   25 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 25 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                   25 * (ipow(26, 0)) + 1 - bucket_2_lower) /
+                          bucket_2_width * bucket_2_count +
                       bucket_1_count);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "mnoo"),
                   (bucket_2_width - 2) / bucket_2_width * bucket_2_count + bucket_1_count);
@@ -270,13 +301,22 @@ TEST_F(HistogramTest, EqualNumElementsStringLessThan) {
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "oopr"),
                   2 / bucket_3_width * bucket_3_count + bucket_1_count + bucket_2_count);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "pppp"),
-                  (15 * 26 * 26 * 26 + 15 * 26 * 26 + 15 * 26 + 15 - bucket_3_lower) / bucket_3_width * bucket_3_count +
+                  (15 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                   15 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 15 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                   15 * (ipow(26, 0)) + 1 - bucket_3_lower) /
+                          bucket_3_width * bucket_3_count +
                       bucket_1_count + bucket_2_count);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qqqq"),
-                  (16 * 26 * 26 * 26 + 16 * 26 * 26 + 16 * 26 + 16 - bucket_3_lower) / bucket_3_width * bucket_3_count +
+                  (16 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                   16 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 16 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                   16 * (ipow(26, 0)) + 1 - bucket_3_lower) /
+                          bucket_3_width * bucket_3_count +
                       bucket_1_count + bucket_2_count);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qllo"),
-                  (16 * 26 * 26 * 26 + 11 * 26 * 26 + 11 * 26 + 14 - bucket_3_lower) / bucket_3_width * bucket_3_count +
+                  (16 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                   11 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 11 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                   14 * (ipow(26, 0)) + 1 - bucket_3_lower) /
+                          bucket_3_width * bucket_3_count +
                       bucket_1_count + bucket_2_count);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qrss"),
                   (bucket_3_width - 2) / bucket_3_width * bucket_3_count + bucket_1_count + bucket_2_count);
@@ -293,13 +333,22 @@ TEST_F(HistogramTest, EqualNumElementsStringLessThan) {
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "uvwz"),
                   2 / bucket_4_width * bucket_4_count + bucket_1_count + bucket_2_count + bucket_3_count);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "vvvv"),
-                  (21 * 26 * 26 * 26 + 21 * 26 * 26 + 21 * 26 + 21 - bucket_4_lower) / bucket_4_width * bucket_4_count +
+                  (21 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                   21 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 21 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                   21 * (ipow(26, 0)) + 1 - bucket_4_lower) /
+                          bucket_4_width * bucket_4_count +
                       bucket_1_count + bucket_2_count + bucket_3_count);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "xxxx"),
-                  (23 * 26 * 26 * 26 + 23 * 26 * 26 + 23 * 26 + 23 - bucket_4_lower) / bucket_4_width * bucket_4_count +
+                  (23 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                   23 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 23 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                   23 * (ipow(26, 0)) + 1 - bucket_4_lower) /
+                          bucket_4_width * bucket_4_count +
                       bucket_1_count + bucket_2_count + bucket_3_count);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "ycip"),
-                  (24 * 26 * 26 * 26 + 2 * 26 * 26 + 8 * 26 + 15 - bucket_4_lower) / bucket_4_width * bucket_4_count +
+                  (24 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                   2 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 8 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                   15 * (ipow(26, 0)) + 1 - bucket_4_lower) /
+                          bucket_4_width * bucket_4_count +
                       bucket_1_count + bucket_2_count + bucket_3_count);
   EXPECT_FLOAT_EQ(
       hist->estimate_cardinality(PredicateCondition::LessThan, "yyzy"),
@@ -569,26 +618,50 @@ TEST_F(HistogramTest, EqualWidthStringLessThan) {
                                                             4u, "abcdefghijklmnopqrstuvwxyz", 4u);
 
   // "abcd"
-  constexpr auto bucket_1_lower = 26 * 26 + 2 * 26 + 3;
-  // "ghbp"
-  constexpr auto bucket_1_upper = 6 * 26 * 26 * 26 + 7 * 26 * 26 + 1 * 26 + 15;
-  // "ghbq"
-  constexpr auto bucket_2_lower = bucket_1_upper + 1;
-  // "mnbb"
-  constexpr auto bucket_2_upper = 12 * 26 * 26 * 26 + 13 * 26 * 26 + 1 * 26 + 1;
-  // "mnbc"
-  constexpr auto bucket_3_lower = bucket_2_upper + 1;
-  // "stan"
-  constexpr auto bucket_3_upper = 18 * 26 * 26 * 26 + 19 * 26 * 26 + 0 * 26 + 13;
-  // "stao"
-  constexpr auto bucket_4_lower = bucket_3_upper + 1;
+  const auto hist_lower = 0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                          1 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 2 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                          3 * (ipow(26, 0)) + 1;
+  // // "ghbp"
+  // const auto bucket_1_upper = 6 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+  //                                 7 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+  //                                 1 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+  //                                 15 * (ipow(26, 0)) + 1;
+  // // "ghbq"
+  // const auto bucket_2_lower = bucket_1_upper + 1;
+  // // "mnbb"
+  // const auto bucket_2_upper = 12 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+  //                                 13 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+  //                                 1 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+  //                                 1 * (ipow(26, 0)) + 1;
+  // // "mnbc"
+  // const auto bucket_3_lower = bucket_2_upper + 1;
+  // // "stan"
+  // const auto bucket_3_upper = 18 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+  //                                 19 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+  //                                 0 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+  //                                 13 * (ipow(26, 0)) + 1;
+  // // "stao"
+  // const auto bucket_4_lower = bucket_3_upper + 1;
   // "yyzz"
-  constexpr auto bucket_4_upper = 24 * 26 * 26 * 26 + 24 * 26 * 26 + 25 * 26 + 25;
+  const auto hist_upper = 24 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                          24 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 25 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                          25 * (ipow(26, 0)) + 1;
 
-  constexpr auto bucket_1_width = (bucket_1_upper - bucket_1_lower + 1.f);
-  constexpr auto bucket_2_width = (bucket_2_upper - bucket_2_lower + 1.f);
-  constexpr auto bucket_3_width = (bucket_3_upper - bucket_3_lower + 1.f);
-  constexpr auto bucket_4_width = (bucket_4_upper - bucket_4_lower + 1.f);
+  const auto hist_width = hist_upper - hist_lower + 1;
+  // Convert to float so that calculations further down are floating point divisions.
+  // The division here, however, is integral.
+  const auto bucket_width = static_cast<float>(hist_width / 4u);
+
+  // hist_width % bucket_width == 1, so there is one bucket storing one additional value.
+  const auto bucket_1_width = bucket_width + 1;
+  const auto bucket_2_width = bucket_width;
+  const auto bucket_3_width = bucket_width;
+  const auto bucket_4_width = bucket_width;
+
+  const auto bucket_1_lower = hist_lower;
+  const auto bucket_2_lower = bucket_1_lower + bucket_1_width;
+  const auto bucket_3_lower = bucket_2_lower + bucket_2_width;
+  const auto bucket_4_lower = bucket_3_lower + bucket_3_width;
 
   constexpr auto bucket_1_count = 4.f;
   constexpr auto bucket_2_count = 5.f;
@@ -603,10 +676,16 @@ TEST_F(HistogramTest, EqualWidthStringLessThan) {
                   1 / bucket_1_width * bucket_1_count);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "abcf"),
                   2 / bucket_1_width * bucket_1_count);
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "cccc"),
-                  (2 * 26 * 26 * 26 + 2 * 26 * 26 + 2 * 26 + 2 - bucket_1_lower) / bucket_1_width * bucket_1_count);
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "dddd"),
-                  (3 * 26 * 26 * 26 + 3 * 26 * 26 + 3 * 26 + 3 - bucket_1_lower) / bucket_1_width * bucket_1_count);
+  EXPECT_FLOAT_EQ(
+      hist->estimate_cardinality(PredicateCondition::LessThan, "cccc"),
+      (2 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 2 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) +
+       1 + 2 * (ipow(26, 1) + ipow(26, 0)) + 1 + 2 * (ipow(26, 0)) + 1 - bucket_1_lower) /
+          bucket_1_width * bucket_1_count);
+  EXPECT_FLOAT_EQ(
+      hist->estimate_cardinality(PredicateCondition::LessThan, "dddd"),
+      (3 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 3 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) +
+       1 + 3 * (ipow(26, 1) + ipow(26, 0)) + 1 + 3 * (ipow(26, 0)) + 1 - bucket_1_lower) /
+          bucket_1_width * bucket_1_count);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "ghbo"),
                   (bucket_1_width - 2) / bucket_1_width * bucket_1_count);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "ghbp"),
@@ -618,57 +697,84 @@ TEST_F(HistogramTest, EqualWidthStringLessThan) {
                   1 / bucket_2_width * bucket_2_count + bucket_1_count);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "ghbs"),
                   2 / bucket_2_width * bucket_2_count + bucket_1_count);
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "jjjj"),
-                  (9 * 26 * 26 * 26 + 9 * 26 * 26 + 9 * 26 + 9 - bucket_2_lower) / bucket_2_width * bucket_2_count +
-                      bucket_1_count);
+  EXPECT_FLOAT_EQ(
+      hist->estimate_cardinality(PredicateCondition::LessThan, "jjjj"),
+      (9 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 9 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) +
+       1 + 9 * (ipow(26, 1) + ipow(26, 0)) + 1 + 9 * (ipow(26, 0)) + 1 - bucket_2_lower) /
+              bucket_2_width * bucket_2_count +
+          bucket_1_count);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "kkkk"),
-                  (10 * 26 * 26 * 26 + 10 * 26 * 26 + 10 * 26 + 10 - bucket_2_lower) / bucket_2_width * bucket_2_count +
+                  (10 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                   10 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 10 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                   10 * (ipow(26, 0)) + 1 - bucket_2_lower) /
+                          bucket_2_width * bucket_2_count +
                       bucket_1_count);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "lzzz"),
-                  (11 * 26 * 26 * 26 + 25 * 26 * 26 + 25 * 26 + 25 - bucket_2_lower) / bucket_2_width * bucket_2_count +
+                  (11 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                   25 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 25 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                   25 * (ipow(26, 0)) + 1 - bucket_2_lower) /
+                          bucket_2_width * bucket_2_count +
                       bucket_1_count);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "mnaz"),
                   (bucket_2_width - 3) / bucket_2_width * bucket_2_count + bucket_1_count);
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "mnba"),
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "mnb"),
                   (bucket_2_width - 2) / bucket_2_width * bucket_2_count + bucket_1_count);
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "mnbb"),
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "mnba"),
                   (bucket_2_width - 1) / bucket_2_width * bucket_2_count + bucket_1_count);
 
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "mnbc"), bucket_1_count + bucket_2_count);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "mnbb"), bucket_1_count + bucket_2_count);
 
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "mnbd"),
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "mnbc"),
                   1 / bucket_3_width * bucket_3_count + bucket_1_count + bucket_2_count);
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "mnbe"),
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "mnbd"),
                   2 / bucket_3_width * bucket_3_count + bucket_1_count + bucket_2_count);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "pppp"),
-                  (15 * 26 * 26 * 26 + 15 * 26 * 26 + 15 * 26 + 15 - bucket_3_lower) / bucket_3_width * bucket_3_count +
+                  (15 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                   15 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 15 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                   15 * (ipow(26, 0)) + 1 - bucket_3_lower) /
+                          bucket_3_width * bucket_3_count +
                       bucket_1_count + bucket_2_count);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qqqq"),
-                  (16 * 26 * 26 * 26 + 16 * 26 * 26 + 16 * 26 + 16 - bucket_3_lower) / bucket_3_width * bucket_3_count +
+                  (16 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                   16 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 16 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                   16 * (ipow(26, 0)) + 1 - bucket_3_lower) /
+                          bucket_3_width * bucket_3_count +
                       bucket_1_count + bucket_2_count);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qllo"),
-                  (16 * 26 * 26 * 26 + 11 * 26 * 26 + 11 * 26 + 14 - bucket_3_lower) / bucket_3_width * bucket_3_count +
+                  (16 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                   11 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 11 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                   14 * (ipow(26, 0)) + 1 - bucket_3_lower) /
+                          bucket_3_width * bucket_3_count +
                       bucket_1_count + bucket_2_count);
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "stam"),
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "stal"),
                   (bucket_3_width - 2) / bucket_3_width * bucket_3_count + bucket_1_count + bucket_2_count);
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "stan"),
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "stam"),
                   (bucket_3_width - 1) / bucket_3_width * bucket_3_count + bucket_1_count + bucket_2_count);
 
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "stao"),
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "stan"),
                   bucket_1_count + bucket_2_count + bucket_3_count);
 
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "stap"),
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "stao"),
                   1 / bucket_4_width * bucket_4_count + bucket_1_count + bucket_2_count + bucket_3_count);
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "staq"),
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "stap"),
                   2 / bucket_4_width * bucket_4_count + bucket_1_count + bucket_2_count + bucket_3_count);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "vvvv"),
-                  (21 * 26 * 26 * 26 + 21 * 26 * 26 + 21 * 26 + 21 - bucket_4_lower) / bucket_4_width * bucket_4_count +
+                  (21 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                   21 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 21 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                   21 * (ipow(26, 0)) + 1 - bucket_4_lower) /
+                          bucket_4_width * bucket_4_count +
                       bucket_1_count + bucket_2_count + bucket_3_count);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "xxxx"),
-                  (23 * 26 * 26 * 26 + 23 * 26 * 26 + 23 * 26 + 23 - bucket_4_lower) / bucket_4_width * bucket_4_count +
+                  (23 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                   23 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 23 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                   23 * (ipow(26, 0)) + 1 - bucket_4_lower) /
+                          bucket_4_width * bucket_4_count +
                       bucket_1_count + bucket_2_count + bucket_3_count);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "ycip"),
-                  (24 * 26 * 26 * 26 + 2 * 26 * 26 + 8 * 26 + 15 - bucket_4_lower) / bucket_4_width * bucket_4_count +
+                  (24 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                   2 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 8 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                   15 * (ipow(26, 0)) + 1 - bucket_4_lower) /
+                          bucket_4_width * bucket_4_count +
                       bucket_1_count + bucket_2_count + bucket_3_count);
   EXPECT_FLOAT_EQ(
       hist->estimate_cardinality(PredicateCondition::LessThan, "yyzy"),
@@ -677,7 +783,7 @@ TEST_F(HistogramTest, EqualWidthStringLessThan) {
       hist->estimate_cardinality(PredicateCondition::LessThan, "yyzz"),
       (bucket_4_width - 1) / bucket_4_width * bucket_4_count + bucket_1_count + bucket_2_count + bucket_3_count);
 
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "yzaa"), total_count);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "yz"), total_count);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "zzzz"), total_count);
 }
 
@@ -820,26 +926,36 @@ TEST_F(HistogramTest, EqualHeightStringLessThan) {
                                                              4u, "abcdefghijklmnopqrstuvwxyz", 4u);
 
   // "abcd"
-  constexpr auto bucket_1_lower = 26 * 26 + 2 * 26 + 3;
+  const auto bucket_1_lower = 0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                              1 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 2 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                              3 * (ipow(26, 0)) + 1;
   // "efgh"
-  constexpr auto bucket_1_upper = 4 * 26 * 26 * 26 + 5 * 26 * 26 + 6 * 26 + 7;
+  const auto bucket_1_upper = 4 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                              5 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 6 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                              7 * (ipow(26, 0)) + 1;
   // "efgi"
-  constexpr auto bucket_2_lower = bucket_1_upper + 1;
+  const auto bucket_2_lower = bucket_1_upper + 1;
   // "kkkk"
-  constexpr auto bucket_2_upper = 10 * 26 * 26 * 26 + 10 * 26 * 26 + 10 * 26 + 10;
+  const auto bucket_2_upper = 10 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                              10 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 10 * (ipow(26, 1) + ipow(26, 0)) +
+                              1 + 10 * (ipow(26, 0)) + 1;
   // "kkkl"
-  constexpr auto bucket_3_lower = bucket_2_upper + 1;
+  const auto bucket_3_lower = bucket_2_upper + 1;
   // "qrst"
-  constexpr auto bucket_3_upper = 16 * 26 * 26 * 26 + 17 * 26 * 26 + 18 * 26 + 19;
+  const auto bucket_3_upper = 16 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                              17 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 18 * (ipow(26, 1) + ipow(26, 0)) +
+                              1 + 19 * (ipow(26, 0)) + 1;
   // "qrsu"
-  constexpr auto bucket_4_lower = bucket_3_upper + 1;
+  const auto bucket_4_lower = bucket_3_upper + 1;
   // "yyzz"
-  constexpr auto bucket_4_upper = 24 * 26 * 26 * 26 + 24 * 26 * 26 + 25 * 26 + 25;
+  const auto bucket_4_upper = 24 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                              24 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 25 * (ipow(26, 1) + ipow(26, 0)) +
+                              1 + 25 * (ipow(26, 0)) + 1;
 
-  constexpr auto bucket_1_width = (bucket_1_upper - bucket_1_lower + 1.f);
-  constexpr auto bucket_2_width = (bucket_2_upper - bucket_2_lower + 1.f);
-  constexpr auto bucket_3_width = (bucket_3_upper - bucket_3_lower + 1.f);
-  constexpr auto bucket_4_width = (bucket_4_upper - bucket_4_lower + 1.f);
+  const auto bucket_1_width = (bucket_1_upper - bucket_1_lower + 1.f);
+  const auto bucket_2_width = (bucket_2_upper - bucket_2_lower + 1.f);
+  const auto bucket_3_width = (bucket_3_upper - bucket_3_lower + 1.f);
+  const auto bucket_4_width = (bucket_4_upper - bucket_4_lower + 1.f);
 
   constexpr auto bucket_count = 4.f;
   constexpr auto total_count = 4 * bucket_count;
@@ -849,10 +965,16 @@ TEST_F(HistogramTest, EqualHeightStringLessThan) {
 
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "abce"), 1 / bucket_1_width * bucket_count);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "abcf"), 2 / bucket_1_width * bucket_count);
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "cccc"),
-                  (2 * 26 * 26 * 26 + 2 * 26 * 26 + 2 * 26 + 2 - bucket_1_lower) / bucket_1_width * bucket_count);
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "dddd"),
-                  (3 * 26 * 26 * 26 + 3 * 26 * 26 + 3 * 26 + 3 - bucket_1_lower) / bucket_1_width * bucket_count);
+  EXPECT_FLOAT_EQ(
+      hist->estimate_cardinality(PredicateCondition::LessThan, "cccc"),
+      (2 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 2 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) +
+       1 + 2 * (ipow(26, 1) + ipow(26, 0)) + 1 + 2 * (ipow(26, 0)) + 1 - bucket_1_lower) /
+          bucket_1_width * bucket_count);
+  EXPECT_FLOAT_EQ(
+      hist->estimate_cardinality(PredicateCondition::LessThan, "dddd"),
+      (3 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 3 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) +
+       1 + 3 * (ipow(26, 1) + ipow(26, 0)) + 1 + 3 * (ipow(26, 0)) + 1 - bucket_1_lower) /
+          bucket_1_width * bucket_count);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "efgg"),
                   (bucket_1_width - 2) / bucket_1_width * bucket_count);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "efgh"),
@@ -866,15 +988,28 @@ TEST_F(HistogramTest, EqualHeightStringLessThan) {
                   2 / bucket_2_width * bucket_count + bucket_count);
   EXPECT_FLOAT_EQ(
       hist->estimate_cardinality(PredicateCondition::LessThan, "ijkn"),
-      (8 * 26 * 26 * 26 + 9 * 26 * 26 + 10 * 26 + 13 - bucket_2_lower) / bucket_2_width * bucket_count + bucket_count);
+      (8 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 9 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) +
+       1 + 10 * (ipow(26, 1) + ipow(26, 0)) + 1 + 13 * (ipow(26, 0)) + 1 - bucket_2_lower) /
+              bucket_2_width * bucket_count +
+          bucket_count);
   EXPECT_FLOAT_EQ(
       hist->estimate_cardinality(PredicateCondition::LessThan, "jjjj"),
-      (9 * 26 * 26 * 26 + 9 * 26 * 26 + 9 * 26 + 9 - bucket_2_lower) / bucket_2_width * bucket_count + bucket_count);
-  EXPECT_FLOAT_EQ(
-      hist->estimate_cardinality(PredicateCondition::LessThan, "jzzz"),
-      (9 * 26 * 26 * 26 + 25 * 26 * 26 + 25 * 26 + 25 - bucket_2_lower) / bucket_2_width * bucket_count + bucket_count);
+      (9 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 9 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) +
+       1 + 9 * (ipow(26, 1) + ipow(26, 0)) + 1 + 9 * (ipow(26, 0)) + 1 - bucket_2_lower) /
+              bucket_2_width * bucket_count +
+          bucket_count);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "jzzz"),
+                  (9 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                   25 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 25 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                   25 * (ipow(26, 0)) + 1 - bucket_2_lower) /
+                          bucket_2_width * bucket_count +
+                      bucket_count);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "kaab"),
-                  (10 * 26 * 26 * 26 + 1 - bucket_2_lower) / bucket_2_width * bucket_count + bucket_count);
+                  (10 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                   0 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 0 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                   1 * (ipow(26, 0)) + 1 - bucket_2_lower) /
+                          bucket_2_width * bucket_count +
+                      bucket_count);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "kkkj"),
                   (bucket_2_width - 2) / bucket_2_width * bucket_count + bucket_count);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "kkkk"),
@@ -887,16 +1022,28 @@ TEST_F(HistogramTest, EqualHeightStringLessThan) {
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "kkkn"),
                   2 / bucket_3_width * bucket_count + bucket_count * 2);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "loos"),
-                  (11 * 26 * 26 * 26 + 14 * 26 * 26 + 14 * 26 + 18 - bucket_3_lower) / bucket_3_width * bucket_count +
+                  (11 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                   14 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 14 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                   18 * (ipow(26, 0)) + 1 - bucket_3_lower) /
+                          bucket_3_width * bucket_count +
                       bucket_count * 2);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "nnnn"),
-                  (13 * 26 * 26 * 26 + 13 * 26 * 26 + 13 * 26 + 13 - bucket_3_lower) / bucket_3_width * bucket_count +
-                      bucket_count * 2);
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qqqq"),
-                  (16 * 26 * 26 * 26 + 16 * 26 * 26 + 16 * 26 + 16 - bucket_3_lower) / bucket_3_width * bucket_count +
+                  (13 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                   13 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 13 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                   13 * (ipow(26, 0)) + 1 - bucket_3_lower) /
+                          bucket_3_width * bucket_count +
                       bucket_count * 2);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qllo"),
-                  (16 * 26 * 26 * 26 + 11 * 26 * 26 + 11 * 26 + 14 - bucket_3_lower) / bucket_3_width * bucket_count +
+                  (16 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                   11 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 11 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                   14 * (ipow(26, 0)) + 1 - bucket_3_lower) /
+                          bucket_3_width * bucket_count +
+                      bucket_count * 2);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qqqq"),
+                  (16 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                   16 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 16 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                   16 * (ipow(26, 0)) + 1 - bucket_3_lower) /
+                          bucket_3_width * bucket_count +
                       bucket_count * 2);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qrss"),
                   (bucket_3_width - 2) / bucket_3_width * bucket_count + bucket_count * 2);
@@ -910,16 +1057,28 @@ TEST_F(HistogramTest, EqualHeightStringLessThan) {
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qrsw"),
                   2 / bucket_4_width * bucket_count + bucket_count * 3);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "tdzr"),
-                  (19 * 26 * 26 * 26 + 3 * 26 * 26 + 25 * 26 + 17 - bucket_4_lower) / bucket_4_width * bucket_count +
+                  (19 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                   3 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 25 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                   17 * (ipow(26, 0)) + 1 - bucket_4_lower) /
+                          bucket_4_width * bucket_count +
                       bucket_count * 3);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "vvvv"),
-                  (21 * 26 * 26 * 26 + 21 * 26 * 26 + 21 * 26 + 21 - bucket_4_lower) / bucket_4_width * bucket_count +
+                  (21 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                   21 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 21 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                   21 * (ipow(26, 0)) + 1 - bucket_4_lower) /
+                          bucket_4_width * bucket_count +
                       bucket_count * 3);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "xxxx"),
-                  (23 * 26 * 26 * 26 + 23 * 26 * 26 + 23 * 26 + 23 - bucket_4_lower) / bucket_4_width * bucket_count +
+                  (23 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                   23 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 23 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                   23 * (ipow(26, 0)) + 1 - bucket_4_lower) /
+                          bucket_4_width * bucket_count +
                       bucket_count * 3);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "ycip"),
-                  (24 * 26 * 26 * 26 + 2 * 26 * 26 + 8 * 26 + 15 - bucket_4_lower) / bucket_4_width * bucket_count +
+                  (24 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                   2 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 8 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                   15 * (ipow(26, 0)) + 1 - bucket_4_lower) /
+                          bucket_4_width * bucket_count +
                       bucket_count * 3);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "yyzy"),
                   (bucket_4_width - 2) / bucket_4_width * bucket_count + bucket_count * 3);
@@ -1029,30 +1188,75 @@ TEST_F(HistogramPrivateTest, NextValueString) {
 
 TEST_F(HistogramPrivateTest, StringToNumber) {
   EXPECT_EQ(_convert_string_to_number_representation(""), 0ul);
-  EXPECT_EQ(_convert_string_to_number_representation("a"), 1ul);
-  EXPECT_EQ(_convert_string_to_number_representation("aa"), 2ul);
-  EXPECT_EQ(_convert_string_to_number_representation("aaaa"), 4ul);
-  EXPECT_EQ(_convert_string_to_number_representation("aaab"), 5ul);
-  EXPECT_EQ(_convert_string_to_number_representation("azzz"), 18'279ul);
-  EXPECT_EQ(_convert_string_to_number_representation("b"), 18'280ul);
-  EXPECT_EQ(_convert_string_to_number_representation("ba"), 18'281ul);
-  EXPECT_EQ(_convert_string_to_number_representation("bhja"), 23'447ul);
-  EXPECT_EQ(_convert_string_to_number_representation("cde"), 38'778ul);
-  EXPECT_EQ(_convert_string_to_number_representation("zzzz"), 475'254ul);
+  EXPECT_EQ(_convert_string_to_number_representation("a"), 0 * (ipow(26, 3)) + 1);
+  EXPECT_EQ(_convert_string_to_number_representation("aa"),
+            0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                0 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1);
+  EXPECT_EQ(_convert_string_to_number_representation("aaaa"),
+            0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                0 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 0 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                0 * (ipow(26, 0)) + 1);
+  EXPECT_EQ(_convert_string_to_number_representation("aaab"),
+            0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                0 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 0 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                1 * (ipow(26, 0)) + 1);
+  EXPECT_EQ(_convert_string_to_number_representation("azzz"),
+            0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                25 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 25 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                25 * (ipow(26, 0)) + 1);
+  EXPECT_EQ(_convert_string_to_number_representation("b"),
+            1 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1);
+  EXPECT_EQ(_convert_string_to_number_representation("ba"),
+            1 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                0 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1);
+  EXPECT_EQ(_convert_string_to_number_representation("bhja"),
+            1 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                7 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 9 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                0 * (ipow(26, 0)) + 1);
+  EXPECT_EQ(_convert_string_to_number_representation("cde"),
+            2 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                3 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 4 * (ipow(26, 1) + ipow(26, 0)) + 1);
+  EXPECT_EQ(_convert_string_to_number_representation("zzzz"),
+            25 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                25 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 25 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                25 * (ipow(26, 0)) + 1);
 }
 
 TEST_F(HistogramPrivateTest, NumberToString) {
   EXPECT_EQ(_convert_number_representation_to_string(0ul), "");
-  EXPECT_EQ(_convert_number_representation_to_string(1ul), "a");
-  EXPECT_EQ(_convert_number_representation_to_string(2ul), "aa");
-  EXPECT_EQ(_convert_number_representation_to_string(4ul), "aaaa");
-  EXPECT_EQ(_convert_number_representation_to_string(5ul), "aaab");
-  EXPECT_EQ(_convert_number_representation_to_string(18'279ul), "azzz");
-  EXPECT_EQ(_convert_number_representation_to_string(18'280ul), "b");
-  EXPECT_EQ(_convert_number_representation_to_string(18'281ul), "ba");
-  EXPECT_EQ(_convert_number_representation_to_string(23'447ul), "bhja");
-  EXPECT_EQ(_convert_number_representation_to_string(38'778ul), "cde");
-  EXPECT_EQ(_convert_number_representation_to_string(475'254ul), "zzzz");
+  EXPECT_EQ(_convert_number_representation_to_string(0 * (ipow(26, 3)) + 1), "a");
+  EXPECT_EQ(_convert_number_representation_to_string(0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                                                     0 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1),
+            "aa");
+  EXPECT_EQ(_convert_number_representation_to_string(0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                                                     0 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                                                     0 * (ipow(26, 1) + ipow(26, 0)) + 1 + 0 * (ipow(26, 0)) + 1),
+            "aaaa");
+  EXPECT_EQ(_convert_number_representation_to_string(0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                                                     0 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                                                     0 * (ipow(26, 1) + ipow(26, 0)) + 1 + 1 * (ipow(26, 0)) + 1),
+            "aaab");
+  EXPECT_EQ(_convert_number_representation_to_string(0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                                                     25 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                                                     25 * (ipow(26, 1) + ipow(26, 0)) + 1 + 25 * (ipow(26, 0)) + 1),
+            "azzz");
+  EXPECT_EQ(_convert_number_representation_to_string(1 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1),
+            "b");
+  EXPECT_EQ(_convert_number_representation_to_string(1 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                                                     0 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1),
+            "ba");
+  EXPECT_EQ(_convert_number_representation_to_string(1 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                                                     7 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                                                     9 * (ipow(26, 1) + ipow(26, 0)) + 1 + 0 * (ipow(26, 0)) + 1),
+            "bhja");
+  EXPECT_EQ(_convert_number_representation_to_string(2 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                                                     3 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                                                     4 * (ipow(26, 1) + ipow(26, 0)) + 1),
+            "cde");
+  EXPECT_EQ(_convert_number_representation_to_string(25 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                                                     25 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                                                     25 * (ipow(26, 1) + ipow(26, 0)) + 1 + 25 * (ipow(26, 0)) + 1),
+            "zzzz");
 }
 
 // TODO(tim): remove
