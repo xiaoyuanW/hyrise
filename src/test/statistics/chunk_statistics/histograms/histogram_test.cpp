@@ -61,15 +61,18 @@ TEST_F(HistogramTest, EqualNumElementsBasic) {
       this->_int_float4->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 2u);
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{0}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{12}));
-  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{1'234}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{123'456}));
-  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{1'000'000}));
-
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 0), 0.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{12}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 12), 1.f);
+
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{1'234}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 1'234), 0.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{123'456}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 123'456), 2.5f);
+
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{1'000'000}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 1'000'000), 0.f);
 }
 
@@ -78,15 +81,18 @@ TEST_F(HistogramTest, EqualNumElementsUnevenBuckets) {
       EqualNumElementsHistogram<int32_t>::from_column(_int_float4->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 3u);
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{0}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{12}));
-  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{1'234}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{123'456}));
-  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{1'000'000}));
-
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 0), 0.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{12}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 12), 1.f);
+
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{1'234}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 1'234), 0.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{123'456}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 123'456), 3.f);
+
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{1'000'000}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 1'000'000), 0.f);
 }
 
@@ -94,19 +100,46 @@ TEST_F(HistogramTest, EqualNumElementsFloat) {
   auto hist =
       EqualNumElementsHistogram<float>::from_column(_float2->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 3u);
 
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{0.4f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 0.4f), 0.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{0.5f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 0.5f), 4 / 4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{1.1f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 1.1f), 4 / 4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{1.3f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 1.3f), 4 / 4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{2.2f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 2.2f), 4 / 4.f);
+
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{2.3f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 2.3f), 0.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{2.5f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 2.5f), 6 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{2.9f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 2.9f), 6 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{3.3f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 3.3f), 6 / 3.f);
+
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{3.5f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 3.5f), 0.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{3.6f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 3.6f), 4 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{3.9f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 3.9f), 4 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{6.1f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 6.1f), 4 / 3.f);
+
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{6.2f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 6.2f), 0.f);
 }
 
@@ -114,23 +147,58 @@ TEST_F(HistogramTest, EqualNumElementsString) {
   auto hist =
       EqualNumElementsHistogram<std::string>::from_column(_string2->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 4u);
 
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "a"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, "a"), 0.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "aa"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, "aa"), 3 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "ab"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, "ab"), 3 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "b"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, "b"), 3 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "birne"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, "birne"), 3 / 3.f);
+
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "biscuit"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, "biscuit"), 0.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "bla"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, "bla"), 4 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "blubb"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, "blubb"), 4 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "bums"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, "bums"), 4 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "ttt"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, "ttt"), 4 / 3.f);
+
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "turkey"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, "turkey"), 0.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "uuu"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, "uuu"), 4 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "vvv"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, "vvv"), 4 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "www"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, "www"), 4 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "xxx"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, "xxx"), 4 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "yyy"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, "yyy"), 4 / 2.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "zzz"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, "zzz"), 4 / 2.f);
+
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "zzzzzz"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, "zzzzzz"), 0.f);
 }
 
@@ -139,19 +207,24 @@ TEST_F(HistogramTest, EqualNumElementsLessThan) {
       EqualNumElementsHistogram<int32_t>::from_column(_int_float4->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 3u);
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{12}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{70}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{1'234}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{12'346}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{123'456}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{123'457}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{1'000'000}));
-
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 12), 0.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{70}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 70), (70.f - 12) / (123 - 12 + 1) * 2);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{1'234}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 1'234), 2.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{12'346}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 12'346), 4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{123'456}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 123'456), 4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{123'457}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 123'457), 7.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{1'000'000}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 1'000'000), 7.f);
 }
 
@@ -160,35 +233,45 @@ TEST_F(HistogramTest, EqualNumElementsFloatLessThan) {
       EqualNumElementsHistogram<float>::from_column(_float2->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 3u);
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{0.5f}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{1.0f}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{1.7f}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{std::nextafter(2.2f, 2.2f + 1)}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{2.5f}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{3.0f}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{3.3f}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{std::nextafter(3.3f, 3.3f + 1)}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{3.6f}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{3.9f}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{5.9f}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{std::nextafter(6.1f, 6.1f + 1)}));
-
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 0.5f), 0.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{1.0f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 1.0f),
                   (1.0f - 0.5f) / std::nextafter(2.2f - 0.5f, 2.2f - 0.5f + 1) * 4);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{1.7f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 1.7f),
                   (1.7f - 0.5f) / std::nextafter(2.2f - 0.5f, 2.2f - 0.5f + 1) * 4);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{std::nextafter(2.2f, 2.2f + 1)}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, std::nextafter(2.2f, 2.2f + 1)), 4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{2.5f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 2.5f), 4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{3.0f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 3.0f),
                   4.f + (3.0f - 2.5f) / std::nextafter(3.3f - 2.5f, 3.3f - 2.5f + 1) * 6);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{3.3f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 3.3f),
                   4.f + (3.3f - 2.5f) / std::nextafter(3.3f - 2.5f, 3.3f - 2.5f + 1) * 6);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{std::nextafter(3.3f, 3.3f + 1)}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, std::nextafter(3.3f, 3.3f + 1)), 4.f + 6.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{3.6f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 3.6f), 4.f + 6.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{3.9f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 3.9f),
                   4.f + 6.f + (3.9f - 3.6f) / std::nextafter(6.1f - 3.6f, 6.1f - 3.6f + 1) * 4);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{5.9f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 5.9f),
                   4.f + 6.f + (5.9f - 3.6f) / std::nextafter(6.1f - 3.6f, 6.1f - 3.6f + 1) * 4);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{std::nextafter(6.1f, 6.1f + 1)}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, std::nextafter(6.1f, 6.1f + 1)),
                   4.f + 6.f + 4.f);
 }
@@ -241,164 +324,295 @@ TEST_F(HistogramTest, EqualNumElementsStringLessThan) {
   constexpr auto bucket_4_count = 3.f;
   constexpr auto total_count = bucket_1_count + bucket_2_count + bucket_3_count + bucket_4_count;
 
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::LessThan, "aaaa"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "aaaa"), 0.f);
+
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::LessThan, "abcd"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "abcd"), 0.f);
 
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "abce"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "abce"),
                   1 / bucket_1_width * bucket_1_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "abcf"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "abcf"),
                   2 / bucket_1_width * bucket_1_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "abcf"));
   EXPECT_FLOAT_EQ(
       hist->estimate_cardinality(PredicateCondition::LessThan, "cccc"),
       (2 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 2 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) +
        1 + 2 * (ipow(26, 1) + ipow(26, 0)) + 1 + 2 * (ipow(26, 0)) + 1 - bucket_1_lower) /
           bucket_1_width * bucket_1_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "dddd"));
   EXPECT_FLOAT_EQ(
       hist->estimate_cardinality(PredicateCondition::LessThan, "dddd"),
       (3 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 3 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) +
        1 + 3 * (ipow(26, 1) + ipow(26, 0)) + 1 + 3 * (ipow(26, 0)) + 1 - bucket_1_lower) /
           bucket_1_width * bucket_1_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "efgg"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "efgg"),
                   (bucket_1_width - 2) / bucket_1_width * bucket_1_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "efgh"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "efgh"),
                   (bucket_1_width - 1) / bucket_1_width * bucket_1_count);
 
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "efgi"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "efgi"), bucket_1_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "ijkl"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "ijkl"), bucket_1_count);
 
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "ijkm"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "ijkm"),
                   1 / bucket_2_width * bucket_2_count + bucket_1_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "ijkn"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "ijkn"),
                   2 / bucket_2_width * bucket_2_count + bucket_1_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "jjjj"));
   EXPECT_FLOAT_EQ(
       hist->estimate_cardinality(PredicateCondition::LessThan, "jjjj"),
       (9 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 9 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) +
        1 + 9 * (ipow(26, 1) + ipow(26, 0)) + 1 + 9 * (ipow(26, 0)) + 1 - bucket_2_lower) /
               bucket_2_width * bucket_2_count +
           bucket_1_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "kkkk"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "kkkk"),
                   (10 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    10 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 10 * (ipow(26, 1) + ipow(26, 0)) + 1 +
                    10 * (ipow(26, 0)) + 1 - bucket_2_lower) /
                           bucket_2_width * bucket_2_count +
                       bucket_1_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "lzzz"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "lzzz"),
                   (11 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    25 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 25 * (ipow(26, 1) + ipow(26, 0)) + 1 +
                    25 * (ipow(26, 0)) + 1 - bucket_2_lower) /
                           bucket_2_width * bucket_2_count +
                       bucket_1_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "mnoo"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "mnoo"),
                   (bucket_2_width - 2) / bucket_2_width * bucket_2_count + bucket_1_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "mnop"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "mnop"),
                   (bucket_2_width - 1) / bucket_2_width * bucket_2_count + bucket_1_count);
 
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "mnoq"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "mnoq"), bucket_1_count + bucket_2_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "oopp"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "oopp"), bucket_1_count + bucket_2_count);
 
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "oopq"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "oopq"),
                   1 / bucket_3_width * bucket_3_count + bucket_1_count + bucket_2_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "oopr"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "oopr"),
                   2 / bucket_3_width * bucket_3_count + bucket_1_count + bucket_2_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "pppp"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "pppp"),
                   (15 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    15 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 15 * (ipow(26, 1) + ipow(26, 0)) + 1 +
                    15 * (ipow(26, 0)) + 1 - bucket_3_lower) /
                           bucket_3_width * bucket_3_count +
                       bucket_1_count + bucket_2_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "qqqq"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qqqq"),
                   (16 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    16 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 16 * (ipow(26, 1) + ipow(26, 0)) + 1 +
                    16 * (ipow(26, 0)) + 1 - bucket_3_lower) /
                           bucket_3_width * bucket_3_count +
                       bucket_1_count + bucket_2_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "qllo"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qllo"),
                   (16 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    11 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 11 * (ipow(26, 1) + ipow(26, 0)) + 1 +
                    14 * (ipow(26, 0)) + 1 - bucket_3_lower) /
                           bucket_3_width * bucket_3_count +
                       bucket_1_count + bucket_2_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "qrss"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qrss"),
                   (bucket_3_width - 2) / bucket_3_width * bucket_3_count + bucket_1_count + bucket_2_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "qrst"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qrst"),
                   (bucket_3_width - 1) / bucket_3_width * bucket_3_count + bucket_1_count + bucket_2_count);
 
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "qrsu"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qrsu"),
                   bucket_1_count + bucket_2_count + bucket_3_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "uvwx"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "uvwx"),
                   bucket_1_count + bucket_2_count + bucket_3_count);
 
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "uvwy"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "uvwy"),
                   1 / bucket_4_width * bucket_4_count + bucket_1_count + bucket_2_count + bucket_3_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "uvwz"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "uvwz"),
                   2 / bucket_4_width * bucket_4_count + bucket_1_count + bucket_2_count + bucket_3_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "vvvv"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "vvvv"),
                   (21 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    21 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 21 * (ipow(26, 1) + ipow(26, 0)) + 1 +
                    21 * (ipow(26, 0)) + 1 - bucket_4_lower) /
                           bucket_4_width * bucket_4_count +
                       bucket_1_count + bucket_2_count + bucket_3_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "xxxx"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "xxxx"),
                   (23 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    23 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 23 * (ipow(26, 1) + ipow(26, 0)) + 1 +
                    23 * (ipow(26, 0)) + 1 - bucket_4_lower) /
                           bucket_4_width * bucket_4_count +
                       bucket_1_count + bucket_2_count + bucket_3_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "ycip"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "ycip"),
                   (24 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    2 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 8 * (ipow(26, 1) + ipow(26, 0)) + 1 +
                    15 * (ipow(26, 0)) + 1 - bucket_4_lower) /
                           bucket_4_width * bucket_4_count +
                       bucket_1_count + bucket_2_count + bucket_3_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "yyzy"));
   EXPECT_FLOAT_EQ(
       hist->estimate_cardinality(PredicateCondition::LessThan, "yyzy"),
       (bucket_4_width - 2) / bucket_4_width * bucket_4_count + bucket_1_count + bucket_2_count + bucket_3_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "yyzz"));
   EXPECT_FLOAT_EQ(
       hist->estimate_cardinality(PredicateCondition::LessThan, "yyzz"),
       (bucket_4_width - 1) / bucket_4_width * bucket_4_count + bucket_1_count + bucket_2_count + bucket_3_count);
 
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "yzaa"), total_count);
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "yz"));
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "yz"), total_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "zzzz"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "zzzz"), total_count);
 }
 
 TEST_F(HistogramTest, EqualWidthHistogramBasic) {
   auto hist = EqualWidthHistogram<int32_t>::from_column(_int_int4->get_chunk(ChunkID{0})->get_column(ColumnID{1}), 6u);
 
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, -1));
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, -1), 0.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 0));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 0), 5 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 1));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 1), 5 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 4));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 4), 1 / 1.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 5));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 5), 1 / 1.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 6));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 6), 1 / 1.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 7));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 7), 1 / 1.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 10));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 10), 1 / 1.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 11));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 11), 1 / 1.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 12));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 12), 2 / 2.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 13));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 13), 2 / 2.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 14));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 14), 2 / 2.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 15));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 15), 1 / 1.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 17));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 17), 1 / 1.f);
+
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, 18));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 18), 0.f);
 }
 
 TEST_F(HistogramTest, EqualWidthHistogramUnevenBuckets) {
   auto hist = EqualWidthHistogram<int32_t>::from_column(_int_int4->get_chunk(ChunkID{0})->get_column(ColumnID{1}), 4u);
 
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, -1));
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, -1), 0.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 0));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 0), 6 / 4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 1));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 1), 6 / 4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 2));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 2), 6 / 4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 3));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 3), 6 / 4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 4));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 4), 6 / 4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 5));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 5), 1 / 1.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 6));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 6), 1 / 1.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 7));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 7), 1 / 1.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 9));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 9), 1 / 1.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 10));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 10), 2 / 2.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 11));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 11), 2 / 2.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 12));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 12), 2 / 2.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 13));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 13), 2 / 2.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 14));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 14), 2 / 2.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 15));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 15), 2 / 2.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 17));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 17), 2 / 2.f);
+
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, 18));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 18), 0.f);
 }
 
@@ -407,22 +621,46 @@ TEST_F(HistogramTest, EqualWidthHistogramMoreBucketsThanDistinctValuesIntEquals)
       EqualWidthHistogram<int32_t>::from_column(_int_float4->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 10u);
   EXPECT_EQ(hist->num_buckets(), 10u);
 
-  // constexpr auto bucket_width = (123456 - 12 + 1) / 10;
-  // constexpr auto num_buckets_with_larger_range = (123456 - 12 + 1) % 10;
-
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, 11));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 11), 0.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 12));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 12), 4 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 100));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 100), 4 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 123));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 123), 4 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 1'000));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 1'000), 4 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 10'000));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 10'000), 4 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 12'345));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 12'345), 4 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 12'356));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 12'356), 4 / 3.f);
+
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, 12'357));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 12'357), 0.f);
+
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, 20'000));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 20'000), 0.f);
+
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, 50'000));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 50'000), 0.f);
+
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, 100'000));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 100'000), 0.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 123'456));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 123'456), 3 / 1.f);
+
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, 123'457));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 123'457), 0.f);
 }
 
@@ -439,28 +677,57 @@ TEST_F(HistogramTest, EqualWidthHistogramMoreBucketsThanDistinctValuesIntLessTha
   constexpr auto bucket_0_min = hist_min;
   constexpr auto bucket_9_min = hist_min + 9 * bucket_width + 5;
 
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::LessThan, 12));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 12), 0.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 100));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 100),
                   4.f * (100 - bucket_0_min) / (bucket_width + 1));
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 123));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 123),
                   4.f * (123 - bucket_0_min) / (bucket_width + 1));
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 1'000));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 1'000),
                   4.f * (1'000 - bucket_0_min) / (bucket_width + 1));
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 10'000));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 10'000),
                   4.f * (10'000 - bucket_0_min) / (bucket_width + 1));
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 12'345));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 12'345),
                   4.f * (12'345 - bucket_0_min) / (bucket_width + 1));
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 12'356));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 12'356),
                   4.f * (12'356 - bucket_0_min) / (bucket_width + 1));
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 12'357));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 12'357), 4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 20'000));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 20'000), 4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 50'000));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 50'000), 4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 100'000));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 100'000), 4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, bucket_9_min));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, bucket_9_min), 4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, bucket_9_min + 1));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, bucket_9_min + 1),
                   4.f + 3 * (1.f / bucket_width));
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 123'456));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 123'456),
                   4.f + 3.f * (123'456 - bucket_9_min) / bucket_width);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 123'457));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 123'457), 7.f);
 }
 
@@ -469,71 +736,152 @@ TEST_F(HistogramTest, EqualWidthHistogramMoreBucketsThanRepresentableValues) {
   // There must not be more buckets than representable values in the column domain.
   EXPECT_EQ(hist->num_buckets(), 17 - 0 + 1);
 
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, -1));
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, -1), 0.f);
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 0));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 0), 1.f);
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 1));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 1), 3.f);
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 2));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 2), 1.f);
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, 3));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 3), 0.f);
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 4));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 4), 1.f);
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, 5));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 5), 0.f);
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, 6));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 6), 0.f);
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 7));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 7), 1.f);
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, 8));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 8), 0.f);
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, 9));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 9), 0.f);
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 10));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 10), 1.f);
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, 11));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 11), 0.f);
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, 12));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 12), 0.f);
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 13));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 13), 1.f);
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 14));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 14), 1.f);
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, 15));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 15), 0.f);
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, 16));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 16), 0.f);
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 17));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 17), 1.f);
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, 18));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 18), 0.f);
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, 19));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 19), 0.f);
 
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::LessThan, 0));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 0), 0.f);
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 1));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 1), 1.f);
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 2));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 2), 4.f);
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 3));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 3), 5.f);
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 4));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 4), 5.f);
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 5));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 5), 6.f);
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 6));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 6), 6.f);
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 7));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 7), 6.f);
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 8));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 8), 7.f);
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 9));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 9), 7.f);
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 10));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 10), 7.f);
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 11));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 11), 8.f);
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 12));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 12), 8.f);
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 13));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 13), 8.f);
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 14));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 14), 9.f);
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 15));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 15), 10.f);
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 16));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 16), 10.f);
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 17));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 17), 10.f);
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 18));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 18), 11.f);
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 19));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 19), 11.f);
 }
 
 TEST_F(HistogramTest, EqualWidthFloat) {
   auto hist = EqualWidthHistogram<float>::from_column(_float2->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 4u);
 
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, 0.4f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 0.4f), 0.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 0.5f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 0.5f), 3 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 1.1f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 1.1f), 3 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 1.3f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 1.3f), 3 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 1.9f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 1.9f), 3 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 2.0f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 2.0f), 7 / 4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 2.2f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 2.2f), 7 / 4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 2.3f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 2.3f), 7 / 4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 2.5f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 2.5f), 7 / 4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 2.9f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 2.9f), 7 / 4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 3.1f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 3.1f), 7 / 4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 3.2f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 3.2f), 7 / 4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 3.3f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 3.3f), 7 / 4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 3.4f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 3.4f), 3 / 2.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 3.6f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 3.6f), 3 / 2.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 3.9f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 3.9f), 3 / 2.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 4.4f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 4.4f), 3 / 2.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 4.5f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 4.5f), 3 / 2.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 6.1f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 6.1f), 1 / 1.f);
+
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, 6.2f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 6.2f), 0.f);
 }
 
@@ -541,27 +889,34 @@ TEST_F(HistogramTest, EqualWidthLessThan) {
   auto hist =
       EqualWidthHistogram<int32_t>::from_column(_int_float4->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 3u);
 
-  EXPECT_TRUE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{12}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{70}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{1'234}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{12'346}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{123'456}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{123'457}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{1'000'000}));
-
   // The first bucket's range is one value wider (because (123'456 - 12 + 1) % 3 = 1).
   const auto bucket_width = (123'456 - 12 + 1) / 3;
 
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{12}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 12), 0.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{70}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 70), (70.f - 12) / (bucket_width + 1) * 4);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{1'234}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 1'234),
                   (1'234.f - 12) / (bucket_width + 1) * 4);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{12'346}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 12'346),
                   (12'346.f - 12) / (bucket_width + 1) * 4);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{80'000}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 80'000), 4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{123'456}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 123'456),
                   4.f + (123'456.f - (12 + 2 * bucket_width + 1)) / bucket_width * 3);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{123'457}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 123'457), 4.f + 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{1'000'000}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 1'000'000), 4.f + 3.f);
 }
 
@@ -571,44 +926,55 @@ TEST_F(HistogramTest, EqualWidthFloatLessThan) {
   const auto bucket_width = std::nextafter(6.1f - 0.5f, 6.1f - 0.5f + 1) / 3;
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{0.5f}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{1.0f}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{1.7f}));
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 0.5f), 0.f);
+
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan,
                                AllTypeVariant{std::nextafter(0.5f + bucket_width, 0.5f + bucket_width + 1)}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{2.5f}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{3.0f}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{3.3f}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{3.6f}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{3.9f}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan,
-                               AllTypeVariant{std::nextafter(0.5f + 2 * bucket_width, 0.5f + 2 * bucket_width + 1)}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{4.4f}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{5.9f}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{std::nextafter(6.1f, 6.1f + 1)}));
-
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 0.5f), 0.f);
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 1.0f), (1.0f - 0.5f) / bucket_width * 4);
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 1.7f), (1.7f - 0.5f) / bucket_width * 4);
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan,
                                              std::nextafter(0.5f + bucket_width, 0.5f + bucket_width + 1)),
                   4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{1.0f}));
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 1.0f), (1.0f - 0.5f) / bucket_width * 4);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{1.7f}));
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 1.7f), (1.7f - 0.5f) / bucket_width * 4);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{2.5f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 2.5f),
                   4.f + (2.5f - (0.5f + bucket_width)) / bucket_width * 7);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{3.0f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 3.0f),
                   4.f + (3.0f - (0.5f + bucket_width)) / bucket_width * 7);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{3.3f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 3.3f),
                   4.f + (3.3f - (0.5f + bucket_width)) / bucket_width * 7);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{3.6f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 3.6f),
                   4.f + (3.6f - (0.5f + bucket_width)) / bucket_width * 7);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{3.9f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 3.9f),
                   4.f + (3.9f - (0.5f + bucket_width)) / bucket_width * 7);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan,
+                               AllTypeVariant{std::nextafter(0.5f + 2 * bucket_width, 0.5f + 2 * bucket_width + 1)}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan,
                                              std::nextafter(0.5f + 2 * bucket_width, 0.5f + 2 * bucket_width + 1)),
                   4.f + 7.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{4.4f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 4.4f),
                   4.f + 7.f + (4.4f - (0.5f + 2 * bucket_width)) / bucket_width * 3);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{5.9f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 5.9f),
                   4.f + 7.f + (5.9f - (0.5f + 2 * bucket_width)) / bucket_width * 3);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{std::nextafter(6.1f, 6.1f + 1)}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, std::nextafter(6.1f, 6.1f + 1)),
                   4.f + 7.f + 3.f);
 }
@@ -621,27 +987,7 @@ TEST_F(HistogramTest, EqualWidthStringLessThan) {
   const auto hist_lower = 0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                           1 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 2 * (ipow(26, 1) + ipow(26, 0)) + 1 +
                           3 * (ipow(26, 0)) + 1;
-  // // "ghbp"
-  // const auto bucket_1_upper = 6 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-  //                                 7 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-  //                                 1 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-  //                                 15 * (ipow(26, 0)) + 1;
-  // // "ghbq"
-  // const auto bucket_2_lower = bucket_1_upper + 1;
-  // // "mnbb"
-  // const auto bucket_2_upper = 12 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-  //                                 13 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-  //                                 1 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-  //                                 1 * (ipow(26, 0)) + 1;
-  // // "mnbc"
-  // const auto bucket_3_lower = bucket_2_upper + 1;
-  // // "stan"
-  // const auto bucket_3_upper = 18 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-  //                                 19 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-  //                                 0 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-  //                                 13 * (ipow(26, 0)) + 1;
-  // // "stao"
-  // const auto bucket_4_lower = bucket_3_upper + 1;
+
   // "yyzz"
   const auto hist_upper = 24 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                           24 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 25 * (ipow(26, 1) + ipow(26, 0)) + 1 +
@@ -649,7 +995,7 @@ TEST_F(HistogramTest, EqualWidthStringLessThan) {
 
   const auto hist_width = hist_upper - hist_lower + 1;
   // Convert to float so that calculations further down are floating point divisions.
-  // The division here, however, is integral.
+  // The division here, however, must be integral.
   const auto bucket_width = static_cast<float>(hist_width / 4u);
 
   // hist_width % bucket_width == 1, so there is one bucket storing one additional value.
@@ -669,138 +1015,222 @@ TEST_F(HistogramTest, EqualWidthStringLessThan) {
   constexpr auto bucket_4_count = 3.f;
   constexpr auto total_count = bucket_1_count + bucket_2_count + bucket_3_count + bucket_4_count;
 
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::LessThan, "aaaa"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "aaaa"), 0.f);
+
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::LessThan, "abcd"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "abcd"), 0.f);
 
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "abce"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "abce"),
                   1 / bucket_1_width * bucket_1_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "abcf"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "abcf"),
                   2 / bucket_1_width * bucket_1_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "cccc"));
   EXPECT_FLOAT_EQ(
       hist->estimate_cardinality(PredicateCondition::LessThan, "cccc"),
       (2 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 2 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) +
        1 + 2 * (ipow(26, 1) + ipow(26, 0)) + 1 + 2 * (ipow(26, 0)) + 1 - bucket_1_lower) /
           bucket_1_width * bucket_1_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "dddd"));
   EXPECT_FLOAT_EQ(
       hist->estimate_cardinality(PredicateCondition::LessThan, "dddd"),
       (3 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 3 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) +
        1 + 3 * (ipow(26, 1) + ipow(26, 0)) + 1 + 3 * (ipow(26, 0)) + 1 - bucket_1_lower) /
           bucket_1_width * bucket_1_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "ghbo"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "ghbo"),
                   (bucket_1_width - 2) / bucket_1_width * bucket_1_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "ghbp"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "ghbp"),
                   (bucket_1_width - 1) / bucket_1_width * bucket_1_count);
 
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "ghbq"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "ghbq"), bucket_1_count);
 
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "ghbr"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "ghbr"),
                   1 / bucket_2_width * bucket_2_count + bucket_1_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "ghbs"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "ghbs"),
                   2 / bucket_2_width * bucket_2_count + bucket_1_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "jjjj"));
   EXPECT_FLOAT_EQ(
       hist->estimate_cardinality(PredicateCondition::LessThan, "jjjj"),
       (9 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 9 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) +
        1 + 9 * (ipow(26, 1) + ipow(26, 0)) + 1 + 9 * (ipow(26, 0)) + 1 - bucket_2_lower) /
               bucket_2_width * bucket_2_count +
           bucket_1_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "kkkk"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "kkkk"),
                   (10 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    10 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 10 * (ipow(26, 1) + ipow(26, 0)) + 1 +
                    10 * (ipow(26, 0)) + 1 - bucket_2_lower) /
                           bucket_2_width * bucket_2_count +
                       bucket_1_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "lzzz"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "lzzz"),
                   (11 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    25 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 25 * (ipow(26, 1) + ipow(26, 0)) + 1 +
                    25 * (ipow(26, 0)) + 1 - bucket_2_lower) /
                           bucket_2_width * bucket_2_count +
                       bucket_1_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "mnaz"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "mnaz"),
                   (bucket_2_width - 3) / bucket_2_width * bucket_2_count + bucket_1_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "mnb"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "mnb"),
                   (bucket_2_width - 2) / bucket_2_width * bucket_2_count + bucket_1_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "mnba"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "mnba"),
                   (bucket_2_width - 1) / bucket_2_width * bucket_2_count + bucket_1_count);
 
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "mnbb"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "mnbb"), bucket_1_count + bucket_2_count);
 
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "mnbc"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "mnbc"),
                   1 / bucket_3_width * bucket_3_count + bucket_1_count + bucket_2_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "mnbd"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "mnbd"),
                   2 / bucket_3_width * bucket_3_count + bucket_1_count + bucket_2_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "pppp"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "pppp"),
                   (15 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    15 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 15 * (ipow(26, 1) + ipow(26, 0)) + 1 +
                    15 * (ipow(26, 0)) + 1 - bucket_3_lower) /
                           bucket_3_width * bucket_3_count +
                       bucket_1_count + bucket_2_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "qqqq"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qqqq"),
                   (16 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    16 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 16 * (ipow(26, 1) + ipow(26, 0)) + 1 +
                    16 * (ipow(26, 0)) + 1 - bucket_3_lower) /
                           bucket_3_width * bucket_3_count +
                       bucket_1_count + bucket_2_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "qllo"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qllo"),
                   (16 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    11 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 11 * (ipow(26, 1) + ipow(26, 0)) + 1 +
                    14 * (ipow(26, 0)) + 1 - bucket_3_lower) /
                           bucket_3_width * bucket_3_count +
                       bucket_1_count + bucket_2_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "stal"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "stal"),
                   (bucket_3_width - 2) / bucket_3_width * bucket_3_count + bucket_1_count + bucket_2_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "stam"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "stam"),
                   (bucket_3_width - 1) / bucket_3_width * bucket_3_count + bucket_1_count + bucket_2_count);
 
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "stan"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "stan"),
                   bucket_1_count + bucket_2_count + bucket_3_count);
 
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "stao"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "stao"),
                   1 / bucket_4_width * bucket_4_count + bucket_1_count + bucket_2_count + bucket_3_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "stap"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "stap"),
                   2 / bucket_4_width * bucket_4_count + bucket_1_count + bucket_2_count + bucket_3_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "vvvv"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "vvvv"),
                   (21 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    21 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 21 * (ipow(26, 1) + ipow(26, 0)) + 1 +
                    21 * (ipow(26, 0)) + 1 - bucket_4_lower) /
                           bucket_4_width * bucket_4_count +
                       bucket_1_count + bucket_2_count + bucket_3_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "xxxx"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "xxxx"),
                   (23 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    23 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 23 * (ipow(26, 1) + ipow(26, 0)) + 1 +
                    23 * (ipow(26, 0)) + 1 - bucket_4_lower) /
                           bucket_4_width * bucket_4_count +
                       bucket_1_count + bucket_2_count + bucket_3_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "ycip"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "ycip"),
                   (24 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    2 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 8 * (ipow(26, 1) + ipow(26, 0)) + 1 +
                    15 * (ipow(26, 0)) + 1 - bucket_4_lower) /
                           bucket_4_width * bucket_4_count +
                       bucket_1_count + bucket_2_count + bucket_3_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "yyzy"));
   EXPECT_FLOAT_EQ(
       hist->estimate_cardinality(PredicateCondition::LessThan, "yyzy"),
       (bucket_4_width - 2) / bucket_4_width * bucket_4_count + bucket_1_count + bucket_2_count + bucket_3_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "yyzz"));
   EXPECT_FLOAT_EQ(
       hist->estimate_cardinality(PredicateCondition::LessThan, "yyzz"),
       (bucket_4_width - 1) / bucket_4_width * bucket_4_count + bucket_1_count + bucket_2_count + bucket_3_count);
 
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "yz"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "yz"), total_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "zzzz"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "zzzz"), total_count);
 }
 
 TEST_F(HistogramTest, EqualHeightHistogramBasic) {
   auto hist = EqualHeightHistogram<int32_t>::from_column(
       _expected_join_result_1->get_chunk(ChunkID{0})->get_column(ColumnID{1}), 4u);
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, 0));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 0), 0.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 1));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 1), 6 / 2.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 2));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 2), 6 / 2.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 5));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 5), 6 / 2.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 6));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 6), 6 / 2.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 8));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 8), 6 / 4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 9));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 9), 6 / 4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 10));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 10), 6 / 4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 12));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 12), 6 / 4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 18));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 18), 6 / 4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 20));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 20), 6 / 1.f);
+
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, 21));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 21), 0.f);
 }
 
@@ -813,43 +1243,107 @@ TEST_F(HistogramTest, EqualHeightHistogramUnevenBuckets) {
   // because the bucket count is now assumed to be 24 / 4 = 6, rather than 24 / 5 = 4.8 => 5.
   EXPECT_EQ(hist->num_buckets(), 4u);
 
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, 0));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 0), 0.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 1));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 1), 6 / 1.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 2));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 2), 6 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 3));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 3), 6 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 5));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 5), 6 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 6));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 6), 6 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 7));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 7), 6 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 8));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 8), 6 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 9));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 9), 6 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 10));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 10), 6 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 12));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 12), 6 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 18));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 18), 6 / 2.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 19));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 19), 6 / 2.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 20));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 20), 6 / 2.f);
+
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, 21));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 21), 0.f);
 }
 
 TEST_F(HistogramTest, EqualHeightFloat) {
   auto hist = EqualHeightHistogram<float>::from_column(_float2->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 4u);
 
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, 0.4f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 0.4f), 0.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 0.5f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 0.5f), 4 / 4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 1.1f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 1.1f), 4 / 4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 1.3f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 1.3f), 4 / 4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 2.2f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 2.2f), 4 / 4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 2.3f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 2.3f), 4 / 2.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 2.5f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 2.5f), 4 / 2.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 2.9f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 2.9f), 4 / 2.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 3.1f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 3.1f), 4 / 2.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 3.2f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 3.2f), 4 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 3.3f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 3.3f), 4 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 3.5f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 3.5f), 4 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 3.6f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 3.6f), 4 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 3.9f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 3.9f), 4 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 4.4f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 4.4f), 4 / 3.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 4.5f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 4.5f), 4 / 1.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, 6.1f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 6.1f), 4 / 1.f);
+
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, 6.2f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 6.2f), 0.f);
 }
 
@@ -863,23 +1357,30 @@ TEST_F(HistogramTest, EqualHeightLessThan) {
   EXPECT_EQ(hist->num_buckets(), 2u);
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{12}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{70}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{1'234}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{12'346}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{123'456}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{123'457}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{1'000'000}));
-
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 12), 0.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{70}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 70), (70.f - 12) / (12'345 - 12 + 1) * 4);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{1'234}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 1'234),
                   (1'234.f - 12) / (12'345 - 12 + 1) * 4);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{12'346}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 12'346), 4.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{80'000}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 80'000),
                   4.f + (80'000.f - 12'346) / (123'456 - 12'346 + 1) * 4);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{123'456}));
   // Special case: cardinality is capped, see AbstractHistogram::estimate_cardinality().
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 123'456), 7.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{123'457}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 123'457), 7.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{1'000'000}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 1'000'000), 7.f);
 }
 
@@ -887,37 +1388,48 @@ TEST_F(HistogramTest, EqualHeightFloatLessThan) {
   auto hist = EqualHeightHistogram<float>::from_column(_float2->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 3u);
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{0.5f}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{1.0f}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{1.7f}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{2.2f}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{std::nextafter(2.5f, 2.5f + 1)}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{3.0f}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{3.3f}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{std::nextafter(3.3f, 3.3f + 1)}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{3.6f}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{3.9f}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{std::nextafter(4.4f, 4.4f + 1)}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{5.9f}));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{std::nextafter(6.1f, 6.1f + 1)}));
-
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 0.5f), 0.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{1.0f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 1.0f), (1.0f - 0.5f) / (2.5f - 0.5f) * 5);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{1.7f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 1.7f), (1.7f - 0.5f) / (2.5f - 0.5f) * 5);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{2.2f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 2.2f), (2.2f - 0.5f) / (2.5f - 0.5f) * 5);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{std::nextafter(2.5f, 2.5f + 1)}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, std::nextafter(2.5f, 2.5f + 1)), 5.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{3.0f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 3.0f),
                   5.f + (3.0f - (std::nextafter(2.5f, 2.5f + 1))) / (4.4f - std::nextafter(2.5f, 2.5f + 1)) * 5);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{3.3f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 3.3f),
                   5.f + (3.3f - (std::nextafter(2.5f, 2.5f + 1))) / (4.4f - std::nextafter(2.5f, 2.5f + 1)) * 5);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{3.6f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 3.6f),
                   5.f + (3.6f - (std::nextafter(2.5f, 2.5f + 1))) / (4.4f - std::nextafter(2.5f, 2.5f + 1)) * 5);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{3.9f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 3.9f),
                   5.f + (3.9f - (std::nextafter(2.5f, 2.5f + 1))) / (4.4f - std::nextafter(2.5f, 2.5f + 1)) * 5);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{std::nextafter(4.4f, 4.4f + 1)}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, std::nextafter(4.4f, 4.4f + 1)), 5.f + 5.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{5.1f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 5.1f),
                   5.f + 5.f + (5.1f - (std::nextafter(4.4f, 4.4f + 1))) / (6.1f - std::nextafter(4.4f, 4.4f + 1)) * 5);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{5.9f}));
   // Special case: cardinality is capped, see AbstractHistogram::estimate_cardinality().
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 5.9f), 14.f);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{std::nextafter(6.1f, 6.1f + 1)}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, std::nextafter(6.1f, 6.1f + 1)), 14.f);
 }
 
@@ -960,132 +1472,197 @@ TEST_F(HistogramTest, EqualHeightStringLessThan) {
   constexpr auto bucket_count = 4.f;
   constexpr auto total_count = 4 * bucket_count;
 
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::LessThan, "aaaa"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "aaaa"), 0.f);
+
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::LessThan, "abcd"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "abcd"), 0.f);
 
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "abce"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "abce"), 1 / bucket_1_width * bucket_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "abcf"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "abcf"), 2 / bucket_1_width * bucket_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "cccc"));
   EXPECT_FLOAT_EQ(
       hist->estimate_cardinality(PredicateCondition::LessThan, "cccc"),
       (2 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 2 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) +
        1 + 2 * (ipow(26, 1) + ipow(26, 0)) + 1 + 2 * (ipow(26, 0)) + 1 - bucket_1_lower) /
           bucket_1_width * bucket_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "dddd"));
   EXPECT_FLOAT_EQ(
       hist->estimate_cardinality(PredicateCondition::LessThan, "dddd"),
       (3 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 3 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) +
        1 + 3 * (ipow(26, 1) + ipow(26, 0)) + 1 + 3 * (ipow(26, 0)) + 1 - bucket_1_lower) /
           bucket_1_width * bucket_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "efgg"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "efgg"),
                   (bucket_1_width - 2) / bucket_1_width * bucket_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "efgh"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "efgh"),
                   (bucket_1_width - 1) / bucket_1_width * bucket_count);
 
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "efgi"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "efgi"), bucket_count);
 
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "efgj"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "efgj"),
                   1 / bucket_2_width * bucket_count + bucket_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "efgk"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "efgk"),
                   2 / bucket_2_width * bucket_count + bucket_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "ijkn"));
   EXPECT_FLOAT_EQ(
       hist->estimate_cardinality(PredicateCondition::LessThan, "ijkn"),
       (8 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 9 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) +
        1 + 10 * (ipow(26, 1) + ipow(26, 0)) + 1 + 13 * (ipow(26, 0)) + 1 - bucket_2_lower) /
               bucket_2_width * bucket_count +
           bucket_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "jjjj"));
   EXPECT_FLOAT_EQ(
       hist->estimate_cardinality(PredicateCondition::LessThan, "jjjj"),
       (9 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 9 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) +
        1 + 9 * (ipow(26, 1) + ipow(26, 0)) + 1 + 9 * (ipow(26, 0)) + 1 - bucket_2_lower) /
               bucket_2_width * bucket_count +
           bucket_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "jzzz"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "jzzz"),
                   (9 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    25 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 25 * (ipow(26, 1) + ipow(26, 0)) + 1 +
                    25 * (ipow(26, 0)) + 1 - bucket_2_lower) /
                           bucket_2_width * bucket_count +
                       bucket_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "kaab"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "kaab"),
                   (10 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    0 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 0 * (ipow(26, 1) + ipow(26, 0)) + 1 +
                    1 * (ipow(26, 0)) + 1 - bucket_2_lower) /
                           bucket_2_width * bucket_count +
                       bucket_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "kkkj"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "kkkj"),
                   (bucket_2_width - 2) / bucket_2_width * bucket_count + bucket_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "kkkk"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "kkkk"),
                   (bucket_2_width - 1) / bucket_2_width * bucket_count + bucket_count);
 
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "kkkl"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "kkkl"), bucket_count * 2);
 
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "kkkm"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "kkkm"),
                   1 / bucket_3_width * bucket_count + bucket_count * 2);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "kkkn"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "kkkn"),
                   2 / bucket_3_width * bucket_count + bucket_count * 2);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "loos"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "loos"),
                   (11 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    14 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 14 * (ipow(26, 1) + ipow(26, 0)) + 1 +
                    18 * (ipow(26, 0)) + 1 - bucket_3_lower) /
                           bucket_3_width * bucket_count +
                       bucket_count * 2);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "nnnn"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "nnnn"),
                   (13 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    13 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 13 * (ipow(26, 1) + ipow(26, 0)) + 1 +
                    13 * (ipow(26, 0)) + 1 - bucket_3_lower) /
                           bucket_3_width * bucket_count +
                       bucket_count * 2);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "qllo"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qllo"),
                   (16 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    11 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 11 * (ipow(26, 1) + ipow(26, 0)) + 1 +
                    14 * (ipow(26, 0)) + 1 - bucket_3_lower) /
                           bucket_3_width * bucket_count +
                       bucket_count * 2);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "qqqq"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qqqq"),
                   (16 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    16 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 16 * (ipow(26, 1) + ipow(26, 0)) + 1 +
                    16 * (ipow(26, 0)) + 1 - bucket_3_lower) /
                           bucket_3_width * bucket_count +
                       bucket_count * 2);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "qrss"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qrss"),
                   (bucket_3_width - 2) / bucket_3_width * bucket_count + bucket_count * 2);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "qrst"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qrst"),
                   (bucket_3_width - 1) / bucket_3_width * bucket_count + bucket_count * 2);
 
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "qrsu"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qrsu"), bucket_count * 3);
 
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "qrsv"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qrsv"),
                   1 / bucket_4_width * bucket_count + bucket_count * 3);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "qrsw"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qrsw"),
                   2 / bucket_4_width * bucket_count + bucket_count * 3);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "tdzr"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "tdzr"),
                   (19 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    3 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 25 * (ipow(26, 1) + ipow(26, 0)) + 1 +
                    17 * (ipow(26, 0)) + 1 - bucket_4_lower) /
                           bucket_4_width * bucket_count +
                       bucket_count * 3);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "vvvv"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "vvvv"),
                   (21 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    21 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 21 * (ipow(26, 1) + ipow(26, 0)) + 1 +
                    21 * (ipow(26, 0)) + 1 - bucket_4_lower) /
                           bucket_4_width * bucket_count +
                       bucket_count * 3);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "xxxx"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "xxxx"),
                   (23 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    23 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 23 * (ipow(26, 1) + ipow(26, 0)) + 1 +
                    23 * (ipow(26, 0)) + 1 - bucket_4_lower) /
                           bucket_4_width * bucket_count +
                       bucket_count * 3);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "ycip"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "ycip"),
                   (24 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    2 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 8 * (ipow(26, 1) + ipow(26, 0)) + 1 +
                    15 * (ipow(26, 0)) + 1 - bucket_4_lower) /
                           bucket_4_width * bucket_count +
                       bucket_count * 3);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "yyzy"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "yyzy"),
                   (bucket_4_width - 2) / bucket_4_width * bucket_count + bucket_count * 3);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "yyzz"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "yyzz"),
                   (bucket_4_width - 1) / bucket_4_width * bucket_count + bucket_count * 3);
 
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "yzaa"), total_count);
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "yz"));
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "yz"), total_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "zzzz"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "zzzz"), total_count);
 }
 
@@ -1279,16 +1856,6 @@ TEST_F(HistogramPrivateTest, StringToNumberBruteForce) {
   for (auto number = 0u; number < max; number++) {
     EXPECT_EQ(_convert_string_to_number_representation(_convert_number_representation_to_string(number)), number);
   }
-}
-
-// TODO(tim): remove
-TEST_F(HistogramTest, StringComparisonTest) {
-  EXPECT_TRUE(std::string("abcd") < std::string("abce"));
-  EXPECT_TRUE(std::string("abc") < std::string("abca"));
-
-  EXPECT_TRUE(std::string("Z") < std::string("a"));
-  EXPECT_FALSE(std::string("azaaaaaaa") < std::string("aza"));
-  EXPECT_TRUE(std::string("aZaaaaaaa") < std::string("aza"));
 }
 
 }  // namespace opossum
