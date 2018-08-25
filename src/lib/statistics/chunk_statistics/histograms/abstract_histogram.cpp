@@ -508,30 +508,35 @@ float AbstractHistogram<T>::estimate_distinct_count(const PredicateCondition pre
     return 0.f;
   }
 
+  T cleaned_value = value;
+  if constexpr (std::is_same_v<T, std::string>) {
+    cleaned_value = value.substr(0, _string_prefix_length);
+  }
+
   switch (predicate_type) {
     case PredicateCondition::Equals: {
       return 1.f;
     }
     case PredicateCondition::NotEquals: {
-      if (_bucket_for_value(value) == INVALID_BUCKET_ID) {
+      if (_bucket_for_value(cleaned_value) == INVALID_BUCKET_ID) {
         return total_count_distinct();
       }
 
       return total_count_distinct() - 1.f;
     }
     case PredicateCondition::LessThan: {
-      if (value > max()) {
+      if (cleaned_value > max()) {
         return total_count_distinct();
       }
 
       auto distinct_count = 0.f;
-      auto bucket_id = _bucket_for_value(value);
+      auto bucket_id = _bucket_for_value(cleaned_value);
       if (bucket_id == INVALID_BUCKET_ID) {
         // The value is within the range of the histogram, but does not belong to a bucket.
         // Therefore, we need to sum up the distinct counts of all buckets with a max < value.
-        bucket_id = _upper_bound_for_value(value);
+        bucket_id = _upper_bound_for_value(cleaned_value);
       } else {
-        distinct_count += _bucket_share(bucket_id, value) * _bucket_count_distinct(bucket_id);
+        distinct_count += _bucket_share(bucket_id, cleaned_value) * _bucket_count_distinct(bucket_id);
       }
 
       // Sum up all buckets before the bucket (or gap) containing the value.
@@ -542,15 +547,15 @@ float AbstractHistogram<T>::estimate_distinct_count(const PredicateCondition pre
       return distinct_count;
     }
     case PredicateCondition::LessThanEquals:
-      return estimate_distinct_count(PredicateCondition::LessThan, get_next_value(value));
+      return estimate_distinct_count(PredicateCondition::LessThan, get_next_value(cleaned_value));
     case PredicateCondition::GreaterThanEquals:
-      return total_count_distinct() - estimate_distinct_count(PredicateCondition::LessThan, value);
+      return total_count_distinct() - estimate_distinct_count(PredicateCondition::LessThan, cleaned_value);
     case PredicateCondition::GreaterThan:
-      return total_count_distinct() - estimate_distinct_count(PredicateCondition::LessThanEquals, value);
+      return total_count_distinct() - estimate_distinct_count(PredicateCondition::LessThanEquals, cleaned_value);
     case PredicateCondition::Between: {
       Assert(static_cast<bool>(value2), "Between operator needs two values.");
       return estimate_distinct_count(PredicateCondition::LessThanEquals, *value2) -
-             estimate_distinct_count(PredicateCondition::LessThan, value);
+             estimate_distinct_count(PredicateCondition::LessThan, cleaned_value);
     }
     // TODO(tim): implement more meaningful things here
     default:
@@ -563,10 +568,7 @@ bool AbstractHistogram<T>::can_prune(const PredicateCondition predicate_type, co
                                      const std::optional<AllTypeVariant>& variant_value2) const {
   DebugAssert(num_buckets() > 0, "Called method on histogram before initialization.");
 
-  T value = type_cast<T>(variant_value);
-  if constexpr (std::is_same_v<T, std::string>) {
-    value = value.substr(0, _string_prefix_length);
-  }
+  const auto value = type_cast<T>(variant_value);
 
   switch (predicate_type) {
     case PredicateCondition::Equals: {
@@ -605,11 +607,10 @@ bool AbstractHistogram<std::string>::can_prune(const PredicateCondition predicat
                                                const std::optional<AllTypeVariant>& variant_value2) const {
   DebugAssert(num_buckets() > 0, "Called method on histogram before initialization.");
 
-  const auto value = type_cast<std::string>(variant_value);
+  const auto value = type_cast<std::string>(variant_value).substr(0, _string_prefix_length);
 
   switch (predicate_type) {
     case PredicateCondition::Equals:
-      // If the substring is between buckets, the full string must be between buckets as well.
       return _bucket_for_value(value) == INVALID_BUCKET_ID;
     case PredicateCondition::NotEquals:
       /**
@@ -651,10 +652,10 @@ bool AbstractHistogram<std::string>::can_prune(const PredicateCondition predicat
        * Therefore, we take the substring of the search value: `wa > wa` is false, and the predicate will not be pruned.
        * Note that `col >= water` will, however, not be pruned either (which it theoretically could).
        */
-      return value.substr(0, _string_prefix_length) > max();
+      return value > max();
     case PredicateCondition::GreaterThan:
       /**
-       * We have to make sure to only consider the substring here.
+       * We have to make sure to check the first value after the histogram here.
        *
        * Example:
        * prefix_length = 2
@@ -668,7 +669,7 @@ bool AbstractHistogram<std::string>::can_prune(const PredicateCondition predicat
       return value >= get_next_value(max());
     case PredicateCondition::Between: {
       Assert(static_cast<bool>(variant_value2), "Between operator needs two values.");
-      const auto value2 = type_cast<std::string>(*variant_value2);
+      const auto value2 = type_cast<std::string>(*variant_value2).substr(0, _string_prefix_length);
       return can_prune(PredicateCondition::GreaterThanEquals, value) ||
              can_prune(PredicateCondition::LessThanEquals, value2) ||
              (_bucket_for_value(value) == INVALID_BUCKET_ID && _bucket_for_value(value2) == INVALID_BUCKET_ID &&

@@ -132,6 +132,10 @@ size_t EqualNumElementsHistogram<T>::num_buckets() const {
 
 template <typename T>
 BucketID EqualNumElementsHistogram<T>::_bucket_for_value(const T value) const {
+  if constexpr (std::is_same_v<T, std::string>) {
+    DebugAssert(value.length() <= this->_string_prefix_length, "Value is longer than allowed prefix.");
+  }
+
   const auto it = std::lower_bound(_maxs.begin(), _maxs.end(), value);
   const auto index = static_cast<BucketID>(std::distance(_maxs.begin(), it));
 
@@ -144,6 +148,10 @@ BucketID EqualNumElementsHistogram<T>::_bucket_for_value(const T value) const {
 
 template <typename T>
 BucketID EqualNumElementsHistogram<T>::_lower_bound_for_value(const T value) const {
+  if constexpr (std::is_same_v<T, std::string>) {
+    DebugAssert(value.length() <= this->_string_prefix_length, "Value is longer than allowed prefix.");
+  }
+
   const auto it = std::lower_bound(_maxs.begin(), _maxs.end(), value);
   const auto index = static_cast<BucketID>(std::distance(_maxs.begin(), it));
 
@@ -156,6 +164,10 @@ BucketID EqualNumElementsHistogram<T>::_lower_bound_for_value(const T value) con
 
 template <typename T>
 BucketID EqualNumElementsHistogram<T>::_upper_bound_for_value(const T value) const {
+  if constexpr (std::is_same_v<T, std::string>) {
+    DebugAssert(value.length() <= this->_string_prefix_length, "Value is longer than allowed prefix.");
+  }
+
   const auto it = std::upper_bound(_maxs.begin(), _maxs.end(), value);
   const auto index = static_cast<BucketID>(std::distance(_maxs.begin(), it));
 

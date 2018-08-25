@@ -202,6 +202,97 @@ TEST_F(HistogramTest, EqualNumElementsString) {
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, "zzzzzz"), 0.f);
 }
 
+TEST_F(HistogramTest, EqualNumElementsStringPruning) {
+  /**
+   * 4 buckets
+   *  [aa, b, birne]    -> [aa, bir]
+   *  [bla, bums, ttt]  -> [bla, ttt]
+   *  [uuu, www, xxx]   -> [uuu, xxx]
+   *  [yyy, zzz]        -> [yyy, zzz]
+   */
+  auto hist = EqualNumElementsHistogram<std::string>::from_column(
+      _string2->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 4u, "abcdefghijklmnopqrstuvwxyz", 3u);
+
+  // These values are smaller than values in bucket 0.
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, ""));
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "a"));
+
+  // These values fall within bucket 0.
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "aa"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "aaa"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "b"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "bir"));
+
+  // Even though these values are greater than the stored bucket boundary (birne truncated to three characters),
+  // these values are not prunable because their truncated substring is the same as the bucket boundary.
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "bira"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "birne"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "birz"));
+
+  // These values are between bucket 0 and 1.
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "bis"));
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "biscuit"));
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "bja"));
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "bk"));
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "bkz"));
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "bl"));
+
+  // These values fall within bucket 1.
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "bla"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "c"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "mmopasdasdasd"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "s"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "t"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "tt"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "ttt"));
+
+  // Even though these values are greater than the stored bucket boundary (ttt),
+  // these values are not prunable because their truncated substring is the same as the bucket boundary.
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "tttu"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "tttzzzzz"));
+
+  // These values are between bucket 1 and 2.
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "turkey"));
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "uut"));
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "uutzzzzz"));
+
+  // These values fall within bucket 2.
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "uuu"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "uuuzzz"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "uv"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "uvz"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "v"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "w"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "wzzzzzzzzz"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "x"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "xxw"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "xxx"));
+
+  // Even though these values are greater than the stored bucket boundary (xxx),
+  // these values are not prunable because their truncated substring is the same as the bucket boundary.
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "xxxa"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "xxxzzzzzz"));
+
+  // These values are between bucket 2 and 3.
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "xy"));
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "xyzz"));
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "y"));
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "yyx"));
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "yyxzzzzz"));
+
+  // These values fall within bucket 3.
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "yyy"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "yyyzzzzz"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "yz"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "z"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "zzz"));
+
+  // Even though these values are greater than the stored bucket boundary (zzz),
+  // these values are not prunable because their truncated substring is the same as the bucket boundary.
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "zzza"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "zzzzzzzzz"));
+}
+
 TEST_F(HistogramTest, EqualNumElementsLessThan) {
   auto hist =
       EqualNumElementsHistogram<int32_t>::from_column(_int_float4->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 3u);

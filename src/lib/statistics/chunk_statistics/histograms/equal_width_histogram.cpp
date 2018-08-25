@@ -313,26 +313,6 @@ T EqualWidthHistogram<T>::_bucket_max(const BucketID index) const {
   return this->get_previous_value(_bucket_min(index + 1));
 }
 
-template <>
-BucketID EqualWidthHistogram<std::string>::_bucket_for_value(const std::string value) const {
-  const auto cleaned_value = value.substr(0, _string_prefix_length);
-
-  if (cleaned_value < _min || cleaned_value > _max) {
-    return INVALID_BUCKET_ID;
-  }
-
-  const auto num_value = this->_convert_string_to_number_representation(cleaned_value);
-
-  if (_num_buckets_with_larger_range == 0u || cleaned_value <= _bucket_max(_num_buckets_with_larger_range - 1u)) {
-    const auto num_min = this->_convert_string_to_number_representation(_min);
-    return (num_value - num_min) / _string_bucket_width(0u);
-  }
-
-  const auto num_base_min = this->_convert_string_to_number_representation(_bucket_min(_num_buckets_with_larger_range));
-  return _num_buckets_with_larger_range +
-         (num_value - num_base_min) / _string_bucket_width(_num_buckets_with_larger_range);
-}
-
 template <typename T>
 BucketID EqualWidthHistogram<T>::_bucket_for_value(const T value) const {
   if (value < _min || value > _max) {
@@ -349,8 +329,32 @@ BucketID EqualWidthHistogram<T>::_bucket_for_value(const T value) const {
          (value - _bucket_min(_num_buckets_with_larger_range)) / _bucket_width(_num_buckets_with_larger_range);
 }
 
+template <>
+BucketID EqualWidthHistogram<std::string>::_bucket_for_value(const std::string value) const {
+  DebugAssert(value.length() <= _string_prefix_length, "Value is longer than allowed prefix.");
+
+  if (value < _min || value > _max) {
+    return INVALID_BUCKET_ID;
+  }
+
+  const auto num_value = this->_convert_string_to_number_representation(value);
+
+  if (_num_buckets_with_larger_range == 0u || value <= _bucket_max(_num_buckets_with_larger_range - 1u)) {
+    const auto num_min = this->_convert_string_to_number_representation(_min);
+    return (num_value - num_min) / _string_bucket_width(0u);
+  }
+
+  const auto num_base_min = this->_convert_string_to_number_representation(_bucket_min(_num_buckets_with_larger_range));
+  return _num_buckets_with_larger_range +
+         (num_value - num_base_min) / _string_bucket_width(_num_buckets_with_larger_range);
+}
+
 template <typename T>
 BucketID EqualWidthHistogram<T>::_lower_bound_for_value(const T value) const {
+  if constexpr (std::is_same_v<T, std::string>) {
+    DebugAssert(value.length() <= this->_string_prefix_length, "Value is longer than allowed prefix.");
+  }
+
   if (value < _min) {
     return 0u;
   }
@@ -360,6 +364,10 @@ BucketID EqualWidthHistogram<T>::_lower_bound_for_value(const T value) const {
 
 template <typename T>
 BucketID EqualWidthHistogram<T>::_upper_bound_for_value(const T value) const {
+  if constexpr (std::is_same_v<T, std::string>) {
+    DebugAssert(value.length() <= this->_string_prefix_length, "Value is longer than allowed prefix.");
+  }
+
   if (value < _min) {
     return 0u;
   }
