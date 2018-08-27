@@ -403,13 +403,19 @@ float MinimalColumnStatistics<ColumnDataType>::estimate_range_selectivity(const 
   const auto maximum = type_cast<ColumnDataType>(variant_maximum);
 
   // minimum must be smaller or equal than maximum
+  DebugAssert(minimum <= maximum, "Minimum parameter is larger than maximum parameter.");
+
   // distinction between integers and decimals
   // for integers the number of possible integers is used within the inclusive ranges
   // for decimals the size of the range is used
   if (std::is_integral<ColumnDataType>::value) {
     return static_cast<float>(maximum - minimum + 1) / static_cast<float>(_max - _min + 1);
   } else {
-    return static_cast<float>(maximum - minimum) / static_cast<float>(_max - _min);
+    if (_max == _min) {
+      return 1.0f;
+    } else {
+      return static_cast<float>(maximum - minimum) / static_cast<float>(_max - _min);
+    }
   }
 }
 

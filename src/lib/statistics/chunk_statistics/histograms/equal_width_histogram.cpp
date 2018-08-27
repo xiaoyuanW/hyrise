@@ -71,7 +71,9 @@ EqualWidthBucketStats<T> EqualWidthHistogram<T>::_get_bucket_stats(
         current_end_value++;
         next_begin_value++;
       }
-    } else if constexpr (std::is_floating_point_v<T>) {
+    }
+
+    if constexpr (std::is_floating_point_v<T>) {
       // This is intended to compensate for the fact that floating point arithmetic is not exact.
       // Adding up floating point numbers adds an error over time, and the more buckets there are, the larger it gets.
       // So this is how we make sure that the last bucket contains the rest of the values.
