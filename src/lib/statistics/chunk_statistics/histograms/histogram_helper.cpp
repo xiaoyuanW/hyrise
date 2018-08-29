@@ -66,8 +66,8 @@ uint64_t ipow(uint64_t base, uint64_t exp) {
 }
 
 uint64_t base_value_for_prefix_length(const uint64_t string_prefix_length, const std::string& supported_characters) {
-  auto result = 0ul;
-  for (auto exp = 0ul; exp < string_prefix_length; exp++) {
+  auto result = 1ul;
+  for (auto exp = 1ul; exp < string_prefix_length; exp++) {
     result += ipow(supported_characters.length(), exp);
   }
   return result;
