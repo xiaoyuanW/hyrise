@@ -99,7 +99,9 @@ struct BenchmarkConfig {
   BenchmarkConfig(const BenchmarkMode benchmark_mode, const bool verbose, const ChunkOffset chunk_size,
                   const EncodingConfig& encoding_config, const size_t max_num_query_runs, const Duration& max_duration,
                   const UseMvcc use_mvcc, const std::optional<std::string>& output_file_path,
-                  const bool enable_scheduler, const bool enable_visualization, std::ostream& out);
+                  const bool enable_scheduler, const bool enable_visualization, std::ostream& out, 
+                  const std::string& logger_implementation, const std::string& log_format, 
+                  const std::string& data_path);
 
   static BenchmarkConfig get_default_config();
 
@@ -114,6 +116,10 @@ struct BenchmarkConfig {
   const bool enable_scheduler = false;
   const bool enable_visualization = false;
   std::ostream& out;
+
+  const std::string logger_implementation = "NoLogger";
+  const std::string log_format = "NoFormat";
+  const std::string data_path = "benchmark_data/";
 
   static const char* description;
 

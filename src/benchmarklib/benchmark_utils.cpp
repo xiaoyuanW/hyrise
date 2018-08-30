@@ -83,7 +83,9 @@ BenchmarkConfig::BenchmarkConfig(const BenchmarkMode benchmark_mode, const bool 
                                  const EncodingConfig& encoding_config, const size_t max_num_query_runs,
                                  const Duration& max_duration, const UseMvcc use_mvcc,
                                  const std::optional<std::string>& output_file_path, const bool enable_scheduler,
-                                 const bool enable_visualization, std::ostream& out)
+                                 const bool enable_visualization, std::ostream& out,
+                                 const std::string& logger_implementation, const std::string& log_format, 
+                                 const std::string& data_path)
     : benchmark_mode(benchmark_mode),
       verbose(verbose),
       chunk_size(chunk_size),
@@ -94,7 +96,10 @@ BenchmarkConfig::BenchmarkConfig(const BenchmarkMode benchmark_mode, const bool 
       output_file_path(output_file_path),
       enable_scheduler(enable_scheduler),
       enable_visualization(enable_visualization),
-      out(out) {}
+      out(out),
+      logger_implementation(logger_implementation),
+      log_format(log_format),
+      data_path(data_path) {}
 
 BenchmarkConfig BenchmarkConfig::get_default_config() { return BenchmarkConfig(); }
 
@@ -142,6 +147,13 @@ BenchmarkConfig CLIConfigParser::parse_basic_options_json_config(const nlohmann:
   const auto enable_scheduler = json_config.value("scheduler", default_config.enable_scheduler);
   out << "- Running in " + std::string(enable_scheduler ? "multi" : "single") + "-threaded mode" << std::endl;
 
+  const auto logger_implementation = json_config.value("logger", default_config.logger_implementation);
+  out << "- Logger implementation is " << logger_implementation << std::endl;
+  const auto log_format = json_config.value("log_format", default_config.log_format);
+  out << "- Log format is " << log_format << std::endl;
+  const auto data_path = json_config.value("data_path", default_config.data_path);
+  out << "- Data path is " << data_path << std::endl;
+
   // Determine benchmark and display it
   const auto benchmark_mode_str = json_config.value("mode", "IndividualQueries");
   auto benchmark_mode = BenchmarkMode::IndividualQueries;  // Just to init it deterministically
@@ -187,7 +199,8 @@ BenchmarkConfig CLIConfigParser::parse_basic_options_json_config(const nlohmann:
 
   return BenchmarkConfig{
       benchmark_mode, verbose,          chunk_size,       *encoding_config,     max_runs, timeout_duration,
-      use_mvcc,       output_file_path, enable_scheduler, enable_visualization, out};
+      use_mvcc,       output_file_path, enable_scheduler, enable_visualization, out,      logger_implementation,
+      log_format,     data_path};
 }
 
 BenchmarkConfig CLIConfigParser::parse_basic_cli_options(const cxxopts::ParseResult& parse_result) {
@@ -208,6 +221,9 @@ nlohmann::json CLIConfigParser::basic_cli_options_to_json(const cxxopts::ParseRe
   json_config.emplace("mvcc", parse_result["mvcc"].as<bool>());
   json_config.emplace("visualize", parse_result["visualize"].as<bool>());
   json_config.emplace("output", parse_result["output"].as<std::string>());
+  json_config.emplace("logger", parse_result["logger"].as<std::string>());
+  json_config.emplace("log_format", parse_result["log_format"].as<std::string>());
+  json_config.emplace("data_path", parse_result["data_path"].as<std::string>());
 
   return json_config;
 }

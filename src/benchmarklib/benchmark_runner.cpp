@@ -41,6 +41,14 @@ BenchmarkRunner::BenchmarkRunner(const BenchmarkConfig& config, const NamedQueri
 void BenchmarkRunner::run() {
   _config.out << "\n- Starting Benchmark..." << std::endl;
 
+  // remove logs, so no recovery
+  if (filesystem::exists(_config.data_path)) {
+    filesystem::remove_all(_config.data_path);
+  }
+
+  Logger::setup(_config.data_path, opossum::logger_to_string.right.at(_config.logger_implementation), 
+                opossum::log_format_to_string.right.at(_config.log_format));
+
   auto benchmark_start = std::chrono::steady_clock::now();
 
   // Run the queries in the selected mode
@@ -371,6 +379,8 @@ nlohmann::json BenchmarkRunner::create_context(const BenchmarkConfig& config) {
       {"output_file_path", config.output_file_path ? *(config.output_file_path) : "stdout"},
       {"using_scheduler", config.enable_scheduler},
       {"verbose", config.verbose},
+      {"logging implementation", config.logger_implementation},
+      {"log format", config.log_format},
       {"GIT-HASH", GIT_HEAD_SHA1 + std::string(GIT_IS_DIRTY ? "-dirty" : "")}};
 }
 
