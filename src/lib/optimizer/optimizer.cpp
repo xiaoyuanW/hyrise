@@ -93,7 +93,7 @@ std::shared_ptr<Optimizer> Optimizer::create_default_optimizer() {
   optimizer->add_rule_batch(main_batch);
 
   RuleBatch final_batch(RuleBatchExecutionPolicy::Once);
-  final_batch.add_rule(std::make_shared<ChunkPruningRule>());
+  // final_batch.add_rule(std::make_shared<ChunkPruningRule>());
   final_batch.add_rule(std::make_shared<ConstantCalculationRule>());
   final_batch.add_rule(std::make_shared<IndexScanRule>());
   optimizer->add_rule_batch(final_batch);
