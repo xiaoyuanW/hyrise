@@ -8,6 +8,7 @@
 
 #include "boost/algorithm/string/replace.hpp"
 
+#include "expression/evaluation/like_matcher.hpp"
 #include "expression/expression_functional.hpp"
 #include "expression/pqp_column_expression.hpp"
 #include "histogram_helper.hpp"
@@ -389,13 +390,13 @@ float AbstractHistogram<T>::estimate_cardinality(const PredicateCondition predic
                                                  const std::optional<T>& value2) const {
   DebugAssert(num_buckets() > 0u, "Called method on histogram before initialization.");
 
+  if constexpr (std::is_same_v<T, std::string>) {
+    Assert(value.find_first_not_of(_supported_characters) == std::string::npos, "Unsupported characters.");
+  }
+
   T cleaned_value = value;
   if constexpr (std::is_same_v<T, std::string>) {
     cleaned_value = value.substr(0, _string_prefix_length);
-  }
-
-  if constexpr (std::is_same_v<T, std::string>) {
-    Assert(cleaned_value.find_first_not_of(_supported_characters) == std::string::npos, "Unsupported characters.");
   }
 
   if (can_prune(predicate_type, AllTypeVariant{cleaned_value}, std::optional<AllTypeVariant>(*value2))) {
@@ -486,10 +487,55 @@ float AbstractHistogram<T>::estimate_cardinality(const PredicateCondition predic
       return estimate_cardinality(PredicateCondition::LessThanEquals, *value2) -
              estimate_cardinality(PredicateCondition::LessThan, cleaned_value);
     }
-    // TODO(tim): implement more meaningful things here
-    case PredicateCondition::Like:
-    case PredicateCondition::NotLike:
-      return total_count();
+    case PredicateCondition::Like: {
+      // TODO(tim): think about ways to deal with single character searches (e.g. "foo_").
+      // TODO(tim): think about ways to deal with things like "foo%bar", possibly ignore everything after first '%'.
+      // This would obviously be rather drastic, but:
+      // - it's likely to perform better than a constant
+      // - will only overestimate the cardinality as compared to true prefix searches
+      // Work with the non-trimmed version here to not accidentally strip special characters (e.g. '%').
+      if constexpr (std::is_same_v<T, std::string>) {
+        // Match everything.
+        if (value == "%") {
+          return total_count();
+        }
+
+        // Prefix search.
+        if (value.back() == '%' && std::count(value.begin(), value.end(), '%') == 1) {
+          const auto search_prefix = value.substr(0, value.length() - 1);
+          return estimate_cardinality(PredicateCondition::LessThan,
+                                      next_value(search_prefix, _supported_characters, search_prefix.length())) -
+                 estimate_cardinality(PredicateCondition::LessThan, search_prefix);
+        }
+
+        if (!LikeMatcher::contains_wildcard(value)) {
+          return estimate_cardinality(PredicateCondition::Equals, value);
+        }
+
+        // TODO(tim): Think of a possibly more meaningful default.
+        return total_count();
+      }
+
+      Fail("Predicate LIKE is not supported for non-string column.");
+    }
+    case PredicateCondition::NotLike: {
+      // TODO(tim): think about how to consistently use total_count() - estimate_cardinality(Like, value).
+      // Work with the non-trimmed version here to not accidentally strip special characters (e.g. '%').
+      if constexpr (std::is_same_v<T, std::string>) {
+        if (value.back() == '%' && std::count(value.begin(), value.end(), '%') == 1) {
+          return total_count() - estimate_cardinality(PredicateCondition::Like, value);
+        }
+
+        if (!LikeMatcher::contains_wildcard(value)) {
+          return estimate_cardinality(PredicateCondition::NotEquals, value);
+        }
+
+        return total_count();
+      }
+
+      Fail("Predicate NOT LIKE is not supported for non-string column.");
+    }
+    // TODO(anyone): implement more meaningful things here
     default:
       Fail("Predicate condition not yet supported.");
   }
@@ -557,7 +603,10 @@ float AbstractHistogram<T>::estimate_distinct_count(const PredicateCondition pre
       return estimate_distinct_count(PredicateCondition::LessThanEquals, *value2) -
              estimate_distinct_count(PredicateCondition::LessThan, cleaned_value);
     }
-    // TODO(tim): implement more meaningful things here
+    // TODO(tim): implement like
+    // case PredicateCondition::Like:
+    // case PredicateCondition::NotLike:
+    // TODO(anyone): implement more meaningful things here
     default:
       return total_count_distinct();
   }
@@ -675,9 +724,78 @@ bool AbstractHistogram<std::string>::can_prune(const PredicateCondition predicat
              (_bucket_for_value(value) == INVALID_BUCKET_ID && _bucket_for_value(value2) == INVALID_BUCKET_ID &&
               _upper_bound_for_value(value) == _upper_bound_for_value(value2));
     }
+    case PredicateCondition::Like: {
+      // TODO(tim): think about ways to deal with things like "foo%bar", possibly ignore everything after first '%'.
+      // Work with the non-trimmed version here to not accidentally strip special characters (e.g. '%').
+
+      // If the pattern starts with a MatchAll, we can not prune it.
+      if (value.front() == '%') {
+        return false;
+      }
+
+      /**
+       * We can prune prefix searches iff the domain of values captured by a prefix pattern is prunable.
+       *
+       * Example:
+       * bins: [a, b], [d, e]
+       * predicate: col LIKE 'c%'
+       *
+       * With the same argument we can also prune predicates in the form of 'c%foo'.
+       * We only have to consider the pattern up to the first MatchAll character.
+       */
+      const auto match_all_index = value.find('%');
+      if (match_all_index != std::string::npos) {
+        const auto search_prefix = value.substr(0, match_all_index);
+        const auto upper_bound = next_value(search_prefix, _supported_characters, search_prefix.length());
+        return can_prune(PredicateCondition::GreaterThanEquals, search_prefix) ||
+               can_prune(PredicateCondition::LessThan, upper_bound) ||
+               (_bucket_for_value(search_prefix) == INVALID_BUCKET_ID &&
+               _bucket_for_value(upper_bound) == INVALID_BUCKET_ID &&
+                _upper_bound_for_value(value) == _upper_bound_for_value(upper_bound));
+      }
+
+      if (!LikeMatcher::contains_wildcard(value)) {
+        return can_prune(PredicateCondition::Equals, value);
+      }
+
+      return false;
+    }
+    case PredicateCondition::NotLike: {
+      // If the pattern starts with a MatchAll, we can only prune it if it matches all values.
+      if (value.front() == '%') {
+        return value == "%";
+      }
+
+      /**
+       * We can also prune prefix searches iff the domain of values captured by the histogram is less than or equal to
+       * the domain of strings captured by a prefix pattern.
+       *
+       * Example:
+       * min: car
+       * max: crime
+       * predicate: col NOT LIKE 'c%'
+       *
+       * With the same argument we can also prune predicates in the form of 'c%foo'.
+       * We only have to consider the pattern up to the first MatchAll character.
+       */
+      const auto match_all_index = value.find('%');
+      if (match_all_index != std::string::npos) {
+        const auto search_prefix = value.substr(0, match_all_index);
+        if (search_prefix == min().substr(0, search_prefix.length()) &&
+            search_prefix == max().substr(0, search_prefix.length())) {
+          return true;
+        }
+      }
+
+      if (!LikeMatcher::contains_wildcard(value)) {
+        return can_prune(PredicateCondition::NotEquals, value);
+      }
+
+      return false;
+    }
     default:
       // Rather than failing we simply do not prune for things we cannot (yet) handle.
-      // TODO(tim): think about like and not like
+      // TODO(anyone): implement more meaningful things here
       return false;
   }
 }
