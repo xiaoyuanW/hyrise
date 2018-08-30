@@ -77,6 +77,19 @@ class SQLPipelineTest : public BaseTest {
   const std::string _multi_statement_invalid = "CREATE VIE foo AS SELECT * FROM table_a; SELECT * FROM foo;";
 };
 
+TEST_F(SQLPipelineTest, DeleteAfterInsert) {
+  auto a_table = load_table("src/test/tables/int_float_double_string.tbl", Chunk::MAX_SIZE);
+  StorageManager::get().add_table("int_float_double_string", a_table);
+
+  const std::string insert_query = "INSERT INTO int_float_double_string VALUES (99, 4.2, 5.4, 'omnomnom');";
+  const std::string delete_query = "DELETE FROM int_float_double_string WHERE i=99;";
+  auto sql_pipeline_insert = SQLPipelineBuilder{insert_query}.with_mvcc(UseMvcc::Yes).create_pipeline();
+  sql_pipeline_insert.get_result_table();
+
+  auto sql_pipeline_delete = SQLPipelineBuilder{delete_query}.with_mvcc(UseMvcc::Yes).create_pipeline();
+  sql_pipeline_delete.get_result_table();
+}
+
 TEST_F(SQLPipelineTest, SimpleCreation) {
   auto sql_pipeline = SQLPipelineBuilder{_select_query_a}.create_pipeline();
 

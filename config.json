@@ -1,0 +1,8 @@
+{
+	"verbose": true,
+	"queries": "simple_querie2.sql",
+	"tables": "src/test/tables/int_float_double_string.tbl",
+	"mvcc": true,
+	"runs": 1,
+	"output": "000.json"
+}

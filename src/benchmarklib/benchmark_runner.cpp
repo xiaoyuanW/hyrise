@@ -124,13 +124,15 @@ void BenchmarkRunner::_benchmark_permuted_query_sets() {
 }
 
 void BenchmarkRunner::_benchmark_individual_queries() {
-  for (const auto& named_query : _queries) {
-    const auto& name = named_query.first;
-    _config.out << "- Benchmarking Query " << name << std::endl;
+  // for (const auto& named_query : _queries) {
+  //   const auto& name = named_query.first;
+  //   _config.out << "- Benchmarking Query " << name << std::endl;
 
     BenchmarkState state{_config.max_num_query_runs, _config.max_duration};
     while (state.keep_running()) {
-      _execute_query(named_query);
+      for (const auto& named_query : _queries) {
+        _execute_query(named_query);
+      }
     }
 
     QueryBenchmarkResult result;
@@ -138,8 +140,9 @@ void BenchmarkRunner::_benchmark_individual_queries() {
     result.duration = state.benchmark_end - state.benchmark_begin;
     result.iteration_durations = state.iteration_durations;
 
+    const auto& name = _queries[0].first;
     _query_results_by_query_name.emplace(name, result);
-  }
+  // }
 }
 
 void BenchmarkRunner::_execute_query(const NamedQuery& named_query) {
@@ -165,7 +168,9 @@ void BenchmarkRunner::_execute_query(const NamedQuery& named_query) {
 void BenchmarkRunner::_create_report(std::ostream& stream) const {
   nlohmann::json benchmarks;
 
-  for (const auto& named_query : _queries) {
+  // for (const auto& named_query : _queries) {
+    {
+    const auto& named_query = _queries[0];
     const auto& name = named_query.first;
     const auto& query_result = _query_results_by_query_name.at(name);
     DebugAssert(query_result.iteration_durations.size() == query_result.num_iterations,
