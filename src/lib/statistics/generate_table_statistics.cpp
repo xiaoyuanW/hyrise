@@ -11,7 +11,7 @@
 
 namespace opossum {
 
-TableStatistics generate_table_statistics(const std::shared_ptr<const Table>& table, const int64_t num_buckets) {
+TableStatistics generate_table_statistics(const std::shared_ptr<const Table>& table, const int64_t num_bins) {
   std::vector<std::shared_ptr<const BaseColumnStatistics>> column_statistics;
   column_statistics.reserve(table->column_count());
 
@@ -21,10 +21,10 @@ TableStatistics generate_table_statistics(const std::shared_ptr<const Table>& ta
     resolve_data_type(column_data_type, [&](auto type) {
       using ColumnDataType = typename decltype(type)::type;
 
-      if (num_buckets == 0) {
+      if (num_bins == 0) {
         column_statistics.emplace_back(generate_column_statistics<ColumnDataType>(table, column_id));
       } else {
-        column_statistics.emplace_back(generate_column_statistics<ColumnDataType>(table, column_id, num_buckets));
+        column_statistics.emplace_back(generate_column_statistics<ColumnDataType>(table, column_id, num_bins));
       }
     });
   }

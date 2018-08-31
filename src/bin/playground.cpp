@@ -457,7 +457,7 @@ int main() {
   std::cout << "done (" << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "µs)."
             << std::endl;
 
-  const auto num_bucket_combinations = {
+  const auto num_bin_combinations = {
       // 1u, 2u, 5u, 10u, 25u, 50u, 100u, 150u, 200u, 250u, 300u, 400u, 500u, 750u, 1000u,
       1u, 10u, 25u, 100u, 250u, 1'000u, 2'500u, 5'000u, 7'500u, 10'000u,
       // 10u, 50u, 250u,
@@ -466,13 +466,12 @@ int main() {
   const auto predicate_type = PredicateCondition::Equals;
 
   auto results_log = std::ofstream("../estimation_results.log", std::ios_base::out | std::ios_base::trunc);
-  results_log << "total_count,distinct_count,num_buckets,column_name,predicate_condition,value,actual_count,equal_"
+  results_log << "total_count,distinct_count,num_bins,column_name,predicate_condition,value,actual_count,equal_"
                  "height_hist_count,equal_num_elements_hist_count,equal_width_hist_count\n";
 
-  auto histogram_log = std::ofstream("../histogram_buckets.log", std::ios_base::out | std::ios_base::trunc);
-  histogram_log
-      << "histogram_type,column_name,actual_num_buckets,requested_num_buckets,bucket_id,bucket_min,bucket_max,"
-         "bucket_min_repr,bucket_max_repr,bucket_count,bucket_count_distinct\n";
+  auto histogram_log = std::ofstream("../histogram_bins.log", std::ios_base::out | std::ios_base::trunc);
+  histogram_log << "histogram_type,column_name,actual_num_bins,requested_num_bins,bin_id,bin_min,bin_max,"
+                   "bin_min_repr,bin_max_repr,bin_count,bin_count_distinct\n";
 
   // std::random_device rd;
   // std::mt19937 gen(rd());
@@ -487,7 +486,7 @@ int main() {
   const auto distinct_count_by_column = get_distinct_count_by_column(table, filters_by_column);
   const auto total_count = table->row_count();
 
-  for (auto num_buckets : num_bucket_combinations) {
+  for (auto num_bins : num_bin_combinations) {
     for (auto it : filters_by_column) {
       const auto column_id = it.first;
       const auto column_name = table->column_name(column_id);
@@ -499,42 +498,42 @@ int main() {
       resolve_data_type(column_data_type, [&](auto type) {
         using T = typename decltype(type)::type;
 
-        std::cout << std::chrono::system_clock::now() << " Generating EqualHeightHistogram with " << num_buckets
-                  << " buckets...";
+        std::cout << std::chrono::system_clock::now() << " Generating EqualHeightHistogram with " << num_bins
+                  << " bins...";
         start = std::chrono::high_resolution_clock::now();
 
         const auto equal_height_hist =
-            EqualHeightHistogram<T>::from_column(table->get_chunk(ChunkID{0})->get_column(column_id), num_buckets);
+            EqualHeightHistogram<T>::from_column(table->get_chunk(ChunkID{0})->get_column(column_id), num_bins);
 
         end = std::chrono::high_resolution_clock::now();
         std::cout << "done (" << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "µs)."
                   << std::endl;
 
-        std::cout << std::chrono::system_clock::now() << " Generating EqualNumElementsHistogram with " << num_buckets
-                  << " buckets...";
+        std::cout << std::chrono::system_clock::now() << " Generating EqualNumElementsHistogram with " << num_bins
+                  << " bins...";
         start = std::chrono::high_resolution_clock::now();
 
         const auto equal_num_elements_hist =
-            EqualNumElementsHistogram<T>::from_column(table->get_chunk(ChunkID{0})->get_column(column_id), num_buckets);
+            EqualNumElementsHistogram<T>::from_column(table->get_chunk(ChunkID{0})->get_column(column_id), num_bins);
 
         end = std::chrono::high_resolution_clock::now();
         std::cout << "done (" << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "µs)."
                   << std::endl;
 
-        std::cout << std::chrono::system_clock::now() << " Generating EqualWidthHistogram with " << num_buckets
-                  << " buckets...";
+        std::cout << std::chrono::system_clock::now() << " Generating EqualWidthHistogram with " << num_bins
+                  << " bins...";
         start = std::chrono::high_resolution_clock::now();
 
         const auto equal_width_hist =
-            EqualWidthHistogram<T>::from_column(table->get_chunk(ChunkID{0})->get_column(column_id), num_buckets);
+            EqualWidthHistogram<T>::from_column(table->get_chunk(ChunkID{0})->get_column(column_id), num_bins);
 
         end = std::chrono::high_resolution_clock::now();
         std::cout << "done (" << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "µs)."
                   << std::endl;
 
-        histogram_log << equal_height_hist->buckets_to_csv(false, column_name, num_buckets);
-        histogram_log << equal_num_elements_hist->buckets_to_csv(false, column_name, num_buckets);
-        histogram_log << equal_width_hist->buckets_to_csv(false, column_name, num_buckets);
+        histogram_log << equal_height_hist->bins_to_csv(false, column_name, num_bins);
+        histogram_log << equal_num_elements_hist->bins_to_csv(false, column_name, num_bins);
+        histogram_log << equal_width_hist->bins_to_csv(false, column_name, num_bins);
         histogram_log.flush();
 
         for (const auto& pair : it.second) {
@@ -574,7 +573,7 @@ int main() {
           //           << std::endl;
 
           results_log << std::to_string(total_count) << "," << std::to_string(distinct_count) << ","
-                      << std::to_string(num_buckets) << "," << column_name << ","
+                      << std::to_string(num_bins) << "," << column_name << ","
                       << predicate_condition_to_string.left.at(predicate_condition) << "," << value << ","
                       << std::to_string(actual_count) << "," << std::to_string(equal_height_hist_count) << ","
                       << std::to_string(equal_num_elements_hist_count) << "," << std::to_string(equal_width_hist_count)

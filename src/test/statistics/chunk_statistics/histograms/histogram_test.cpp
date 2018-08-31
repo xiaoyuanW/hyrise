@@ -76,7 +76,7 @@ TEST_F(HistogramTest, EqualNumElementsBasic) {
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 1'000'000), 0.f);
 }
 
-TEST_F(HistogramTest, EqualNumElementsUnevenBuckets) {
+TEST_F(HistogramTest, EqualNumElementsUnevenBins) {
   auto hist =
       EqualNumElementsHistogram<int32_t>::from_column(_int_float4->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 3u);
 
@@ -204,7 +204,7 @@ TEST_F(HistogramTest, EqualNumElementsString) {
 
 TEST_F(HistogramTest, EqualNumElementsStringPruning) {
   /**
-   * 4 buckets
+   * 4 bins
    *  [aa, b, birne]    -> [aa, bir]
    *  [bla, bums, ttt]  -> [bla, ttt]
    *  [uuu, www, xxx]   -> [uuu, xxx]
@@ -213,23 +213,23 @@ TEST_F(HistogramTest, EqualNumElementsStringPruning) {
   auto hist = EqualNumElementsHistogram<std::string>::from_column(
       _string2->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 4u, "abcdefghijklmnopqrstuvwxyz", 3u);
 
-  // These values are smaller than values in bucket 0.
+  // These values are smaller than values in bin 0.
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, ""));
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "a"));
 
-  // These values fall within bucket 0.
+  // These values fall within bin 0.
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "aa"));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "aaa"));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "b"));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "bir"));
 
-  // Even though these values are greater than the stored bucket boundary (birne truncated to three characters),
-  // these values are not prunable because their truncated substring is the same as the bucket boundary.
+  // Even though these values are greater than the stored bin boundary (birne truncated to three characters),
+  // these values are not prunable because their truncated substring is the same as the bin boundary.
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "bira"));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "birne"));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "birz"));
 
-  // These values are between bucket 0 and 1.
+  // These values are between bin 0 and 1.
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "bis"));
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "biscuit"));
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "bja"));
@@ -237,7 +237,7 @@ TEST_F(HistogramTest, EqualNumElementsStringPruning) {
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "bkz"));
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "bl"));
 
-  // These values fall within bucket 1.
+  // These values fall within bin 1.
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "bla"));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "c"));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "mmopasdasdasd"));
@@ -246,17 +246,17 @@ TEST_F(HistogramTest, EqualNumElementsStringPruning) {
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "tt"));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "ttt"));
 
-  // Even though these values are greater than the stored bucket boundary (ttt),
-  // these values are not prunable because their truncated substring is the same as the bucket boundary.
+  // Even though these values are greater than the stored bin boundary (ttt),
+  // these values are not prunable because their truncated substring is the same as the bin boundary.
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "tttu"));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "tttzzzzz"));
 
-  // These values are between bucket 1 and 2.
+  // These values are between bin 1 and 2.
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "turkey"));
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "uut"));
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "uutzzzzz"));
 
-  // These values fall within bucket 2.
+  // These values fall within bin 2.
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "uuu"));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "uuuzzz"));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "uv"));
@@ -268,27 +268,27 @@ TEST_F(HistogramTest, EqualNumElementsStringPruning) {
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "xxw"));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "xxx"));
 
-  // Even though these values are greater than the stored bucket boundary (xxx),
-  // these values are not prunable because their truncated substring is the same as the bucket boundary.
+  // Even though these values are greater than the stored bin boundary (xxx),
+  // these values are not prunable because their truncated substring is the same as the bin boundary.
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "xxxa"));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "xxxzzzzzz"));
 
-  // These values are between bucket 2 and 3.
+  // These values are between bin 2 and 3.
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "xy"));
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "xyzz"));
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "y"));
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "yyx"));
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "yyxzzzzz"));
 
-  // These values fall within bucket 3.
+  // These values fall within bin 3.
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "yyy"));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "yyyzzzzz"));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "yz"));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "z"));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "zzz"));
 
-  // Even though these values are greater than the stored bucket boundary (zzz),
-  // these values are not prunable because their truncated substring is the same as the bucket boundary.
+  // Even though these values are greater than the stored bin boundary (zzz),
+  // these values are not prunable because their truncated substring is the same as the bin boundary.
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "zzza"));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "zzzzzzzzz"));
 }
@@ -372,48 +372,48 @@ TEST_F(HistogramTest, EqualNumElementsStringLessThan) {
       _string3->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 4u, "abcdefghijklmnopqrstuvwxyz", 4u);
 
   // "abcd"
-  const auto bucket_1_lower = 0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-                              1 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 2 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-                              3 * (ipow(26, 0)) + 1;
+  const auto bin_1_lower = 0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                           1 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 2 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                           3 * (ipow(26, 0)) + 1;
   // "efgh"
-  const auto bucket_1_upper = 4 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-                              5 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 6 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-                              7 * (ipow(26, 0)) + 1;
+  const auto bin_1_upper = 4 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                           5 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 6 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                           7 * (ipow(26, 0)) + 1;
   // "ijkl"
-  const auto bucket_2_lower = 8 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-                              9 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 10 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-                              11 * (ipow(26, 0)) + 1;
+  const auto bin_2_lower = 8 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                           9 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 10 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                           11 * (ipow(26, 0)) + 1;
   // "mnop"
-  const auto bucket_2_upper = 12 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-                              13 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 14 * (ipow(26, 1) + ipow(26, 0)) +
-                              1 + 15 * (ipow(26, 0)) + 1;
+  const auto bin_2_upper = 12 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                           13 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 14 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                           15 * (ipow(26, 0)) + 1;
   // "oopp"
-  const auto bucket_3_lower = 14 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-                              14 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 15 * (ipow(26, 1) + ipow(26, 0)) +
-                              1 + 15 * (ipow(26, 0)) + 1;
+  const auto bin_3_lower = 14 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                           14 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 15 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                           15 * (ipow(26, 0)) + 1;
   // "qrst"
-  const auto bucket_3_upper = 16 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-                              17 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 18 * (ipow(26, 1) + ipow(26, 0)) +
-                              1 + 19 * (ipow(26, 0)) + 1;
+  const auto bin_3_upper = 16 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                           17 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 18 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                           19 * (ipow(26, 0)) + 1;
   // "uvwx"
-  const auto bucket_4_lower = 20 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-                              21 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 22 * (ipow(26, 1) + ipow(26, 0)) +
-                              1 + 23 * (ipow(26, 0)) + 1;
+  const auto bin_4_lower = 20 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                           21 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 22 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                           23 * (ipow(26, 0)) + 1;
   // "yyzz"
-  const auto bucket_4_upper = 24 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-                              24 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 25 * (ipow(26, 1) + ipow(26, 0)) +
-                              1 + 25 * (ipow(26, 0)) + 1;
+  const auto bin_4_upper = 24 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                           24 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 25 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                           25 * (ipow(26, 0)) + 1;
 
-  const auto bucket_1_width = (bucket_1_upper - bucket_1_lower + 1.f);
-  const auto bucket_2_width = (bucket_2_upper - bucket_2_lower + 1.f);
-  const auto bucket_3_width = (bucket_3_upper - bucket_3_lower + 1.f);
-  const auto bucket_4_width = (bucket_4_upper - bucket_4_lower + 1.f);
+  const auto bin_1_width = (bin_1_upper - bin_1_lower + 1.f);
+  const auto bin_2_width = (bin_2_upper - bin_2_lower + 1.f);
+  const auto bin_3_width = (bin_3_upper - bin_3_lower + 1.f);
+  const auto bin_4_width = (bin_4_upper - bin_4_lower + 1.f);
 
-  constexpr auto bucket_1_count = 4.f;
-  constexpr auto bucket_2_count = 6.f;
-  constexpr auto bucket_3_count = 3.f;
-  constexpr auto bucket_4_count = 3.f;
-  constexpr auto total_count = bucket_1_count + bucket_2_count + bucket_3_count + bucket_4_count;
+  constexpr auto bin_1_count = 4.f;
+  constexpr auto bin_2_count = 6.f;
+  constexpr auto bin_3_count = 3.f;
+  constexpr auto bin_4_count = 3.f;
+  constexpr auto total_count = bin_1_count + bin_2_count + bin_3_count + bin_4_count;
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::LessThan, "aaaa"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "aaaa"), 0.f);
@@ -422,176 +422,172 @@ TEST_F(HistogramTest, EqualNumElementsStringLessThan) {
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "abcd"), 0.f);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "abce"));
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "abce"),
-                  1 / bucket_1_width * bucket_1_count);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "abce"), 1 / bin_1_width * bin_1_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "abcf"));
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "abcf"),
-                  2 / bucket_1_width * bucket_1_count);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "abcf"), 2 / bin_1_width * bin_1_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "abcf"));
   EXPECT_FLOAT_EQ(
       hist->estimate_cardinality(PredicateCondition::LessThan, "cccc"),
       (2 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 2 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) +
-       1 + 2 * (ipow(26, 1) + ipow(26, 0)) + 1 + 2 * (ipow(26, 0)) + 1 - bucket_1_lower) /
-          bucket_1_width * bucket_1_count);
+       1 + 2 * (ipow(26, 1) + ipow(26, 0)) + 1 + 2 * (ipow(26, 0)) + 1 - bin_1_lower) /
+          bin_1_width * bin_1_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "dddd"));
   EXPECT_FLOAT_EQ(
       hist->estimate_cardinality(PredicateCondition::LessThan, "dddd"),
       (3 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 3 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) +
-       1 + 3 * (ipow(26, 1) + ipow(26, 0)) + 1 + 3 * (ipow(26, 0)) + 1 - bucket_1_lower) /
-          bucket_1_width * bucket_1_count);
+       1 + 3 * (ipow(26, 1) + ipow(26, 0)) + 1 + 3 * (ipow(26, 0)) + 1 - bin_1_lower) /
+          bin_1_width * bin_1_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "efgg"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "efgg"),
-                  (bucket_1_width - 2) / bucket_1_width * bucket_1_count);
+                  (bin_1_width - 2) / bin_1_width * bin_1_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "efgh"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "efgh"),
-                  (bucket_1_width - 1) / bucket_1_width * bucket_1_count);
+                  (bin_1_width - 1) / bin_1_width * bin_1_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "efgi"));
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "efgi"), bucket_1_count);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "efgi"), bin_1_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "ijkl"));
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "ijkl"), bucket_1_count);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "ijkl"), bin_1_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "ijkm"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "ijkm"),
-                  1 / bucket_2_width * bucket_2_count + bucket_1_count);
+                  1 / bin_2_width * bin_2_count + bin_1_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "ijkn"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "ijkn"),
-                  2 / bucket_2_width * bucket_2_count + bucket_1_count);
+                  2 / bin_2_width * bin_2_count + bin_1_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "jjjj"));
   EXPECT_FLOAT_EQ(
       hist->estimate_cardinality(PredicateCondition::LessThan, "jjjj"),
       (9 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 9 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) +
-       1 + 9 * (ipow(26, 1) + ipow(26, 0)) + 1 + 9 * (ipow(26, 0)) + 1 - bucket_2_lower) /
-              bucket_2_width * bucket_2_count +
-          bucket_1_count);
+       1 + 9 * (ipow(26, 1) + ipow(26, 0)) + 1 + 9 * (ipow(26, 0)) + 1 - bin_2_lower) /
+              bin_2_width * bin_2_count +
+          bin_1_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "kkkk"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "kkkk"),
                   (10 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    10 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 10 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-                   10 * (ipow(26, 0)) + 1 - bucket_2_lower) /
-                          bucket_2_width * bucket_2_count +
-                      bucket_1_count);
+                   10 * (ipow(26, 0)) + 1 - bin_2_lower) /
+                          bin_2_width * bin_2_count +
+                      bin_1_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "lzzz"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "lzzz"),
                   (11 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    25 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 25 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-                   25 * (ipow(26, 0)) + 1 - bucket_2_lower) /
-                          bucket_2_width * bucket_2_count +
-                      bucket_1_count);
+                   25 * (ipow(26, 0)) + 1 - bin_2_lower) /
+                          bin_2_width * bin_2_count +
+                      bin_1_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "mnoo"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "mnoo"),
-                  (bucket_2_width - 2) / bucket_2_width * bucket_2_count + bucket_1_count);
+                  (bin_2_width - 2) / bin_2_width * bin_2_count + bin_1_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "mnop"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "mnop"),
-                  (bucket_2_width - 1) / bucket_2_width * bucket_2_count + bucket_1_count);
+                  (bin_2_width - 1) / bin_2_width * bin_2_count + bin_1_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "mnoq"));
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "mnoq"), bucket_1_count + bucket_2_count);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "mnoq"), bin_1_count + bin_2_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "oopp"));
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "oopp"), bucket_1_count + bucket_2_count);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "oopp"), bin_1_count + bin_2_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "oopq"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "oopq"),
-                  1 / bucket_3_width * bucket_3_count + bucket_1_count + bucket_2_count);
+                  1 / bin_3_width * bin_3_count + bin_1_count + bin_2_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "oopr"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "oopr"),
-                  2 / bucket_3_width * bucket_3_count + bucket_1_count + bucket_2_count);
+                  2 / bin_3_width * bin_3_count + bin_1_count + bin_2_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "pppp"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "pppp"),
                   (15 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    15 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 15 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-                   15 * (ipow(26, 0)) + 1 - bucket_3_lower) /
-                          bucket_3_width * bucket_3_count +
-                      bucket_1_count + bucket_2_count);
+                   15 * (ipow(26, 0)) + 1 - bin_3_lower) /
+                          bin_3_width * bin_3_count +
+                      bin_1_count + bin_2_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "qqqq"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qqqq"),
                   (16 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    16 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 16 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-                   16 * (ipow(26, 0)) + 1 - bucket_3_lower) /
-                          bucket_3_width * bucket_3_count +
-                      bucket_1_count + bucket_2_count);
+                   16 * (ipow(26, 0)) + 1 - bin_3_lower) /
+                          bin_3_width * bin_3_count +
+                      bin_1_count + bin_2_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "qllo"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qllo"),
                   (16 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    11 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 11 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-                   14 * (ipow(26, 0)) + 1 - bucket_3_lower) /
-                          bucket_3_width * bucket_3_count +
-                      bucket_1_count + bucket_2_count);
+                   14 * (ipow(26, 0)) + 1 - bin_3_lower) /
+                          bin_3_width * bin_3_count +
+                      bin_1_count + bin_2_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "qrss"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qrss"),
-                  (bucket_3_width - 2) / bucket_3_width * bucket_3_count + bucket_1_count + bucket_2_count);
+                  (bin_3_width - 2) / bin_3_width * bin_3_count + bin_1_count + bin_2_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "qrst"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qrst"),
-                  (bucket_3_width - 1) / bucket_3_width * bucket_3_count + bucket_1_count + bucket_2_count);
+                  (bin_3_width - 1) / bin_3_width * bin_3_count + bin_1_count + bin_2_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "qrsu"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qrsu"),
-                  bucket_1_count + bucket_2_count + bucket_3_count);
+                  bin_1_count + bin_2_count + bin_3_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "uvwx"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "uvwx"),
-                  bucket_1_count + bucket_2_count + bucket_3_count);
+                  bin_1_count + bin_2_count + bin_3_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "uvwy"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "uvwy"),
-                  1 / bucket_4_width * bucket_4_count + bucket_1_count + bucket_2_count + bucket_3_count);
+                  1 / bin_4_width * bin_4_count + bin_1_count + bin_2_count + bin_3_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "uvwz"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "uvwz"),
-                  2 / bucket_4_width * bucket_4_count + bucket_1_count + bucket_2_count + bucket_3_count);
+                  2 / bin_4_width * bin_4_count + bin_1_count + bin_2_count + bin_3_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "vvvv"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "vvvv"),
                   (21 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    21 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 21 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-                   21 * (ipow(26, 0)) + 1 - bucket_4_lower) /
-                          bucket_4_width * bucket_4_count +
-                      bucket_1_count + bucket_2_count + bucket_3_count);
+                   21 * (ipow(26, 0)) + 1 - bin_4_lower) /
+                          bin_4_width * bin_4_count +
+                      bin_1_count + bin_2_count + bin_3_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "xxxx"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "xxxx"),
                   (23 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    23 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 23 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-                   23 * (ipow(26, 0)) + 1 - bucket_4_lower) /
-                          bucket_4_width * bucket_4_count +
-                      bucket_1_count + bucket_2_count + bucket_3_count);
+                   23 * (ipow(26, 0)) + 1 - bin_4_lower) /
+                          bin_4_width * bin_4_count +
+                      bin_1_count + bin_2_count + bin_3_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "ycip"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "ycip"),
                   (24 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    2 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 8 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-                   15 * (ipow(26, 0)) + 1 - bucket_4_lower) /
-                          bucket_4_width * bucket_4_count +
-                      bucket_1_count + bucket_2_count + bucket_3_count);
+                   15 * (ipow(26, 0)) + 1 - bin_4_lower) /
+                          bin_4_width * bin_4_count +
+                      bin_1_count + bin_2_count + bin_3_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "yyzy"));
-  EXPECT_FLOAT_EQ(
-      hist->estimate_cardinality(PredicateCondition::LessThan, "yyzy"),
-      (bucket_4_width - 2) / bucket_4_width * bucket_4_count + bucket_1_count + bucket_2_count + bucket_3_count);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "yyzy"),
+                  (bin_4_width - 2) / bin_4_width * bin_4_count + bin_1_count + bin_2_count + bin_3_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "yyzz"));
-  EXPECT_FLOAT_EQ(
-      hist->estimate_cardinality(PredicateCondition::LessThan, "yyzz"),
-      (bucket_4_width - 1) / bucket_4_width * bucket_4_count + bucket_1_count + bucket_2_count + bucket_3_count);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "yyzz"),
+                  (bin_4_width - 1) / bin_4_width * bin_4_count + bin_1_count + bin_2_count + bin_3_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "yz"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "yz"), total_count);
@@ -649,7 +645,7 @@ TEST_F(HistogramTest, EqualWidthHistogramBasic) {
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 18), 0.f);
 }
 
-TEST_F(HistogramTest, EqualWidthHistogramUnevenBuckets) {
+TEST_F(HistogramTest, EqualWidthHistogramUnevenBins) {
   auto hist = EqualWidthHistogram<int32_t>::from_column(_int_int4->get_chunk(ChunkID{0})->get_column(ColumnID{1}), 4u);
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, -1));
@@ -707,10 +703,10 @@ TEST_F(HistogramTest, EqualWidthHistogramUnevenBuckets) {
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 18), 0.f);
 }
 
-TEST_F(HistogramTest, EqualWidthHistogramMoreBucketsThanDistinctValuesIntEquals) {
+TEST_F(HistogramTest, EqualWidthHistogramMoreBinsThanDistinctValuesIntEquals) {
   auto hist =
       EqualWidthHistogram<int32_t>::from_column(_int_float4->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 10u);
-  EXPECT_EQ(hist->num_buckets(), 10u);
+  EXPECT_EQ(hist->num_bins(), 10u);
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, 11));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 11), 0.f);
@@ -755,45 +751,45 @@ TEST_F(HistogramTest, EqualWidthHistogramMoreBucketsThanDistinctValuesIntEquals)
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 123'457), 0.f);
 }
 
-TEST_F(HistogramTest, EqualWidthHistogramMoreBucketsThanDistinctValuesIntLessThan) {
+TEST_F(HistogramTest, EqualWidthHistogramMoreBinsThanDistinctValuesIntLessThan) {
   auto hist =
       EqualWidthHistogram<int32_t>::from_column(_int_float4->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 10u);
-  EXPECT_EQ(hist->num_buckets(), 10u);
+  EXPECT_EQ(hist->num_bins(), 10u);
 
   constexpr auto hist_min = 12;
   constexpr auto hist_max = 123'456;
 
-  // First five buckets are one element "wider", because the range of the column is not evenly divisible by 10.
-  constexpr auto bucket_width = (hist_max - hist_min + 1) / 10;
-  constexpr auto bucket_0_min = hist_min;
-  constexpr auto bucket_9_min = hist_min + 9 * bucket_width + 5;
+  // First five bins are one element "wider", because the range of the column is not evenly divisible by 10.
+  constexpr auto bin_width = (hist_max - hist_min + 1) / 10;
+  constexpr auto bin_0_min = hist_min;
+  constexpr auto bin_9_min = hist_min + 9 * bin_width + 5;
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::LessThan, 12));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 12), 0.f);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 100));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 100),
-                  4.f * (100 - bucket_0_min) / (bucket_width + 1));
+                  4.f * (100 - bin_0_min) / (bin_width + 1));
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 123));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 123),
-                  4.f * (123 - bucket_0_min) / (bucket_width + 1));
+                  4.f * (123 - bin_0_min) / (bin_width + 1));
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 1'000));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 1'000),
-                  4.f * (1'000 - bucket_0_min) / (bucket_width + 1));
+                  4.f * (1'000 - bin_0_min) / (bin_width + 1));
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 10'000));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 10'000),
-                  4.f * (10'000 - bucket_0_min) / (bucket_width + 1));
+                  4.f * (10'000 - bin_0_min) / (bin_width + 1));
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 12'345));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 12'345),
-                  4.f * (12'345 - bucket_0_min) / (bucket_width + 1));
+                  4.f * (12'345 - bin_0_min) / (bin_width + 1));
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 12'356));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 12'356),
-                  4.f * (12'356 - bucket_0_min) / (bucket_width + 1));
+                  4.f * (12'356 - bin_0_min) / (bin_width + 1));
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 12'357));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 12'357), 4.f);
@@ -807,25 +803,24 @@ TEST_F(HistogramTest, EqualWidthHistogramMoreBucketsThanDistinctValuesIntLessTha
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 100'000));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 100'000), 4.f);
 
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, bucket_9_min));
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, bucket_9_min), 4.f);
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, bin_9_min));
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, bin_9_min), 4.f);
 
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, bucket_9_min + 1));
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, bucket_9_min + 1),
-                  4.f + 3 * (1.f / bucket_width));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, bin_9_min + 1));
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, bin_9_min + 1), 4.f + 3 * (1.f / bin_width));
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 123'456));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 123'456),
-                  4.f + 3.f * (123'456 - bucket_9_min) / bucket_width);
+                  4.f + 3.f * (123'456 - bin_9_min) / bin_width);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, 123'457));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 123'457), 7.f);
 }
 
-TEST_F(HistogramTest, EqualWidthHistogramMoreBucketsThanRepresentableValues) {
+TEST_F(HistogramTest, EqualWidthHistogramMoreBinsThanRepresentableValues) {
   auto hist = EqualWidthHistogram<int32_t>::from_column(_int_int4->get_chunk(ChunkID{0})->get_column(ColumnID{1}), 19u);
-  // There must not be more buckets than representable values in the column domain.
-  EXPECT_EQ(hist->num_buckets(), 17 - 0 + 1);
+  // There must not be more bins than representable values in the column domain.
+  EXPECT_EQ(hist->num_bins(), 17 - 0 + 1);
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, -1));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, -1), 0.f);
@@ -980,29 +975,29 @@ TEST_F(HistogramTest, EqualWidthLessThan) {
   auto hist =
       EqualWidthHistogram<int32_t>::from_column(_int_float4->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 3u);
 
-  // The first bucket's range is one value wider (because (123'456 - 12 + 1) % 3 = 1).
-  const auto bucket_width = (123'456 - 12 + 1) / 3;
+  // The first bin's range is one value wider (because (123'456 - 12 + 1) % 3 = 1).
+  const auto bin_width = (123'456 - 12 + 1) / 3;
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{12}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 12), 0.f);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{70}));
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 70), (70.f - 12) / (bucket_width + 1) * 4);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 70), (70.f - 12) / (bin_width + 1) * 4);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{1'234}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 1'234),
-                  (1'234.f - 12) / (bucket_width + 1) * 4);
+                  (1'234.f - 12) / (bin_width + 1) * 4);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{12'346}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 12'346),
-                  (12'346.f - 12) / (bucket_width + 1) * 4);
+                  (12'346.f - 12) / (bin_width + 1) * 4);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{80'000}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 80'000), 4.f);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{123'456}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 123'456),
-                  4.f + (123'456.f - (12 + 2 * bucket_width + 1)) / bucket_width * 3);
+                  4.f + (123'456.f - (12 + 2 * bin_width + 1)) / bin_width * 3);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{123'457}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 123'457), 4.f + 3.f);
@@ -1014,56 +1009,56 @@ TEST_F(HistogramTest, EqualWidthLessThan) {
 TEST_F(HistogramTest, EqualWidthFloatLessThan) {
   auto hist = EqualWidthHistogram<float>::from_column(_float2->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 3u);
 
-  const auto bucket_width = std::nextafter(6.1f - 0.5f, 6.1f - 0.5f + 1) / 3;
+  const auto bin_width = std::nextafter(6.1f - 0.5f, 6.1f - 0.5f + 1) / 3;
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{0.5f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 0.5f), 0.f);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan,
-                               AllTypeVariant{std::nextafter(0.5f + bucket_width, 0.5f + bucket_width + 1)}));
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan,
-                                             std::nextafter(0.5f + bucket_width, 0.5f + bucket_width + 1)),
-                  4.f);
+                               AllTypeVariant{std::nextafter(0.5f + bin_width, 0.5f + bin_width + 1)}));
+  EXPECT_FLOAT_EQ(
+      hist->estimate_cardinality(PredicateCondition::LessThan, std::nextafter(0.5f + bin_width, 0.5f + bin_width + 1)),
+      4.f);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{1.0f}));
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 1.0f), (1.0f - 0.5f) / bucket_width * 4);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 1.0f), (1.0f - 0.5f) / bin_width * 4);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{1.7f}));
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 1.7f), (1.7f - 0.5f) / bucket_width * 4);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 1.7f), (1.7f - 0.5f) / bin_width * 4);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{2.5f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 2.5f),
-                  4.f + (2.5f - (0.5f + bucket_width)) / bucket_width * 7);
+                  4.f + (2.5f - (0.5f + bin_width)) / bin_width * 7);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{3.0f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 3.0f),
-                  4.f + (3.0f - (0.5f + bucket_width)) / bucket_width * 7);
+                  4.f + (3.0f - (0.5f + bin_width)) / bin_width * 7);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{3.3f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 3.3f),
-                  4.f + (3.3f - (0.5f + bucket_width)) / bucket_width * 7);
+                  4.f + (3.3f - (0.5f + bin_width)) / bin_width * 7);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{3.6f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 3.6f),
-                  4.f + (3.6f - (0.5f + bucket_width)) / bucket_width * 7);
+                  4.f + (3.6f - (0.5f + bin_width)) / bin_width * 7);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{3.9f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 3.9f),
-                  4.f + (3.9f - (0.5f + bucket_width)) / bucket_width * 7);
+                  4.f + (3.9f - (0.5f + bin_width)) / bin_width * 7);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan,
-                               AllTypeVariant{std::nextafter(0.5f + 2 * bucket_width, 0.5f + 2 * bucket_width + 1)}));
+                               AllTypeVariant{std::nextafter(0.5f + 2 * bin_width, 0.5f + 2 * bin_width + 1)}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan,
-                                             std::nextafter(0.5f + 2 * bucket_width, 0.5f + 2 * bucket_width + 1)),
+                                             std::nextafter(0.5f + 2 * bin_width, 0.5f + 2 * bin_width + 1)),
                   4.f + 7.f);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{4.4f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 4.4f),
-                  4.f + 7.f + (4.4f - (0.5f + 2 * bucket_width)) / bucket_width * 3);
+                  4.f + 7.f + (4.4f - (0.5f + 2 * bin_width)) / bin_width * 3);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{5.9f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 5.9f),
-                  4.f + 7.f + (5.9f - (0.5f + 2 * bucket_width)) / bucket_width * 3);
+                  4.f + 7.f + (5.9f - (0.5f + 2 * bin_width)) / bin_width * 3);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{std::nextafter(6.1f, 6.1f + 1)}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, std::nextafter(6.1f, 6.1f + 1)),
@@ -1087,24 +1082,24 @@ TEST_F(HistogramTest, EqualWidthStringLessThan) {
   const auto hist_width = hist_upper - hist_lower + 1;
   // Convert to float so that calculations further down are floating point divisions.
   // The division here, however, must be integral.
-  const auto bucket_width = static_cast<float>(hist_width / 4u);
+  const auto bin_width = static_cast<float>(hist_width / 4u);
 
-  // hist_width % bucket_width == 1, so there is one bucket storing one additional value.
-  const auto bucket_1_width = bucket_width + 1;
-  const auto bucket_2_width = bucket_width;
-  const auto bucket_3_width = bucket_width;
-  const auto bucket_4_width = bucket_width;
+  // hist_width % bin_width == 1, so there is one bin storing one additional value.
+  const auto bin_1_width = bin_width + 1;
+  const auto bin_2_width = bin_width;
+  const auto bin_3_width = bin_width;
+  const auto bin_4_width = bin_width;
 
-  const auto bucket_1_lower = hist_lower;
-  const auto bucket_2_lower = bucket_1_lower + bucket_1_width;
-  const auto bucket_3_lower = bucket_2_lower + bucket_2_width;
-  const auto bucket_4_lower = bucket_3_lower + bucket_3_width;
+  const auto bin_1_lower = hist_lower;
+  const auto bin_2_lower = bin_1_lower + bin_1_width;
+  const auto bin_3_lower = bin_2_lower + bin_2_width;
+  const auto bin_4_lower = bin_3_lower + bin_3_width;
 
-  constexpr auto bucket_1_count = 4.f;
-  constexpr auto bucket_2_count = 5.f;
-  constexpr auto bucket_3_count = 4.f;
-  constexpr auto bucket_4_count = 3.f;
-  constexpr auto total_count = bucket_1_count + bucket_2_count + bucket_3_count + bucket_4_count;
+  constexpr auto bin_1_count = 4.f;
+  constexpr auto bin_2_count = 5.f;
+  constexpr auto bin_3_count = 4.f;
+  constexpr auto bin_4_count = 3.f;
+  constexpr auto total_count = bin_1_count + bin_2_count + bin_3_count + bin_4_count;
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::LessThan, "aaaa"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "aaaa"), 0.f);
@@ -1113,170 +1108,166 @@ TEST_F(HistogramTest, EqualWidthStringLessThan) {
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "abcd"), 0.f);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "abce"));
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "abce"),
-                  1 / bucket_1_width * bucket_1_count);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "abce"), 1 / bin_1_width * bin_1_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "abcf"));
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "abcf"),
-                  2 / bucket_1_width * bucket_1_count);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "abcf"), 2 / bin_1_width * bin_1_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "cccc"));
   EXPECT_FLOAT_EQ(
       hist->estimate_cardinality(PredicateCondition::LessThan, "cccc"),
       (2 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 2 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) +
-       1 + 2 * (ipow(26, 1) + ipow(26, 0)) + 1 + 2 * (ipow(26, 0)) + 1 - bucket_1_lower) /
-          bucket_1_width * bucket_1_count);
+       1 + 2 * (ipow(26, 1) + ipow(26, 0)) + 1 + 2 * (ipow(26, 0)) + 1 - bin_1_lower) /
+          bin_1_width * bin_1_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "dddd"));
   EXPECT_FLOAT_EQ(
       hist->estimate_cardinality(PredicateCondition::LessThan, "dddd"),
       (3 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 3 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) +
-       1 + 3 * (ipow(26, 1) + ipow(26, 0)) + 1 + 3 * (ipow(26, 0)) + 1 - bucket_1_lower) /
-          bucket_1_width * bucket_1_count);
+       1 + 3 * (ipow(26, 1) + ipow(26, 0)) + 1 + 3 * (ipow(26, 0)) + 1 - bin_1_lower) /
+          bin_1_width * bin_1_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "ghbo"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "ghbo"),
-                  (bucket_1_width - 2) / bucket_1_width * bucket_1_count);
+                  (bin_1_width - 2) / bin_1_width * bin_1_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "ghbp"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "ghbp"),
-                  (bucket_1_width - 1) / bucket_1_width * bucket_1_count);
+                  (bin_1_width - 1) / bin_1_width * bin_1_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "ghbq"));
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "ghbq"), bucket_1_count);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "ghbq"), bin_1_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "ghbr"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "ghbr"),
-                  1 / bucket_2_width * bucket_2_count + bucket_1_count);
+                  1 / bin_2_width * bin_2_count + bin_1_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "ghbs"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "ghbs"),
-                  2 / bucket_2_width * bucket_2_count + bucket_1_count);
+                  2 / bin_2_width * bin_2_count + bin_1_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "jjjj"));
   EXPECT_FLOAT_EQ(
       hist->estimate_cardinality(PredicateCondition::LessThan, "jjjj"),
       (9 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 9 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) +
-       1 + 9 * (ipow(26, 1) + ipow(26, 0)) + 1 + 9 * (ipow(26, 0)) + 1 - bucket_2_lower) /
-              bucket_2_width * bucket_2_count +
-          bucket_1_count);
+       1 + 9 * (ipow(26, 1) + ipow(26, 0)) + 1 + 9 * (ipow(26, 0)) + 1 - bin_2_lower) /
+              bin_2_width * bin_2_count +
+          bin_1_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "kkkk"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "kkkk"),
                   (10 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    10 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 10 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-                   10 * (ipow(26, 0)) + 1 - bucket_2_lower) /
-                          bucket_2_width * bucket_2_count +
-                      bucket_1_count);
+                   10 * (ipow(26, 0)) + 1 - bin_2_lower) /
+                          bin_2_width * bin_2_count +
+                      bin_1_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "lzzz"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "lzzz"),
                   (11 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    25 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 25 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-                   25 * (ipow(26, 0)) + 1 - bucket_2_lower) /
-                          bucket_2_width * bucket_2_count +
-                      bucket_1_count);
+                   25 * (ipow(26, 0)) + 1 - bin_2_lower) /
+                          bin_2_width * bin_2_count +
+                      bin_1_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "mnaz"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "mnaz"),
-                  (bucket_2_width - 3) / bucket_2_width * bucket_2_count + bucket_1_count);
+                  (bin_2_width - 3) / bin_2_width * bin_2_count + bin_1_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "mnb"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "mnb"),
-                  (bucket_2_width - 2) / bucket_2_width * bucket_2_count + bucket_1_count);
+                  (bin_2_width - 2) / bin_2_width * bin_2_count + bin_1_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "mnba"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "mnba"),
-                  (bucket_2_width - 1) / bucket_2_width * bucket_2_count + bucket_1_count);
+                  (bin_2_width - 1) / bin_2_width * bin_2_count + bin_1_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "mnbb"));
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "mnbb"), bucket_1_count + bucket_2_count);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "mnbb"), bin_1_count + bin_2_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "mnbc"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "mnbc"),
-                  1 / bucket_3_width * bucket_3_count + bucket_1_count + bucket_2_count);
+                  1 / bin_3_width * bin_3_count + bin_1_count + bin_2_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "mnbd"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "mnbd"),
-                  2 / bucket_3_width * bucket_3_count + bucket_1_count + bucket_2_count);
+                  2 / bin_3_width * bin_3_count + bin_1_count + bin_2_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "pppp"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "pppp"),
                   (15 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    15 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 15 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-                   15 * (ipow(26, 0)) + 1 - bucket_3_lower) /
-                          bucket_3_width * bucket_3_count +
-                      bucket_1_count + bucket_2_count);
+                   15 * (ipow(26, 0)) + 1 - bin_3_lower) /
+                          bin_3_width * bin_3_count +
+                      bin_1_count + bin_2_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "qqqq"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qqqq"),
                   (16 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    16 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 16 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-                   16 * (ipow(26, 0)) + 1 - bucket_3_lower) /
-                          bucket_3_width * bucket_3_count +
-                      bucket_1_count + bucket_2_count);
+                   16 * (ipow(26, 0)) + 1 - bin_3_lower) /
+                          bin_3_width * bin_3_count +
+                      bin_1_count + bin_2_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "qllo"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qllo"),
                   (16 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    11 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 11 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-                   14 * (ipow(26, 0)) + 1 - bucket_3_lower) /
-                          bucket_3_width * bucket_3_count +
-                      bucket_1_count + bucket_2_count);
+                   14 * (ipow(26, 0)) + 1 - bin_3_lower) /
+                          bin_3_width * bin_3_count +
+                      bin_1_count + bin_2_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "stal"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "stal"),
-                  (bucket_3_width - 2) / bucket_3_width * bucket_3_count + bucket_1_count + bucket_2_count);
+                  (bin_3_width - 2) / bin_3_width * bin_3_count + bin_1_count + bin_2_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "stam"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "stam"),
-                  (bucket_3_width - 1) / bucket_3_width * bucket_3_count + bucket_1_count + bucket_2_count);
+                  (bin_3_width - 1) / bin_3_width * bin_3_count + bin_1_count + bin_2_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "stan"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "stan"),
-                  bucket_1_count + bucket_2_count + bucket_3_count);
+                  bin_1_count + bin_2_count + bin_3_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "stao"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "stao"),
-                  1 / bucket_4_width * bucket_4_count + bucket_1_count + bucket_2_count + bucket_3_count);
+                  1 / bin_4_width * bin_4_count + bin_1_count + bin_2_count + bin_3_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "stap"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "stap"),
-                  2 / bucket_4_width * bucket_4_count + bucket_1_count + bucket_2_count + bucket_3_count);
+                  2 / bin_4_width * bin_4_count + bin_1_count + bin_2_count + bin_3_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "vvvv"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "vvvv"),
                   (21 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    21 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 21 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-                   21 * (ipow(26, 0)) + 1 - bucket_4_lower) /
-                          bucket_4_width * bucket_4_count +
-                      bucket_1_count + bucket_2_count + bucket_3_count);
+                   21 * (ipow(26, 0)) + 1 - bin_4_lower) /
+                          bin_4_width * bin_4_count +
+                      bin_1_count + bin_2_count + bin_3_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "xxxx"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "xxxx"),
                   (23 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    23 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 23 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-                   23 * (ipow(26, 0)) + 1 - bucket_4_lower) /
-                          bucket_4_width * bucket_4_count +
-                      bucket_1_count + bucket_2_count + bucket_3_count);
+                   23 * (ipow(26, 0)) + 1 - bin_4_lower) /
+                          bin_4_width * bin_4_count +
+                      bin_1_count + bin_2_count + bin_3_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "ycip"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "ycip"),
                   (24 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    2 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 8 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-                   15 * (ipow(26, 0)) + 1 - bucket_4_lower) /
-                          bucket_4_width * bucket_4_count +
-                      bucket_1_count + bucket_2_count + bucket_3_count);
+                   15 * (ipow(26, 0)) + 1 - bin_4_lower) /
+                          bin_4_width * bin_4_count +
+                      bin_1_count + bin_2_count + bin_3_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "yyzy"));
-  EXPECT_FLOAT_EQ(
-      hist->estimate_cardinality(PredicateCondition::LessThan, "yyzy"),
-      (bucket_4_width - 2) / bucket_4_width * bucket_4_count + bucket_1_count + bucket_2_count + bucket_3_count);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "yyzy"),
+                  (bin_4_width - 2) / bin_4_width * bin_4_count + bin_1_count + bin_2_count + bin_3_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "yyzz"));
-  EXPECT_FLOAT_EQ(
-      hist->estimate_cardinality(PredicateCondition::LessThan, "yyzz"),
-      (bucket_4_width - 1) / bucket_4_width * bucket_4_count + bucket_1_count + bucket_2_count + bucket_3_count);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "yyzz"),
+                  (bin_4_width - 1) / bin_4_width * bin_4_count + bin_1_count + bin_2_count + bin_3_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "yz"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "yz"), total_count);
@@ -1325,14 +1316,14 @@ TEST_F(HistogramTest, EqualHeightHistogramBasic) {
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 21), 0.f);
 }
 
-TEST_F(HistogramTest, EqualHeightHistogramUnevenBuckets) {
+TEST_F(HistogramTest, EqualHeightHistogramUnevenBins) {
   auto hist = EqualHeightHistogram<int32_t>::from_column(
       _expected_join_result_1->get_chunk(ChunkID{0})->get_column(ColumnID{1}), 5u);
 
-  // Even though we requested five buckets we will only get four because of the value distribution.
+  // Even though we requested five bins we will only get four because of the value distribution.
   // This has consequences for the cardinality estimation,
-  // because the bucket count is now assumed to be 24 / 4 = 6, rather than 24 / 5 = 4.8 => 5.
-  EXPECT_EQ(hist->num_buckets(), 4u);
+  // because the bin count is now assumed to be 24 / 4 = 6, rather than 24 / 5 = 4.8 => 5.
+  EXPECT_EQ(hist->num_bins(), 4u);
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, 0));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 0), 0.f);
@@ -1442,10 +1433,10 @@ TEST_F(HistogramTest, EqualHeightLessThan) {
   auto hist =
       EqualHeightHistogram<int32_t>::from_column(_int_float4->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 3u);
 
-  // Even though we requested three buckets we will only get two because of the value distribution.
+  // Even though we requested three bins we will only get two because of the value distribution.
   // This has consequences for the cardinality estimation,
-  // because the bucket count is now assumed to be 7 / 2 = 3.5 => 4, rather than 7 / 3 ~= 2.333 => 3.
-  EXPECT_EQ(hist->num_buckets(), 2u);
+  // because the bin count is now assumed to be 7 / 2 = 3.5 => 4, rather than 7 / 3 ~= 2.333 => 3.
+  EXPECT_EQ(hist->num_bins(), 2u);
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{12}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 12), 0.f);
@@ -1529,39 +1520,39 @@ TEST_F(HistogramTest, EqualHeightStringLessThan) {
                                                              4u, "abcdefghijklmnopqrstuvwxyz", 4u);
 
   // "abcd"
-  const auto bucket_1_lower = 0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-                              1 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 2 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-                              3 * (ipow(26, 0)) + 1;
+  const auto bin_1_lower = 0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                           1 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 2 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                           3 * (ipow(26, 0)) + 1;
   // "efgh"
-  const auto bucket_1_upper = 4 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-                              5 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 6 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-                              7 * (ipow(26, 0)) + 1;
+  const auto bin_1_upper = 4 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                           5 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 6 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                           7 * (ipow(26, 0)) + 1;
   // "efgi"
-  const auto bucket_2_lower = bucket_1_upper + 1;
+  const auto bin_2_lower = bin_1_upper + 1;
   // "kkkk"
-  const auto bucket_2_upper = 10 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-                              10 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 10 * (ipow(26, 1) + ipow(26, 0)) +
-                              1 + 10 * (ipow(26, 0)) + 1;
+  const auto bin_2_upper = 10 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                           10 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 10 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                           10 * (ipow(26, 0)) + 1;
   // "kkkl"
-  const auto bucket_3_lower = bucket_2_upper + 1;
+  const auto bin_3_lower = bin_2_upper + 1;
   // "qrst"
-  const auto bucket_3_upper = 16 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-                              17 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 18 * (ipow(26, 1) + ipow(26, 0)) +
-                              1 + 19 * (ipow(26, 0)) + 1;
+  const auto bin_3_upper = 16 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                           17 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 18 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                           19 * (ipow(26, 0)) + 1;
   // "qrsu"
-  const auto bucket_4_lower = bucket_3_upper + 1;
+  const auto bin_4_lower = bin_3_upper + 1;
   // "yyzz"
-  const auto bucket_4_upper = 24 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-                              24 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 25 * (ipow(26, 1) + ipow(26, 0)) +
-                              1 + 25 * (ipow(26, 0)) + 1;
+  const auto bin_4_upper = 24 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                           24 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 25 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                           25 * (ipow(26, 0)) + 1;
 
-  const auto bucket_1_width = (bucket_1_upper - bucket_1_lower + 1.f);
-  const auto bucket_2_width = (bucket_2_upper - bucket_2_lower + 1.f);
-  const auto bucket_3_width = (bucket_3_upper - bucket_3_lower + 1.f);
-  const auto bucket_4_width = (bucket_4_upper - bucket_4_lower + 1.f);
+  const auto bin_1_width = (bin_1_upper - bin_1_lower + 1.f);
+  const auto bin_2_width = (bin_2_upper - bin_2_lower + 1.f);
+  const auto bin_3_width = (bin_3_upper - bin_3_lower + 1.f);
+  const auto bin_4_width = (bin_4_upper - bin_4_lower + 1.f);
 
-  constexpr auto bucket_count = 4.f;
-  constexpr auto total_count = 4 * bucket_count;
+  constexpr auto bin_count = 4.f;
+  constexpr auto total_count = 4 * bin_count;
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::LessThan, "aaaa"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "aaaa"), 0.f);
@@ -1570,185 +1561,185 @@ TEST_F(HistogramTest, EqualHeightStringLessThan) {
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "abcd"), 0.f);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "abce"));
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "abce"), 1 / bucket_1_width * bucket_count);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "abce"), 1 / bin_1_width * bin_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "abcf"));
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "abcf"), 2 / bucket_1_width * bucket_count);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "abcf"), 2 / bin_1_width * bin_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "cccc"));
   EXPECT_FLOAT_EQ(
       hist->estimate_cardinality(PredicateCondition::LessThan, "cccc"),
       (2 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 2 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) +
-       1 + 2 * (ipow(26, 1) + ipow(26, 0)) + 1 + 2 * (ipow(26, 0)) + 1 - bucket_1_lower) /
-          bucket_1_width * bucket_count);
+       1 + 2 * (ipow(26, 1) + ipow(26, 0)) + 1 + 2 * (ipow(26, 0)) + 1 - bin_1_lower) /
+          bin_1_width * bin_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "dddd"));
   EXPECT_FLOAT_EQ(
       hist->estimate_cardinality(PredicateCondition::LessThan, "dddd"),
       (3 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 3 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) +
-       1 + 3 * (ipow(26, 1) + ipow(26, 0)) + 1 + 3 * (ipow(26, 0)) + 1 - bucket_1_lower) /
-          bucket_1_width * bucket_count);
+       1 + 3 * (ipow(26, 1) + ipow(26, 0)) + 1 + 3 * (ipow(26, 0)) + 1 - bin_1_lower) /
+          bin_1_width * bin_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "efgg"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "efgg"),
-                  (bucket_1_width - 2) / bucket_1_width * bucket_count);
+                  (bin_1_width - 2) / bin_1_width * bin_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "efgh"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "efgh"),
-                  (bucket_1_width - 1) / bucket_1_width * bucket_count);
+                  (bin_1_width - 1) / bin_1_width * bin_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "efgi"));
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "efgi"), bucket_count);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "efgi"), bin_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "efgj"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "efgj"),
-                  1 / bucket_2_width * bucket_count + bucket_count);
+                  1 / bin_2_width * bin_count + bin_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "efgk"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "efgk"),
-                  2 / bucket_2_width * bucket_count + bucket_count);
+                  2 / bin_2_width * bin_count + bin_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "ijkn"));
   EXPECT_FLOAT_EQ(
       hist->estimate_cardinality(PredicateCondition::LessThan, "ijkn"),
       (8 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 9 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) +
-       1 + 10 * (ipow(26, 1) + ipow(26, 0)) + 1 + 13 * (ipow(26, 0)) + 1 - bucket_2_lower) /
-              bucket_2_width * bucket_count +
-          bucket_count);
+       1 + 10 * (ipow(26, 1) + ipow(26, 0)) + 1 + 13 * (ipow(26, 0)) + 1 - bin_2_lower) /
+              bin_2_width * bin_count +
+          bin_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "jjjj"));
   EXPECT_FLOAT_EQ(
       hist->estimate_cardinality(PredicateCondition::LessThan, "jjjj"),
       (9 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 9 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) +
-       1 + 9 * (ipow(26, 1) + ipow(26, 0)) + 1 + 9 * (ipow(26, 0)) + 1 - bucket_2_lower) /
-              bucket_2_width * bucket_count +
-          bucket_count);
+       1 + 9 * (ipow(26, 1) + ipow(26, 0)) + 1 + 9 * (ipow(26, 0)) + 1 - bin_2_lower) /
+              bin_2_width * bin_count +
+          bin_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "jzzz"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "jzzz"),
                   (9 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    25 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 25 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-                   25 * (ipow(26, 0)) + 1 - bucket_2_lower) /
-                          bucket_2_width * bucket_count +
-                      bucket_count);
+                   25 * (ipow(26, 0)) + 1 - bin_2_lower) /
+                          bin_2_width * bin_count +
+                      bin_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "kaab"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "kaab"),
                   (10 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    0 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 0 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-                   1 * (ipow(26, 0)) + 1 - bucket_2_lower) /
-                          bucket_2_width * bucket_count +
-                      bucket_count);
+                   1 * (ipow(26, 0)) + 1 - bin_2_lower) /
+                          bin_2_width * bin_count +
+                      bin_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "kkkj"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "kkkj"),
-                  (bucket_2_width - 2) / bucket_2_width * bucket_count + bucket_count);
+                  (bin_2_width - 2) / bin_2_width * bin_count + bin_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "kkkk"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "kkkk"),
-                  (bucket_2_width - 1) / bucket_2_width * bucket_count + bucket_count);
+                  (bin_2_width - 1) / bin_2_width * bin_count + bin_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "kkkl"));
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "kkkl"), bucket_count * 2);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "kkkl"), bin_count * 2);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "kkkm"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "kkkm"),
-                  1 / bucket_3_width * bucket_count + bucket_count * 2);
+                  1 / bin_3_width * bin_count + bin_count * 2);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "kkkn"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "kkkn"),
-                  2 / bucket_3_width * bucket_count + bucket_count * 2);
+                  2 / bin_3_width * bin_count + bin_count * 2);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "loos"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "loos"),
                   (11 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    14 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 14 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-                   18 * (ipow(26, 0)) + 1 - bucket_3_lower) /
-                          bucket_3_width * bucket_count +
-                      bucket_count * 2);
+                   18 * (ipow(26, 0)) + 1 - bin_3_lower) /
+                          bin_3_width * bin_count +
+                      bin_count * 2);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "nnnn"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "nnnn"),
                   (13 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    13 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 13 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-                   13 * (ipow(26, 0)) + 1 - bucket_3_lower) /
-                          bucket_3_width * bucket_count +
-                      bucket_count * 2);
+                   13 * (ipow(26, 0)) + 1 - bin_3_lower) /
+                          bin_3_width * bin_count +
+                      bin_count * 2);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "qllo"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qllo"),
                   (16 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    11 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 11 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-                   14 * (ipow(26, 0)) + 1 - bucket_3_lower) /
-                          bucket_3_width * bucket_count +
-                      bucket_count * 2);
+                   14 * (ipow(26, 0)) + 1 - bin_3_lower) /
+                          bin_3_width * bin_count +
+                      bin_count * 2);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "qqqq"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qqqq"),
                   (16 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    16 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 16 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-                   16 * (ipow(26, 0)) + 1 - bucket_3_lower) /
-                          bucket_3_width * bucket_count +
-                      bucket_count * 2);
+                   16 * (ipow(26, 0)) + 1 - bin_3_lower) /
+                          bin_3_width * bin_count +
+                      bin_count * 2);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "qrss"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qrss"),
-                  (bucket_3_width - 2) / bucket_3_width * bucket_count + bucket_count * 2);
+                  (bin_3_width - 2) / bin_3_width * bin_count + bin_count * 2);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "qrst"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qrst"),
-                  (bucket_3_width - 1) / bucket_3_width * bucket_count + bucket_count * 2);
+                  (bin_3_width - 1) / bin_3_width * bin_count + bin_count * 2);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "qrsu"));
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qrsu"), bucket_count * 3);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qrsu"), bin_count * 3);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "qrsv"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qrsv"),
-                  1 / bucket_4_width * bucket_count + bucket_count * 3);
+                  1 / bin_4_width * bin_count + bin_count * 3);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "qrsw"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qrsw"),
-                  2 / bucket_4_width * bucket_count + bucket_count * 3);
+                  2 / bin_4_width * bin_count + bin_count * 3);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "tdzr"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "tdzr"),
                   (19 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    3 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 25 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-                   17 * (ipow(26, 0)) + 1 - bucket_4_lower) /
-                          bucket_4_width * bucket_count +
-                      bucket_count * 3);
+                   17 * (ipow(26, 0)) + 1 - bin_4_lower) /
+                          bin_4_width * bin_count +
+                      bin_count * 3);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "vvvv"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "vvvv"),
                   (21 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    21 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 21 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-                   21 * (ipow(26, 0)) + 1 - bucket_4_lower) /
-                          bucket_4_width * bucket_count +
-                      bucket_count * 3);
+                   21 * (ipow(26, 0)) + 1 - bin_4_lower) /
+                          bin_4_width * bin_count +
+                      bin_count * 3);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "xxxx"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "xxxx"),
                   (23 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    23 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 23 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-                   23 * (ipow(26, 0)) + 1 - bucket_4_lower) /
-                          bucket_4_width * bucket_count +
-                      bucket_count * 3);
+                   23 * (ipow(26, 0)) + 1 - bin_4_lower) /
+                          bin_4_width * bin_count +
+                      bin_count * 3);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "ycip"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "ycip"),
                   (24 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                    2 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 8 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-                   15 * (ipow(26, 0)) + 1 - bucket_4_lower) /
-                          bucket_4_width * bucket_count +
-                      bucket_count * 3);
+                   15 * (ipow(26, 0)) + 1 - bin_4_lower) /
+                          bin_4_width * bin_count +
+                      bin_count * 3);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "yyzy"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "yyzy"),
-                  (bucket_4_width - 2) / bucket_4_width * bucket_count + bucket_count * 3);
+                  (bin_4_width - 2) / bin_4_width * bin_count + bin_count * 3);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "yyzz"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "yyzz"),
-                  (bucket_4_width - 1) / bucket_4_width * bucket_count + bucket_count * 3);
+                  (bin_4_width - 1) / bin_4_width * bin_count + bin_count * 3);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "yz"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "yz"), total_count);

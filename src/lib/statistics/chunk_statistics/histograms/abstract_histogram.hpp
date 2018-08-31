@@ -27,12 +27,11 @@ class AbstractHistogram : public AbstractFilter {
 
   virtual HistogramType histogram_type() const = 0;
   std::string description() const;
-  std::string buckets_to_csv(const bool print_header = true,
-                             const std::optional<std::string>& column_name = std::nullopt,
-                             const std::optional<uint64_t>& requested_num_buckets = std::nullopt) const;
+  std::string bins_to_csv(const bool print_header = true, const std::optional<std::string>& column_name = std::nullopt,
+                          const std::optional<uint64_t>& requested_num_bins = std::nullopt) const;
   const std::string& supported_characters() const;
 
-  void generate(const ColumnID column_id, const size_t max_num_buckets);
+  void generate(const ColumnID column_id, const size_t max_num_bins);
 
   float estimate_selectivity(const PredicateCondition predicate_type, const T value,
                              const std::optional<T>& value2 = std::nullopt) const;
@@ -49,7 +48,7 @@ class AbstractHistogram : public AbstractFilter {
   T get_previous_value(const T value) const;
   T get_next_value(const T value) const;
 
-  virtual size_t num_buckets() const = 0;
+  virtual size_t num_bins() const = 0;
   virtual uint64_t total_count() const = 0;
   virtual uint64_t total_count_distinct() const = 0;
 
@@ -67,23 +66,22 @@ class AbstractHistogram : public AbstractFilter {
   static std::vector<std::pair<T, uint64_t>> _sort_value_counts(const std::unordered_map<T, uint64_t>& value_counts);
 
   virtual void _generate(const std::shared_ptr<const ValueColumn<T>> distinct_column,
-                         const std::shared_ptr<const ValueColumn<int64_t>> count_column,
-                         const size_t max_num_buckets) = 0;
+                         const std::shared_ptr<const ValueColumn<int64_t>> count_column, const size_t max_num_bins) = 0;
 
   uint64_t _convert_string_to_number_representation(const std::string& value) const;
   std::string _convert_number_representation_to_string(const uint64_t value) const;
-  float _bucket_share(const BucketID bucket_id, const T value) const;
+  float _bin_share(const BinID bin_id, const T value) const;
 
-  virtual T _bucket_width(const BucketID index) const;
+  virtual T _bin_width(const BinID index) const;
 
-  virtual BucketID _bucket_for_value(const T value) const = 0;
-  virtual BucketID _lower_bound_for_value(const T value) const = 0;
-  virtual BucketID _upper_bound_for_value(const T value) const = 0;
+  virtual BinID _bin_for_value(const T value) const = 0;
+  virtual BinID _lower_bound_for_value(const T value) const = 0;
+  virtual BinID _upper_bound_for_value(const T value) const = 0;
 
-  virtual T _bucket_min(const BucketID index) const = 0;
-  virtual T _bucket_max(const BucketID index) const = 0;
-  virtual uint64_t _bucket_count(const BucketID index) const = 0;
-  virtual uint64_t _bucket_count_distinct(const BucketID index) const = 0;
+  virtual T _bin_min(const BinID index) const = 0;
+  virtual T _bin_max(const BinID index) const = 0;
+  virtual uint64_t _bin_count(const BinID index) const = 0;
+  virtual uint64_t _bin_count_distinct(const BinID index) const = 0;
 
   const std::weak_ptr<const Table> _table;
   std::string _supported_characters;

@@ -11,46 +11,46 @@ namespace opossum {
 template <typename T>
 EqualNumElementsHistogram<T>::EqualNumElementsHistogram(const std::vector<T>& mins, const std::vector<T>& maxs,
                                                         const std::vector<uint64_t>& counts,
-                                                        const uint64_t distinct_count_per_bucket,
-                                                        const uint64_t num_buckets_with_extra_value)
+                                                        const uint64_t distinct_count_per_bin,
+                                                        const uint64_t num_bins_with_extra_value)
     : AbstractHistogram<T>(nullptr),
       _mins(mins),
       _maxs(maxs),
       _counts(counts),
-      _distinct_count_per_bucket(distinct_count_per_bucket),
-      _num_buckets_with_extra_value(num_buckets_with_extra_value) {}
+      _distinct_count_per_bin(distinct_count_per_bin),
+      _num_bins_with_extra_value(num_bins_with_extra_value) {}
 
 template <>
 EqualNumElementsHistogram<std::string>::EqualNumElementsHistogram(
     const std::vector<std::string>& mins, const std::vector<std::string>& maxs, const std::vector<uint64_t>& counts,
-    const uint64_t distinct_count_per_bucket, const uint64_t num_buckets_with_extra_value,
+    const uint64_t distinct_count_per_bin, const uint64_t num_bins_with_extra_value,
     const std::string& supported_characters, const uint64_t string_prefix_length)
     : AbstractHistogram<std::string>(nullptr, supported_characters, string_prefix_length),
       _mins(mins),
       _maxs(maxs),
       _counts(counts),
-      _distinct_count_per_bucket(distinct_count_per_bucket),
-      _num_buckets_with_extra_value(num_buckets_with_extra_value) {}
+      _distinct_count_per_bin(distinct_count_per_bin),
+      _num_bins_with_extra_value(num_bins_with_extra_value) {}
 
 template <typename T>
-EqualNumElementsBucketStats<T> EqualNumElementsHistogram<T>::_get_bucket_stats(
-    const std::vector<std::pair<T, uint64_t>>& value_counts, const size_t max_num_buckets) {
-  // If there are fewer distinct values than the number of desired buckets use that instead.
+EqualNumElementsBinStats<T> EqualNumElementsHistogram<T>::_get_bin_stats(
+    const std::vector<std::pair<T, uint64_t>>& value_counts, const size_t max_num_bins) {
+  // If there are fewer distinct values than the number of desired bins use that instead.
   const auto distinct_count = value_counts.size();
-  const auto num_buckets = distinct_count < max_num_buckets ? static_cast<size_t>(distinct_count) : max_num_buckets;
+  const auto num_bins = distinct_count < max_num_bins ? static_cast<size_t>(distinct_count) : max_num_bins;
 
-  // Split values evenly among buckets.
-  const auto distinct_count_per_bucket = distinct_count / num_buckets;
-  const auto num_buckets_with_extra_value = distinct_count % num_buckets;
+  // Split values evenly among bins.
+  const auto distinct_count_per_bin = distinct_count / num_bins;
+  const auto num_bins_with_extra_value = distinct_count % num_bins;
 
   std::vector<T> mins;
   std::vector<T> maxs;
   std::vector<uint64_t> counts;
 
   auto begin_index = 0ul;
-  for (BucketID bucket_index = 0; bucket_index < num_buckets; bucket_index++) {
-    auto end_index = begin_index + distinct_count_per_bucket - 1;
-    if (bucket_index < num_buckets_with_extra_value) {
+  for (BinID bin_index = 0; bin_index < num_bins; bin_index++) {
+    auto end_index = begin_index + distinct_count_per_bin - 1;
+    if (bin_index < num_bins_with_extra_value) {
       end_index++;
     }
 
@@ -66,57 +66,57 @@ EqualNumElementsBucketStats<T> EqualNumElementsHistogram<T>::_get_bucket_stats(
     begin_index = end_index + 1;
   }
 
-  return {mins, maxs, counts, distinct_count_per_bucket, num_buckets_with_extra_value};
+  return {mins, maxs, counts, distinct_count_per_bin, num_bins_with_extra_value};
 }
 
 template <>
 std::shared_ptr<EqualNumElementsHistogram<std::string>> EqualNumElementsHistogram<std::string>::from_column(
-    const std::shared_ptr<const BaseColumn>& column, const size_t max_num_buckets,
-    const std::string& supported_characters, const uint64_t string_prefix_length) {
+    const std::shared_ptr<const BaseColumn>& column, const size_t max_num_bins, const std::string& supported_characters,
+    const uint64_t string_prefix_length) {
   const auto value_counts =
       AbstractHistogram<std::string>::_calculate_value_counts(column, supported_characters, string_prefix_length);
 
-  const auto bucket_stats = EqualNumElementsHistogram<std::string>::_get_bucket_stats(value_counts, max_num_buckets);
+  const auto bin_stats = EqualNumElementsHistogram<std::string>::_get_bin_stats(value_counts, max_num_bins);
 
   return std::make_shared<EqualNumElementsHistogram<std::string>>(
-      bucket_stats.mins, bucket_stats.maxs, bucket_stats.counts, bucket_stats.distinct_count_per_bucket,
-      bucket_stats.num_buckets_with_extra_value, supported_characters, string_prefix_length);
+      bin_stats.mins, bin_stats.maxs, bin_stats.counts, bin_stats.distinct_count_per_bin,
+      bin_stats.num_bins_with_extra_value, supported_characters, string_prefix_length);
 }
 
 template <>
 std::shared_ptr<EqualNumElementsHistogram<std::string>> EqualNumElementsHistogram<std::string>::from_column(
-    const std::shared_ptr<const BaseColumn>& column, const size_t max_num_buckets) {
+    const std::shared_ptr<const BaseColumn>& column, const size_t max_num_bins) {
   return EqualNumElementsHistogram<std::string>::from_column(
-      column, max_num_buckets,
+      column, max_num_bins,
       " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~", 9);
 }
 
 template <typename T>
 std::shared_ptr<EqualNumElementsHistogram<T>> EqualNumElementsHistogram<T>::from_column(
-    const std::shared_ptr<const BaseColumn>& column, const size_t max_num_buckets) {
+    const std::shared_ptr<const BaseColumn>& column, const size_t max_num_bins) {
   const auto value_counts = AbstractHistogram<T>::_calculate_value_counts(column);
 
   if (value_counts.empty()) {
     return nullptr;
   }
 
-  const auto bucket_stats = EqualNumElementsHistogram<T>::_get_bucket_stats(value_counts, max_num_buckets);
+  const auto bin_stats = EqualNumElementsHistogram<T>::_get_bin_stats(value_counts, max_num_bins);
 
-  return std::make_shared<EqualNumElementsHistogram<T>>(bucket_stats.mins, bucket_stats.maxs, bucket_stats.counts,
-                                                        bucket_stats.distinct_count_per_bucket,
-                                                        bucket_stats.num_buckets_with_extra_value);
+  return std::make_shared<EqualNumElementsHistogram<T>>(bin_stats.mins, bin_stats.maxs, bin_stats.counts,
+                                                        bin_stats.distinct_count_per_bin,
+                                                        bin_stats.num_bins_with_extra_value);
 }
 
 template <typename T>
 std::shared_ptr<AbstractHistogram<T>> EqualNumElementsHistogram<T>::clone() const {
-  return std::make_shared<EqualNumElementsHistogram<T>>(_mins, _maxs, _counts, _distinct_count_per_bucket,
-                                                        _num_buckets_with_extra_value);
+  return std::make_shared<EqualNumElementsHistogram<T>>(_mins, _maxs, _counts, _distinct_count_per_bin,
+                                                        _num_bins_with_extra_value);
 }
 
 template <>
 std::shared_ptr<AbstractHistogram<std::string>> EqualNumElementsHistogram<std::string>::clone() const {
-  return std::make_shared<EqualNumElementsHistogram<std::string>>(_mins, _maxs, _counts, _distinct_count_per_bucket,
-                                                                  _num_buckets_with_extra_value, _supported_characters,
+  return std::make_shared<EqualNumElementsHistogram<std::string>>(_mins, _maxs, _counts, _distinct_count_per_bin,
+                                                                  _num_bins_with_extra_value, _supported_characters,
                                                                   _string_prefix_length);
 }
 
@@ -126,79 +126,79 @@ HistogramType EqualNumElementsHistogram<T>::histogram_type() const {
 }
 
 template <typename T>
-size_t EqualNumElementsHistogram<T>::num_buckets() const {
+size_t EqualNumElementsHistogram<T>::num_bins() const {
   return _counts.size();
 }
 
 template <typename T>
-BucketID EqualNumElementsHistogram<T>::_bucket_for_value(const T value) const {
+BinID EqualNumElementsHistogram<T>::_bin_for_value(const T value) const {
   if constexpr (std::is_same_v<T, std::string>) {
     DebugAssert(value.length() <= this->_string_prefix_length, "Value is longer than allowed prefix.");
   }
 
   const auto it = std::lower_bound(_maxs.begin(), _maxs.end(), value);
-  const auto index = static_cast<BucketID>(std::distance(_maxs.begin(), it));
+  const auto index = static_cast<BinID>(std::distance(_maxs.begin(), it));
 
-  if (it == _maxs.end() || value < _bucket_min(index) || value > _bucket_max(index)) {
-    return INVALID_BUCKET_ID;
+  if (it == _maxs.end() || value < _bin_min(index) || value > _bin_max(index)) {
+    return INVALID_BIN_ID;
   }
 
   return index;
 }
 
 template <typename T>
-BucketID EqualNumElementsHistogram<T>::_lower_bound_for_value(const T value) const {
+BinID EqualNumElementsHistogram<T>::_lower_bound_for_value(const T value) const {
   if constexpr (std::is_same_v<T, std::string>) {
     DebugAssert(value.length() <= this->_string_prefix_length, "Value is longer than allowed prefix.");
   }
 
   const auto it = std::lower_bound(_maxs.begin(), _maxs.end(), value);
-  const auto index = static_cast<BucketID>(std::distance(_maxs.begin(), it));
+  const auto index = static_cast<BinID>(std::distance(_maxs.begin(), it));
 
   if (it == _maxs.end()) {
-    return INVALID_BUCKET_ID;
+    return INVALID_BIN_ID;
   }
 
   return index;
 }
 
 template <typename T>
-BucketID EqualNumElementsHistogram<T>::_upper_bound_for_value(const T value) const {
+BinID EqualNumElementsHistogram<T>::_upper_bound_for_value(const T value) const {
   if constexpr (std::is_same_v<T, std::string>) {
     DebugAssert(value.length() <= this->_string_prefix_length, "Value is longer than allowed prefix.");
   }
 
   const auto it = std::upper_bound(_maxs.begin(), _maxs.end(), value);
-  const auto index = static_cast<BucketID>(std::distance(_maxs.begin(), it));
+  const auto index = static_cast<BinID>(std::distance(_maxs.begin(), it));
 
   if (it == _maxs.end()) {
-    return INVALID_BUCKET_ID;
+    return INVALID_BIN_ID;
   }
 
   return index;
 }
 
 template <typename T>
-T EqualNumElementsHistogram<T>::_bucket_min(const BucketID index) const {
-  DebugAssert(index < _mins.size(), "Index is not a valid bucket.");
+T EqualNumElementsHistogram<T>::_bin_min(const BinID index) const {
+  DebugAssert(index < _mins.size(), "Index is not a valid bin.");
   return _mins[index];
 }
 
 template <typename T>
-T EqualNumElementsHistogram<T>::_bucket_max(const BucketID index) const {
-  DebugAssert(index < _maxs.size(), "Index is not a valid bucket.");
+T EqualNumElementsHistogram<T>::_bin_max(const BinID index) const {
+  DebugAssert(index < _maxs.size(), "Index is not a valid bin.");
   return _maxs[index];
 }
 
 template <typename T>
-uint64_t EqualNumElementsHistogram<T>::_bucket_count(const BucketID index) const {
-  DebugAssert(index < _counts.size(), "Index is not a valid bucket.");
+uint64_t EqualNumElementsHistogram<T>::_bin_count(const BinID index) const {
+  DebugAssert(index < _counts.size(), "Index is not a valid bin.");
   return _counts[index];
 }
 
 template <typename T>
-uint64_t EqualNumElementsHistogram<T>::_bucket_count_distinct(const BucketID index) const {
-  return _distinct_count_per_bucket + (index < _num_buckets_with_extra_value ? 1 : 0);
+uint64_t EqualNumElementsHistogram<T>::_bin_count_distinct(const BinID index) const {
+  return _distinct_count_per_bin + (index < _num_bins_with_extra_value ? 1 : 0);
 }
 
 template <typename T>
@@ -208,25 +208,25 @@ uint64_t EqualNumElementsHistogram<T>::total_count() const {
 
 template <typename T>
 uint64_t EqualNumElementsHistogram<T>::total_count_distinct() const {
-  return _distinct_count_per_bucket * num_buckets() + _num_buckets_with_extra_value;
+  return _distinct_count_per_bin * num_bins() + _num_bins_with_extra_value;
 }
 
 template <typename T>
 void EqualNumElementsHistogram<T>::_generate(const std::shared_ptr<const ValueColumn<T>> distinct_column,
                                              const std::shared_ptr<const ValueColumn<int64_t>> count_column,
-                                             const size_t max_num_buckets) {
-  // If there are fewer distinct values than the number of desired buckets use that instead.
+                                             const size_t max_num_bins) {
+  // If there are fewer distinct values than the number of desired bins use that instead.
   const auto distinct_count = distinct_column->size();
-  const auto num_buckets = distinct_count < max_num_buckets ? static_cast<size_t>(distinct_count) : max_num_buckets;
+  const auto num_bins = distinct_count < max_num_bins ? static_cast<size_t>(distinct_count) : max_num_bins;
 
-  // Split values evenly among buckets.
-  _distinct_count_per_bucket = distinct_count / num_buckets;
-  _num_buckets_with_extra_value = distinct_count % num_buckets;
+  // Split values evenly among bins.
+  _distinct_count_per_bin = distinct_count / num_bins;
+  _num_bins_with_extra_value = distinct_count % num_bins;
 
   auto begin_index = 0ul;
-  for (BucketID bucket_index = 0; bucket_index < num_buckets; bucket_index++) {
-    auto end_index = begin_index + _distinct_count_per_bucket - 1;
-    if (bucket_index < _num_buckets_with_extra_value) {
+  for (BinID bin_index = 0; bin_index < num_bins; bin_index++) {
+    auto end_index = begin_index + _distinct_count_per_bin - 1;
+    if (bin_index < _num_bins_with_extra_value) {
       end_index++;
     }
 

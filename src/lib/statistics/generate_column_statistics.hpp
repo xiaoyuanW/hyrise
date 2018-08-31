@@ -14,7 +14,7 @@ namespace opossum {
 
 /**
  * Generate the statistics of a single column. Used by generate_table_statistics().
- * If num_bucket is set, create statistics of type HistogramColumnStatistics, otherwise create basic statistics.
+ * If num_bin is set, create statistics of type HistogramColumnStatistics, otherwise create basic statistics.
  */
 template <typename ColumnDataType>
 std::shared_ptr<BaseColumnStatistics> generate_column_statistics(const std::shared_ptr<const Table>& table,
@@ -61,9 +61,9 @@ std::shared_ptr<BaseColumnStatistics> generate_column_statistics<std::string>(co
 
 template <typename ColumnDataType>
 std::shared_ptr<BaseColumnStatistics> generate_column_statistics(const std::shared_ptr<const Table>& table,
-                                                                 const ColumnID column_id, const int64_t num_buckets) {
+                                                                 const ColumnID column_id, const int64_t num_bins) {
   auto histogram = std::make_shared<EqualNumElementsHistogram<ColumnDataType>>(table);
-  histogram->generate(column_id, num_buckets > 0 ? static_cast<size_t>(num_buckets) : 100u);
+  histogram->generate(column_id, num_bins > 0 ? static_cast<size_t>(num_bins) : 100u);
 
   // TODO(tim): incorporate into Histograms
   const auto null_value_ratio = 0.0f;

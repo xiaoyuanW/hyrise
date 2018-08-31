@@ -82,20 +82,20 @@ std::string AbstractHistogram<T>::description() const {
   stream << "  max         " << max() << std::endl;
   // TODO(tim): consider non-null ratio in histograms
   // stream << "  non-null " << non_null_value_ratio() << std::endl;
-  stream << "  buckets     " << num_buckets() << std::endl;
+  stream << "  bins        " << num_bins() << std::endl;
 
   stream << "  boundaries / counts " << std::endl;
-  for (auto bucket = 0u; bucket < num_buckets(); bucket++) {
-    stream << "              [" << _bucket_min(bucket) << ", " << _bucket_max(bucket) << "]: ";
-    stream << _bucket_count(bucket) << std::endl;
+  for (auto bin = 0u; bin < num_bins(); bin++) {
+    stream << "              [" << _bin_min(bin) << ", " << _bin_max(bin) << "]: ";
+    stream << _bin_count(bin) << std::endl;
   }
 
   return stream.str();
 }
 
 template <typename T>
-std::string AbstractHistogram<T>::buckets_to_csv(const bool print_header, const std::optional<std::string>& column_name,
-                                                 const std::optional<uint64_t>& requested_num_buckets) const {
+std::string AbstractHistogram<T>::bins_to_csv(const bool print_header, const std::optional<std::string>& column_name,
+                                              const std::optional<uint64_t>& requested_num_bins) const {
   std::stringstream stream;
 
   if (print_header) {
@@ -105,35 +105,35 @@ std::string AbstractHistogram<T>::buckets_to_csv(const bool print_header, const 
       stream << ",column_name";
     }
 
-    stream << ",actual_num_buckets";
+    stream << ",actual_num_bins";
 
-    if (requested_num_buckets) {
-      stream << ",requested_num_buckets";
+    if (requested_num_bins) {
+      stream << ",requested_num_bins";
     }
 
-    stream << ",bucket_id,bucket_min,bucket_max,bucket_min_repr,bucket_max_repr,bucket_count,bucket_count_distinct";
+    stream << ",bin_id,bin_min,bin_max,bin_min_repr,bin_max_repr,bin_count,bin_count_distinct";
     stream << std::endl;
   }
 
-  for (auto bucket = 0u; bucket < num_buckets(); bucket++) {
+  for (auto bin = 0u; bin < num_bins(); bin++) {
     stream << histogram_type_to_string.at(histogram_type());
 
     if (column_name) {
       stream << "," << *column_name;
     }
 
-    stream << "," << num_buckets();
+    stream << "," << num_bins();
 
-    if (requested_num_buckets) {
-      stream << "," << *requested_num_buckets;
+    if (requested_num_bins) {
+      stream << "," << *requested_num_bins;
     }
 
-    stream << "," << bucket;
+    stream << "," << bin;
 
     if constexpr (std::is_same_v<T, std::string>) {
       constexpr auto patterns = std::array<std::pair<const char*, const char*>, 2u>{{{"\\", "\\\\"}, {"\"", "\\\""}}};
-      auto min = _bucket_min(bucket);
-      auto max = _bucket_max(bucket);
+      auto min = _bin_min(bin);
+      auto max = _bin_max(bin);
 
       for (const auto& pair : patterns) {
         boost::replace_all(min, pair.first, pair.second);
@@ -142,17 +142,17 @@ std::string AbstractHistogram<T>::buckets_to_csv(const bool print_header, const 
 
       stream << ",\"" << min << "\"";
       stream << ",\"" << max << "\"";
-      stream << "," << _convert_string_to_number_representation(_bucket_min(bucket));
-      stream << "," << _convert_string_to_number_representation(_bucket_max(bucket));
+      stream << "," << _convert_string_to_number_representation(_bin_min(bin));
+      stream << "," << _convert_string_to_number_representation(_bin_max(bin));
     } else {
-      stream << "," << _bucket_min(bucket);
-      stream << "," << _bucket_max(bucket);
-      stream << "," << _bucket_min(bucket);
-      stream << "," << _bucket_max(bucket);
+      stream << "," << _bin_min(bin);
+      stream << "," << _bin_max(bin);
+      stream << "," << _bin_min(bin);
+      stream << "," << _bin_max(bin);
     }
 
-    stream << "," << _bucket_count(bucket);
-    stream << "," << _bucket_count_distinct(bucket);
+    stream << "," << _bin_count(bin);
+    stream << "," << _bin_count_distinct(bin);
     stream << std::endl;
   }
 
@@ -267,8 +267,8 @@ std::vector<std::pair<std::string, uint64_t>> AbstractHistogram<std::string>::_c
 }
 
 template <typename T>
-void AbstractHistogram<T>::generate(const ColumnID column_id, const size_t max_num_buckets) {
-  DebugAssert(max_num_buckets > 0u, "Cannot generate histogram with less than one bucket.");
+void AbstractHistogram<T>::generate(const ColumnID column_id, const size_t max_num_bins) {
+  DebugAssert(max_num_bins > 0u, "Cannot generate histogram with less than one bin.");
 
   const auto result = _get_value_counts(column_id);
   if (result->row_count() == 0u) {
@@ -283,28 +283,28 @@ void AbstractHistogram<T>::generate(const ColumnID column_id, const size_t max_n
   const auto count_column =
       std::static_pointer_cast<const ValueColumn<int64_t>>(result->get_chunk(ChunkID{0})->get_column(ColumnID{1}));
 
-  _generate(distinct_column, count_column, max_num_buckets);
+  _generate(distinct_column, count_column, max_num_bins);
 }
 
 template <typename T>
 T AbstractHistogram<T>::min() const {
-  return _bucket_min(0u);
+  return _bin_min(0u);
 }
 
 template <typename T>
 T AbstractHistogram<T>::max() const {
-  return _bucket_max(num_buckets() - 1u);
+  return _bin_max(num_bins() - 1u);
 }
 
 template <>
-std::string AbstractHistogram<std::string>::_bucket_width(const BucketID /*index*/) const {
+std::string AbstractHistogram<std::string>::_bin_width(const BinID /*index*/) const {
   Fail("Method not supported for string histograms.");
 }
 
 template <typename T>
-T AbstractHistogram<T>::_bucket_width(const BucketID index) const {
-  DebugAssert(index < num_buckets(), "Index is not a valid bucket.");
-  return get_next_value(_bucket_max(index) - _bucket_min(index));
+T AbstractHistogram<T>::_bin_width(const BinID index) const {
+  DebugAssert(index < num_bins(), "Index is not a valid bin.");
+  return get_next_value(_bin_max(index) - _bin_min(index));
 }
 
 template <>
@@ -338,12 +338,12 @@ std::string AbstractHistogram<std::string>::_convert_number_representation_to_st
 }
 
 template <typename T>
-float AbstractHistogram<T>::_bucket_share(const BucketID bucket_id, const T value) const {
-  return static_cast<float>(value - _bucket_min(bucket_id)) / _bucket_width(bucket_id);
+float AbstractHistogram<T>::_bin_share(const BinID bin_id, const T value) const {
+  return static_cast<float>(value - _bin_min(bin_id)) / _bin_width(bin_id);
 }
 
 template <>
-float AbstractHistogram<std::string>::_bucket_share(const BucketID bucket_id, const std::string value) const {
+float AbstractHistogram<std::string>::_bin_share(const BinID bin_id, const std::string value) const {
   // TODO(tim): update description
   /**
    * Calculate range between two strings.
@@ -379,8 +379,8 @@ float AbstractHistogram<std::string>::_bucket_share(const BucketID bucket_id, co
    *  Since we are dealing with approximations this is acceptable.
    */
   const auto value_repr = _convert_string_to_number_representation(value);
-  const auto min_repr = _convert_string_to_number_representation(_bucket_min(bucket_id));
-  const auto max_repr = _convert_string_to_number_representation(_bucket_max(bucket_id));
+  const auto min_repr = _convert_string_to_number_representation(_bin_min(bin_id));
+  const auto max_repr = _convert_string_to_number_representation(_bin_max(bin_id));
   return static_cast<float>(value_repr - min_repr) / (max_repr - min_repr + 1);
 }
 
@@ -402,32 +402,32 @@ float AbstractHistogram<T>::estimate_cardinality(const PredicateCondition predic
 
   switch (predicate_type) {
     case PredicateCondition::Equals: {
-      const auto index = _bucket_for_value(cleaned_value);
-      if (index == INVALID_BUCKET_ID) {
+      const auto index = _bin_for_value(cleaned_value);
+      if (index == INVALID_BIN_ID) {
         return 0.f;
       }
 
-      const auto bucket_count_distinct = _bucket_count_distinct(index);
-      if (bucket_count_distinct == 0u) {
+      const auto bin_count_distinct = _bin_count_distinct(index);
+      if (bin_count_distinct == 0u) {
         return 0.f;
       }
 
-      return static_cast<float>(_bucket_count(index)) / static_cast<float>(bucket_count_distinct);
+      return static_cast<float>(_bin_count(index)) / static_cast<float>(bin_count_distinct);
     }
     case PredicateCondition::NotEquals: {
-      const auto index = _bucket_for_value(cleaned_value);
-      if (index == INVALID_BUCKET_ID) {
+      const auto index = _bin_for_value(cleaned_value);
+      if (index == INVALID_BIN_ID) {
         return total_count();
       }
 
-      const auto bucket_count = _bucket_count(index);
-      const auto bucket_count_distinct = _bucket_count_distinct(index);
+      const auto bin_count = _bin_count(index);
+      const auto bin_count_distinct = _bin_count_distinct(index);
 
-      if (bucket_count == 0u || bucket_count_distinct == 0u) {
+      if (bin_count == 0u || bin_count_distinct == 0u) {
         return total_count();
       }
 
-      return total_count() - static_cast<float>(bucket_count) / static_cast<float>(bucket_count_distinct);
+      return total_count() - static_cast<float>(bin_count) / static_cast<float>(bin_count_distinct);
     }
     case PredicateCondition::LessThan: {
       if (cleaned_value > max()) {
@@ -438,33 +438,33 @@ float AbstractHistogram<T>::estimate_cardinality(const PredicateCondition predic
         return 0.f;
       }
 
-      auto index = _bucket_for_value(cleaned_value);
+      auto index = _bin_for_value(cleaned_value);
       auto cardinality = 0.f;
 
-      if (index == INVALID_BUCKET_ID) {
-        // The value is within the range of the histogram, but does not belong to a bucket.
-        // Therefore, we need to sum up the counts of all buckets with a max < value.
+      if (index == INVALID_BIN_ID) {
+        // The value is within the range of the histogram, but does not belong to a bin.
+        // Therefore, we need to sum up the counts of all bins with a max < value.
         index = _upper_bound_for_value(cleaned_value);
       } else {
-        cardinality += _bucket_share(index, cleaned_value) * _bucket_count(index);
+        cardinality += _bin_share(index, cleaned_value) * _bin_count(index);
       }
 
-      // Sum up all buckets before the bucket (or gap) containing the value.
-      for (BucketID bucket = 0u; bucket < index; bucket++) {
-        cardinality += _bucket_count(bucket);
+      // Sum up all bins before the bin (or gap) containing the value.
+      for (BinID bin = 0u; bin < index; bin++) {
+        cardinality += _bin_count(bin);
       }
 
       /**
        * The cardinality is capped at total_count().
        * It is possible for a value that is smaller than or equal to the max of the EqualHeightHistogram
        * to yield a calculated cardinality higher than total_count.
-       * This is due to the way EqualHeightHistograms store the count for a bucket,
-       * which is in a single value (count_per_bucket) for all buckets rather than a vector (one value for each bucket).
-       * Consequently, this value is the desired count for all buckets.
-       * In practice, _bucket_count(n) >= _count_per_bucket for n < num_buckets() - 1,
-       * because buckets are filled up until the count is at least _count_per_bucket.
-       * The last bucket typically has a count lower than _count_per_bucket.
-       * Therefore, if we calculate the share of the last bucket based on _count_per_bucket
+       * This is due to the way EqualHeightHistograms store the count for a bin,
+       * which is in a single value (count_per_bin) for all bins rather than a vector (one value for each bin).
+       * Consequently, this value is the desired count for all bins.
+       * In practice, _bin_count(n) >= _count_per_bin for n < num_bins() - 1,
+       * because bins are filled up until the count is at least _count_per_bin.
+       * The last bin typically has a count lower than _count_per_bin.
+       * Therefore, if we calculate the share of the last bin based on _count_per_bin
        * we might end up with an estimate higher than total_count(), which is then capped.
        */
       return std::min(cardinality, static_cast<float>(total_count()));
@@ -557,7 +557,7 @@ float AbstractHistogram<T>::estimate_distinct_count(const PredicateCondition pre
       return 1.f;
     }
     case PredicateCondition::NotEquals: {
-      if (_bucket_for_value(cleaned_value) == INVALID_BUCKET_ID) {
+      if (_bin_for_value(cleaned_value) == INVALID_BIN_ID) {
         return total_count_distinct();
       }
 
@@ -569,18 +569,18 @@ float AbstractHistogram<T>::estimate_distinct_count(const PredicateCondition pre
       }
 
       auto distinct_count = 0.f;
-      auto bucket_id = _bucket_for_value(cleaned_value);
-      if (bucket_id == INVALID_BUCKET_ID) {
-        // The value is within the range of the histogram, but does not belong to a bucket.
-        // Therefore, we need to sum up the distinct counts of all buckets with a max < value.
-        bucket_id = _upper_bound_for_value(cleaned_value);
+      auto bin_id = _bin_for_value(cleaned_value);
+      if (bin_id == INVALID_BIN_ID) {
+        // The value is within the range of the histogram, but does not belong to a bin.
+        // Therefore, we need to sum up the distinct counts of all bins with a max < value.
+        bin_id = _upper_bound_for_value(cleaned_value);
       } else {
-        distinct_count += _bucket_share(bucket_id, cleaned_value) * _bucket_count_distinct(bucket_id);
+        distinct_count += _bin_share(bin_id, cleaned_value) * _bin_count_distinct(bin_id);
       }
 
-      // Sum up all buckets before the bucket (or gap) containing the value.
-      for (BucketID bucket = 0u; bucket < bucket_id; bucket++) {
-        distinct_count += _bucket_count_distinct(bucket);
+      // Sum up all bins before the bin (or gap) containing the value.
+      for (BinID bin = 0u; bin < bin_id; bin++) {
+        distinct_count += _bin_count_distinct(bin);
       }
 
       return distinct_count;
@@ -612,12 +612,12 @@ bool AbstractHistogram<T>::can_prune(const PredicateCondition predicate_type, co
 
   switch (predicate_type) {
     case PredicateCondition::Equals: {
-      const auto bucket_id = _bucket_for_value(value);
-      // It is possible for EqualWidthHistograms to have empty buckets.
-      return bucket_id == INVALID_BUCKET_ID || _bucket_count(bucket_id) == 0;
+      const auto bin_id = _bin_for_value(value);
+      // It is possible for EqualWidthHistograms to have empty bins.
+      return bin_id == INVALID_BIN_ID || _bin_count(bin_id) == 0;
     }
     case PredicateCondition::NotEquals:
-      return num_buckets() == 1 && _bucket_min(0) == value && _bucket_max(0) == value;
+      return num_bins() == 1 && _bin_min(0) == value && _bin_max(0) == value;
     case PredicateCondition::LessThan:
       return value <= min();
     case PredicateCondition::LessThanEquals:
@@ -631,7 +631,7 @@ bool AbstractHistogram<T>::can_prune(const PredicateCondition predicate_type, co
       const auto value2 = type_cast<T>(*variant_value2);
       return can_prune(PredicateCondition::GreaterThanEquals, value) ||
              can_prune(PredicateCondition::LessThanEquals, value2) ||
-             (_bucket_for_value(value) == INVALID_BUCKET_ID && _bucket_for_value(value2) == INVALID_BUCKET_ID &&
+             (_bin_for_value(value) == INVALID_BIN_ID && _bin_for_value(value2) == INVALID_BIN_ID &&
               _upper_bound_for_value(value) == _upper_bound_for_value(value2));
     }
     default:
@@ -648,9 +648,9 @@ bool AbstractHistogram<std::string>::can_prune(const PredicateCondition predicat
 
   switch (predicate_type) {
     case PredicateCondition::Equals: {
-      const auto bucket_id = _bucket_for_value(value);
-      // It is possible for EqualWidthHistograms to have empty buckets.
-      return bucket_id == INVALID_BUCKET_ID || _bucket_count(bucket_id) == 0;
+      const auto bin_id = _bin_for_value(value);
+      // It is possible for EqualWidthHistograms to have empty bins.
+      return bin_id == INVALID_BIN_ID || _bin_count(bin_id) == 0;
     }
     case PredicateCondition::NotEquals:
       /**
@@ -661,21 +661,20 @@ bool AbstractHistogram<std::string>::can_prune(const PredicateCondition predicat
        *
        * Example:
        * prefix_length = 2
-       * There is only one bucket, which has as both lower and upper bound the value 'wa'.
+       * There is only one bin, which has as both lower and upper bound the value 'wa'.
        * The values existing in the column are 'war' and 'wash'.
        * We cannot prune `col != war` or `col != wash` and certainly not `col != walk`.
        * However, we cannot decide this based on the substring, which is `wa` in all three cases.
        *
-       * In contrast, let's assume we have only one bucket with both lower and upper bound as the value 'w'.
+       * In contrast, let's assume we have only one bin with both lower and upper bound as the value 'w'.
        * The prefix length is still 2.
        *
        * If we now look for `col != w`, we know for sure that the column only contains the value 'w'.
-       * If there was another value then either the lower or upper boundary of the bucket would be different,
-       * or there would be more than one bucket.
+       * If there was another value then either the lower or upper boundary of the bin would be different,
+       * or there would be more than one bin.
        */
-      return value.size() < _string_prefix_length
-                 ? num_buckets() == 1 && _bucket_min(0) == value && _bucket_max(0) == value
-                 : false;
+      return value.size() < _string_prefix_length ? num_bins() == 1 && _bin_min(0) == value && _bin_max(0) == value
+                                                  : false;
     case PredicateCondition::LessThan:
       return value <= min();
     case PredicateCondition::LessThanEquals:
@@ -686,8 +685,8 @@ bool AbstractHistogram<std::string>::can_prune(const PredicateCondition predicat
        *
        * Example:
        * prefix_length = 2
-       * values in last bucket: rain, walk, wash
-       * -> last bucket: [ra, wa]
+       * values in last bin: rain, walk, wash
+       * -> last bin: [ra, wa]
        * `col >= war` must not be pruned because `wash >= war`. However, `war > wa`.
        * Therefore, we take the substring of the search value: `wa > wa` is false, and the predicate will not be pruned.
        * Note that `col >= water` will, however, not be pruned either (which it theoretically could).
@@ -699,8 +698,8 @@ bool AbstractHistogram<std::string>::can_prune(const PredicateCondition predicat
        *
        * Example:
        * prefix_length = 2
-       * values in last bucket: rain, walk, wash
-       * -> last bucket: [ra, wa]
+       * values in last bin: rain, walk, wash
+       * -> last bin: [ra, wa]
        * `col > war` must not be pruned because `wash > war`. However, `war >= wa`.
        * Instead, we need to compare the search_value to the first value that is larger than the upper bound of the
        * histogram: `war >= wb` is false, and the predicate will not be pruned.
@@ -712,7 +711,7 @@ bool AbstractHistogram<std::string>::can_prune(const PredicateCondition predicat
       const auto value2 = type_cast<std::string>(*variant_value2).substr(0, _string_prefix_length);
       return can_prune(PredicateCondition::GreaterThanEquals, value) ||
              can_prune(PredicateCondition::LessThanEquals, value2) ||
-             (_bucket_for_value(value) == INVALID_BUCKET_ID && _bucket_for_value(value2) == INVALID_BUCKET_ID &&
+             (_bin_for_value(value) == INVALID_BIN_ID && _bin_for_value(value2) == INVALID_BIN_ID &&
               _upper_bound_for_value(value) == _upper_bound_for_value(value2));
     }
     case PredicateCondition::Like: {
@@ -740,8 +739,7 @@ bool AbstractHistogram<std::string>::can_prune(const PredicateCondition predicat
         const auto upper_bound = next_value(search_prefix, _supported_characters, search_prefix.length());
         return can_prune(PredicateCondition::GreaterThanEquals, search_prefix) ||
                can_prune(PredicateCondition::LessThan, upper_bound) ||
-               (_bucket_for_value(search_prefix) == INVALID_BUCKET_ID &&
-               _bucket_for_value(upper_bound) == INVALID_BUCKET_ID &&
+               (_bin_for_value(search_prefix) == INVALID_BIN_ID && _bin_for_value(upper_bound) == INVALID_BIN_ID &&
                 _upper_bound_for_value(value) == _upper_bound_for_value(upper_bound));
       }
 

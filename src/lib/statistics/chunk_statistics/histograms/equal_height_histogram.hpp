@@ -8,7 +8,7 @@
 namespace opossum {
 
 template <typename T>
-struct EqualHeightBucketStats {
+struct EqualHeightBinStats {
   std::vector<T> maxs;
   std::vector<uint64_t> distinct_counts;
   T min;
@@ -28,10 +28,10 @@ class EqualHeightHistogram : public AbstractHistogram<T> {
                        const uint64_t string_prefix_length);
 
   static std::shared_ptr<EqualHeightHistogram<T>> from_column(const std::shared_ptr<const BaseColumn>& column,
-                                                              const size_t max_num_buckets);
+                                                              const size_t max_num_bins);
 
   static std::shared_ptr<EqualHeightHistogram<std::string>> from_column(const std::shared_ptr<const BaseColumn>& column,
-                                                                        const size_t max_num_buckets,
+                                                                        const size_t max_num_bins,
                                                                         const std::string& supported_characters,
                                                                         const uint64_t string_prefix_length);
 
@@ -40,22 +40,22 @@ class EqualHeightHistogram : public AbstractHistogram<T> {
   HistogramType histogram_type() const override;
   uint64_t total_count_distinct() const override;
   uint64_t total_count() const override;
-  size_t num_buckets() const override;
+  size_t num_bins() const override;
 
  protected:
   void _generate(const std::shared_ptr<const ValueColumn<T>> distinct_column,
-                 const std::shared_ptr<const ValueColumn<int64_t>> count_column, const size_t max_num_buckets) override;
-  static EqualHeightBucketStats<T> _get_bucket_stats(const std::vector<std::pair<T, uint64_t>>& value_counts,
-                                                     const size_t max_num_buckets);
+                 const std::shared_ptr<const ValueColumn<int64_t>> count_column, const size_t max_num_bins) override;
+  static EqualHeightBinStats<T> _get_bin_stats(const std::vector<std::pair<T, uint64_t>>& value_counts,
+                                               const size_t max_num_bins);
 
-  BucketID _bucket_for_value(const T value) const override;
-  BucketID _lower_bound_for_value(const T value) const override;
-  BucketID _upper_bound_for_value(const T value) const override;
+  BinID _bin_for_value(const T value) const override;
+  BinID _lower_bound_for_value(const T value) const override;
+  BinID _upper_bound_for_value(const T value) const override;
 
-  T _bucket_min(const BucketID index) const override;
-  T _bucket_max(const BucketID index) const override;
-  uint64_t _bucket_count(const BucketID index) const override;
-  uint64_t _bucket_count_distinct(const BucketID index) const override;
+  T _bin_min(const BinID index) const override;
+  T _bin_max(const BinID index) const override;
+  uint64_t _bin_count(const BinID index) const override;
+  uint64_t _bin_count_distinct(const BinID index) const override;
 
  private:
   std::vector<T> _maxs;

@@ -78,23 +78,23 @@ std::shared_ptr<ChunkColumnStatistics> ChunkColumnStatistics::build_statistics(
     using DataTypeT = typename decltype(type)::type;
 
     /**
-     * Derive the number of buckets from the number of distinct elements iff we have a DictColumn.
+     * Derive the number of bins from the number of distinct elements iff we have a DictColumn.
      * This number is currently arbitrarily chosen.
      * TODO(tim): benchmark
-     * Otherwise, take the default of 100 buckets.
+     * Otherwise, take the default of 100 bins.
      */
-    size_t num_buckets = 100u;
+    size_t num_bins = 100u;
     if constexpr (std::is_same_v<ColumnType, DictionaryColumn<DataTypeT>>) {
-      const size_t proposed_buckets = typed_column.dictionary()->size() / 25;
-      num_buckets = std::max(num_buckets, proposed_buckets);
+      const size_t proposed_bins = typed_column.dictionary()->size() / 25;
+      num_bins = std::max(num_bins, proposed_bins);
     }
 
     if (std::is_same_v<DataTypeT, std::string>) {
       statistics->add_filter(EqualNumElementsHistogram<DataTypeT>::from_column(
-          column, num_buckets,
+          column, num_bins,
           " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~", 9));
     } else {
-      statistics->add_filter(EqualNumElementsHistogram<DataTypeT>::from_column(column, num_buckets));
+      statistics->add_filter(EqualNumElementsHistogram<DataTypeT>::from_column(column, num_bins));
     }
   });
 
