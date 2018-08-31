@@ -3,7 +3,7 @@
 #include <memory>
 #include <numeric>
 
-#include "histogram_helper.hpp"
+#include "histogram_utils.hpp"
 #include "storage/table.hpp"
 #include "storage/value_column.hpp"
 

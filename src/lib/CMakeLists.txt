@@ -345,8 +345,8 @@ set(
     statistics/chunk_statistics/histograms/equal_num_elements_histogram.hpp
     statistics/chunk_statistics/histograms/equal_width_histogram.cpp
     statistics/chunk_statistics/histograms/equal_width_histogram.hpp
-    statistics/chunk_statistics/histograms/histogram_helper.cpp
-    statistics/chunk_statistics/histograms/histogram_helper.hpp
+    statistics/chunk_statistics/histograms/histogram_utils.cpp
+    statistics/chunk_statistics/histograms/histogram_utils.hpp
     statistics/generate_table_statistics.cpp
     statistics/generate_table_statistics.hpp
     statistics/generate_column_statistics.cpp

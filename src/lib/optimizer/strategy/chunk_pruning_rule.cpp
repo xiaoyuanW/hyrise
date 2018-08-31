@@ -90,7 +90,7 @@ std::set<ChunkID> ChunkPruningRule::_compute_exclude_list(
     if (!is_variant(operator_predicate.value)) {
       return std::set<ChunkID>();
     }
-    // TODO(tim): add BETWEEN support
+    // TODO(anyone): add BETWEEN support
     auto& value = boost::get<AllTypeVariant>(operator_predicate.value);
     auto condition = operator_predicate.predicate_condition;
     for (size_t chunk_id = 0; chunk_id < statistics.size(); ++chunk_id) {

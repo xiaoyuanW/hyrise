@@ -11,7 +11,7 @@
 #include "expression/evaluation/like_matcher.hpp"
 #include "expression/expression_functional.hpp"
 #include "expression/pqp_column_expression.hpp"
-#include "histogram_helper.hpp"
+#include "histogram_utils.hpp"
 #include "operators/aggregate.hpp"
 #include "operators/projection.hpp"
 #include "operators/sort.hpp"
@@ -80,7 +80,7 @@ std::string AbstractHistogram<T>::description() const {
   stream << "  distinct    " << total_count_distinct() << std::endl;
   stream << "  min         " << min() << std::endl;
   stream << "  max         " << max() << std::endl;
-  // TODO(tim): consider non-null ration in histograms
+  // TODO(tim): consider non-null ratio in histograms
   // stream << "  non-null " << non_null_value_ratio() << std::endl;
   stream << "  buckets     " << num_buckets() << std::endl;
 
@@ -288,13 +288,11 @@ void AbstractHistogram<T>::generate(const ColumnID column_id, const size_t max_n
 
 template <typename T>
 T AbstractHistogram<T>::min() const {
-  DebugAssert(num_buckets() > 0u, "Called method on histogram before initialization.");
   return _bucket_min(0u);
 }
 
 template <typename T>
 T AbstractHistogram<T>::max() const {
-  DebugAssert(num_buckets() > 0u, "Called method on histogram before initialization.");
   return _bucket_max(num_buckets() - 1u);
 }
 
@@ -346,6 +344,7 @@ float AbstractHistogram<T>::_bucket_share(const BucketID bucket_id, const T valu
 
 template <>
 float AbstractHistogram<std::string>::_bucket_share(const BucketID bucket_id, const std::string value) const {
+  // TODO(tim): update description
   /**
    * Calculate range between two strings.
    * This is based on the following assumptions:
@@ -388,8 +387,6 @@ float AbstractHistogram<std::string>::_bucket_share(const BucketID bucket_id, co
 template <typename T>
 float AbstractHistogram<T>::estimate_cardinality(const PredicateCondition predicate_type, const T value,
                                                  const std::optional<T>& value2) const {
-  DebugAssert(num_buckets() > 0u, "Called method on histogram before initialization.");
-
   if constexpr (std::is_same_v<T, std::string>) {
     Assert(value.find_first_not_of(_supported_characters) == std::string::npos, "Unsupported characters.");
   }
@@ -406,23 +403,19 @@ float AbstractHistogram<T>::estimate_cardinality(const PredicateCondition predic
   switch (predicate_type) {
     case PredicateCondition::Equals: {
       const auto index = _bucket_for_value(cleaned_value);
-
       if (index == INVALID_BUCKET_ID) {
         return 0.f;
       }
 
-      const auto bucket_count = _bucket_count(index);
       const auto bucket_count_distinct = _bucket_count_distinct(index);
-
-      if (bucket_count == 0 || bucket_count_distinct == 0) {
+      if (bucket_count_distinct == 0u) {
         return 0.f;
       }
 
-      return static_cast<float>(bucket_count) / static_cast<float>(bucket_count_distinct);
+      return static_cast<float>(_bucket_count(index)) / static_cast<float>(bucket_count_distinct);
     }
     case PredicateCondition::NotEquals: {
       const auto index = _bucket_for_value(cleaned_value);
-
       if (index == INVALID_BUCKET_ID) {
         return total_count();
       }
@@ -430,7 +423,7 @@ float AbstractHistogram<T>::estimate_cardinality(const PredicateCondition predic
       const auto bucket_count = _bucket_count(index);
       const auto bucket_count_distinct = _bucket_count_distinct(index);
 
-      if (bucket_count == 0 || bucket_count_distinct == 0) {
+      if (bucket_count == 0u || bucket_count_distinct == 0u) {
         return total_count();
       }
 
@@ -535,9 +528,9 @@ float AbstractHistogram<T>::estimate_cardinality(const PredicateCondition predic
 
       Fail("Predicate NOT LIKE is not supported for non-string column.");
     }
-    // TODO(anyone): implement more meaningful things here
     default:
-      Fail("Predicate condition not yet supported.");
+      // TODO(anyone): implement more meaningful things here
+      return total_count();
   }
 }
 
@@ -615,8 +608,6 @@ float AbstractHistogram<T>::estimate_distinct_count(const PredicateCondition pre
 template <typename T>
 bool AbstractHistogram<T>::can_prune(const PredicateCondition predicate_type, const AllTypeVariant& variant_value,
                                      const std::optional<AllTypeVariant>& variant_value2) const {
-  DebugAssert(num_buckets() > 0, "Called method on histogram before initialization.");
-
   const auto value = type_cast<T>(variant_value);
 
   switch (predicate_type) {
@@ -644,8 +635,7 @@ bool AbstractHistogram<T>::can_prune(const PredicateCondition predicate_type, co
               _upper_bound_for_value(value) == _upper_bound_for_value(value2));
     }
     default:
-      // Rather than failing we simply do not prune for things we cannot (yet) handle.
-      // TODO(tim): think about like and not like
+      // Do not prune predicates we cannot (yet) handle.
       return false;
   }
 }
@@ -654,13 +644,14 @@ template <>
 bool AbstractHistogram<std::string>::can_prune(const PredicateCondition predicate_type,
                                                const AllTypeVariant& variant_value,
                                                const std::optional<AllTypeVariant>& variant_value2) const {
-  DebugAssert(num_buckets() > 0, "Called method on histogram before initialization.");
-
   const auto value = type_cast<std::string>(variant_value).substr(0, _string_prefix_length);
 
   switch (predicate_type) {
-    case PredicateCondition::Equals:
-      return _bucket_for_value(value) == INVALID_BUCKET_ID;
+    case PredicateCondition::Equals: {
+      const auto bucket_id = _bucket_for_value(value);
+      // It is possible for EqualWidthHistograms to have empty buckets.
+      return bucket_id == INVALID_BUCKET_ID || _bucket_count(bucket_id) == 0;
+    }
     case PredicateCondition::NotEquals:
       /**
        * We never know that we can prune this when using substrings.
@@ -794,8 +785,7 @@ bool AbstractHistogram<std::string>::can_prune(const PredicateCondition predicat
       return false;
     }
     default:
-      // Rather than failing we simply do not prune for things we cannot (yet) handle.
-      // TODO(anyone): implement more meaningful things here
+      // Do not prune predicates we cannot (yet) handle.
       return false;
   }
 }
