@@ -68,9 +68,7 @@ class RangeFilter : public AbstractFilter {
       case PredicateCondition::Between: {
         Assert(static_cast<bool>(variant_value2), "Between operator needs two values.");
         const auto value2 = type_cast<T>(*variant_value2);
-        auto& min = _ranges.front().first;
-        auto& max = _ranges.back().second;
-        return value > max || value2 < min;
+        return value > _ranges.back().second || value2 < _ranges.front().first;
       }
       default:
         return false;

@@ -33,6 +33,8 @@ class MinMaxFilter : public AbstractFilter {
         return value < _min;
       case PredicateCondition::Equals:
         return value < _min || value > _max;
+      case PredicateCondition::NotEquals:
+        return value == _min && value == _max;
       case PredicateCondition::Between: {
         Assert(static_cast<bool>(variant_value2), "Between operator needs two values.");
         const auto value2 = type_cast<T>(*variant_value2);
