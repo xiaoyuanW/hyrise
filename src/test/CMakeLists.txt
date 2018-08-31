@@ -109,7 +109,11 @@ set(
     sql/sql_query_plan_cache_test.cpp
     sql/sql_query_plan_test.cpp
     sql/sql_translator_test.cpp
-    statistics/chunk_statistics/histograms/histogram_test.cpp
+    statistics/chunk_statistics/histograms/abstract_histogram_test.cpp
+    statistics/chunk_statistics/histograms/equal_height_histogram_test.cpp
+    statistics/chunk_statistics/histograms/equal_num_elements_histogram_test.cpp
+    statistics/chunk_statistics/histograms/equal_width_histogram_test.cpp
+    statistics/chunk_statistics/histograms/histogram_utils_test.cpp
     statistics/chunk_statistics/pruning_filters_test.cpp
     statistics/generate_table_statistics_test.cpp
     statistics/histogram_column_statistics_test.cpp

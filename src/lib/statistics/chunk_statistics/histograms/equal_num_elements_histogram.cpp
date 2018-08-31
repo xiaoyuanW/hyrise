@@ -3,6 +3,7 @@
 #include <memory>
 #include <numeric>
 
+#include "histogram_utils.hpp"
 #include "storage/table.hpp"
 #include "storage/value_column.hpp"
 
@@ -73,6 +74,14 @@ template <>
 std::shared_ptr<EqualNumElementsHistogram<std::string>> EqualNumElementsHistogram<std::string>::from_column(
     const std::shared_ptr<const BaseColumn>& column, const size_t max_num_bins, const std::string& supported_characters,
     const uint64_t string_prefix_length) {
+  Assert(supported_characters.length() > 1, "String range must consist of more than one character.");
+  Assert(ipow(supported_characters.length() + 1, string_prefix_length) < ipow(2ul, 63ul), "Prefix too long.");
+
+  for (auto it = supported_characters.begin(); it < supported_characters.end(); it++) {
+    Assert(std::distance(supported_characters.begin(), it) == *it - supported_characters.front(),
+           "Non-consecutive or unordered string ranges are not supported.");
+  }
+
   const auto value_counts =
       AbstractHistogram<std::string>::_calculate_value_counts(column, supported_characters, string_prefix_length);
 

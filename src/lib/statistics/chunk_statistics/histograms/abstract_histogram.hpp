@@ -84,7 +84,7 @@ class AbstractHistogram : public AbstractFilter {
   virtual uint64_t _bin_count_distinct(const BinID index) const = 0;
 
   const std::weak_ptr<const Table> _table;
-  std::string _supported_characters;
+  const std::string _supported_characters;
   uint64_t _string_prefix_length;
 };
 

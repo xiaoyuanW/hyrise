@@ -40,15 +40,12 @@ AbstractHistogram<std::string>::AbstractHistogram(const std::shared_ptr<const Ta
 template <>
 AbstractHistogram<std::string>::AbstractHistogram(const std::shared_ptr<const Table>& table,
                                                   const std::string& supported_characters)
-    : _table(table) {
+    : _table(table), _supported_characters(supported_characters) {
   Assert(supported_characters.length() > 1, "String range must consist of more than one character.");
-
-  _supported_characters = supported_characters;
-  std::sort(_supported_characters.begin(), _supported_characters.end());
 
   for (auto it = _supported_characters.begin(); it < _supported_characters.end(); it++) {
     Assert(std::distance(_supported_characters.begin(), it) == *it - _supported_characters.front(),
-           "Non-consecutive string ranges are not supported.");
+           "Non-consecutive or unordered string ranges are not supported.");
   }
 
   _string_prefix_length =
@@ -59,17 +56,14 @@ template <>
 AbstractHistogram<std::string>::AbstractHistogram(const std::shared_ptr<const Table>& table,
                                                   const std::string& supported_characters,
                                                   const uint64_t string_prefix_length)
-    : _table(table), _string_prefix_length(string_prefix_length) {
+    : _table(table), _supported_characters(supported_characters), _string_prefix_length(string_prefix_length) {
   Assert(string_prefix_length > 0, "Invalid prefix length.");
   Assert(supported_characters.length() > 1, "String range must consist of more than one character.");
   Assert(ipow(supported_characters.length() + 1, string_prefix_length) < ipow(2ul, 63ul), "Prefix too long.");
 
-  _supported_characters = supported_characters;
-  std::sort(_supported_characters.begin(), _supported_characters.end());
-
   for (auto it = _supported_characters.begin(); it < _supported_characters.end(); it++) {
     Assert(std::distance(_supported_characters.begin(), it) == *it - _supported_characters.front(),
-           "Non-consecutive string ranges are not supported.");
+           "Non-consecutive or unordered string ranges are not supported.");
   }
 }
 
