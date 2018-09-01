@@ -44,10 +44,13 @@ void GroupCommitLogger::log_value(const TransactionID transaction_id, const std:
 }
 
 void GroupCommitLogger::log_commit(const TransactionID transaction_id, std::function<void(TransactionID)> callback) {
-  _commit_callbacks.emplace_back(std::make_pair(callback, transaction_id));
-
   const auto& data = _formatter->commit_entry(transaction_id);
-  _write_to_buffer(data);
+  {
+    std::scoped_lock commit_callback_lock(_commit_callback_mutex);
+    _commit_callbacks.emplace_back(std::make_pair(callback, transaction_id));
+
+    _write_to_buffer(data);
+  }
 }
 
 void GroupCommitLogger::log_load_table(const std::string& file_path, const std::string& table_name) {
@@ -84,7 +87,7 @@ void GroupCommitLogger::log_flush() {
   if (_has_unflushed_buffer) {
     DebugAssert(_log_file.is_open(), "Logger: Log file not open.");
     {
-      std::scoped_lock file_and_buffer_lock(_file_mutex, _buffer_mutex);
+      std::scoped_lock all_lock(_file_mutex, _buffer_mutex, _commit_callback_mutex);
 
       _log_file.write(_buffer, _buffer_position);
       _log_file.sync();
