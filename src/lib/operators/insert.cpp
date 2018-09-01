@@ -202,6 +202,9 @@ std::shared_ptr<const Table> Insert::_on_execute(std::shared_ptr<TransactionCont
       }
 
       still_to_insert -= num_to_insert;
+      if (still_to_insert <= 0) {
+        break;
+      }
       target_start_index += num_to_insert;
       source_chunk_start_index += num_to_insert;
 
