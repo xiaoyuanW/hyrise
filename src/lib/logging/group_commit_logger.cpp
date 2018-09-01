@@ -35,7 +35,7 @@ namespace opossum {
 constexpr uint32_t LOG_BUFFER_CAPACITY = 16384;
 
 // Magic number: time interval that triggers a flush to disk.
-constexpr auto LOG_INTERVAL = std::chrono::milliseconds(1);
+constexpr auto LOG_INTERVAL = std::chrono::microseconds(1);
 
 void GroupCommitLogger::log_value(const TransactionID transaction_id, const std::string& table_name, const RowID row_id,
                                   const std::vector<AllTypeVariant>& values) {

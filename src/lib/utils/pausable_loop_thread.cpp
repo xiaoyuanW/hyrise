@@ -8,14 +8,14 @@
 
 namespace opossum {
 
-PausableLoopThread::PausableLoopThread(std::chrono::milliseconds loop_sleep_time,
+PausableLoopThread::PausableLoopThread(std::chrono::microseconds loop_sleep_time,
                                        const std::function<void(size_t)>& loop_func)
     : _loop_sleep_time(loop_sleep_time) {
   _loop_thread = std::thread([&, loop_func] {
     size_t counter = 0;
     while (!_shutdown_flag) {
       std::unique_lock<std::mutex> lk(_mutex);
-      if (_loop_sleep_time > std::chrono::milliseconds(0)) {
+      if (_loop_sleep_time > std::chrono::microseconds(0)) {
         _cv.wait_for(lk, _loop_sleep_time, [&] { return static_cast<bool>(_shutdown_flag); });
       }
       if (_shutdown_flag) return;
@@ -50,7 +50,7 @@ void PausableLoopThread::resume() {
   _cv.notify_one();
 }
 
-void PausableLoopThread::set_loop_sleep_time(std::chrono::milliseconds loop_sleep_time) {
+void PausableLoopThread::set_loop_sleep_time(std::chrono::microseconds loop_sleep_time) {
   _loop_sleep_time = loop_sleep_time;
 }
 
