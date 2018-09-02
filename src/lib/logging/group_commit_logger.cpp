@@ -55,8 +55,11 @@ void GroupCommitLogger::log_commit(const TransactionID transaction_id, std::func
 
 void GroupCommitLogger::log_load_table(const std::string& file_path, const std::string& table_name) {
   const auto& data = _formatter->load_table_entry(file_path, table_name);
-  _write_to_buffer(data);
-  log_flush();
+  {
+    std::scoped_lock buffer_lock(_buffer_mutex);
+    _write_to_buffer(data);
+    log_flush();
+  }
 }
 
 void GroupCommitLogger::log_invalidate(const TransactionID transaction_id, const std::string& table_name,
