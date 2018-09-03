@@ -70,6 +70,7 @@ void JitExpression::compute(JitRuntimeContext& context) const {
   // Check, whether right side can be pruned
   // AND: false and true/false/null = false
   // OR:  true  or  true/false/null = true
+  /*
   if (_expression_type == JitExpressionType::And && !_left_child->result().is_null(context) &&
       !_left_child->result().get<bool>(context)) {
     return jit_and(_left_child->result(), _right_child->result(), _result_value, context, true);
@@ -77,6 +78,7 @@ void JitExpression::compute(JitRuntimeContext& context) const {
              _left_child->result().get<bool>(context)) {
     return jit_or(_left_child->result(), _right_child->result(), _result_value, context, true);
   }
+  */
 
   _right_child->compute(context);
 
@@ -126,10 +128,10 @@ void JitExpression::compute(JitRuntimeContext& context) const {
       break;
 
     case JitExpressionType::And:
-      jit_and(_left_child->result(), _right_child->result(), _result_value, context, false);
+      jit_and(_left_child->result(), _right_child->result(), _result_value, context);
       break;
     case JitExpressionType::Or:
-      jit_or(_left_child->result(), _right_child->result(), _result_value, context, false);
+      jit_or(_left_child->result(), _right_child->result(), _result_value, context);
       break;
     default:
       Fail("Expression type is not supported.");
