@@ -562,4 +562,53 @@ TEST_F(EqualNumElementsHistogramTest, StringLessThan) {
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "zzzz"), total_count);
 }
 
+TEST_F(EqualNumElementsHistogramTest, StringLikePrefix) {
+  auto hist = EqualNumElementsHistogram<std::string>::from_column(
+      _string3->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 4u, "abcdefghijklmnopqrstuvwxyz", 4u);
+
+  // First bin: [abcd, efgh], so everything before is prunable.
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Like, "a"));
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Like, "a"), 0.f);
+
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Like, "aa%"));
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Like, "aa%"), 0.f);
+
+  // Even though "aa%" is prunable, "a%" is not!
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Like, "a%"));
+  // Since there are no values smaller than "abcd", [abcd, azzz] is the range that "a%" covers.
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Like, "a%"),
+                  hist->estimate_cardinality(PredicateCondition::Between, "abcd", "azzz"));
+
+  // No wildcard, no party.
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Like, "abcd"));
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Like, "abcd"),
+                  hist->estimate_cardinality(PredicateCondition::Equals, "abcd"));
+
+  // Classic cases for prefix search.
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Like, "ab%"));
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Like, "ab%"),
+                  hist->estimate_cardinality(PredicateCondition::Between, "ab", "abzz"));
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Like, "c%"));
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Like, "c%"),
+                  hist->estimate_cardinality(PredicateCondition::Between, "c", "czzz"));
+
+  // Use upper bin boundary as range limit, since there are no other values starting with e in other bins.
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Like, "e%"));
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Like, "e%"),
+                  hist->estimate_cardinality(PredicateCondition::Between, "e", "efgh"));
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Like, "e%"),
+                  hist->estimate_cardinality(PredicateCondition::Between, "e", "ezzz"));
+
+  // Second bin starts at ijkl, so there is a gap between efgh and ijkl.
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Like, "f%"));
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Like, "f%"), 0.f);
+
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Like, "ii%"));
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Like, "ii%"), 0.f);
+
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Like, "iizzzzzzzz%"));
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Like, "iizzzzzzzz%"), 0.f);
+}
+
 }  // namespace opossum

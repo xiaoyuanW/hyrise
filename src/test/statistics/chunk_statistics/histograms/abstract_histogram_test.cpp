@@ -84,6 +84,12 @@ TYPED_TEST(AbstractHistogramStringTest, EstimateCardinalityUnsupportedCharacters
                                      "abcdefghijklmnopqrstuvwxyz", 4u);
 
   EXPECT_NO_THROW(hist->estimate_cardinality(PredicateCondition::Equals, "abcd"));
+
+  // Allow wildcards iff predicate is (NOT) LIKE.
+  EXPECT_NO_THROW(hist->estimate_cardinality(PredicateCondition::Like, "abc_"));
+  EXPECT_NO_THROW(hist->estimate_cardinality(PredicateCondition::NotLike, "abc%"));
+  EXPECT_THROW(hist->estimate_cardinality(PredicateCondition::Equals, "abc%"), std::exception);
+
   EXPECT_THROW(hist->estimate_cardinality(PredicateCondition::Equals, "abc1"), std::exception);
   EXPECT_THROW(hist->estimate_cardinality(PredicateCondition::Equals, "aBcd"), std::exception);
   EXPECT_THROW(hist->estimate_cardinality(PredicateCondition::Equals, "@abc"), std::exception);

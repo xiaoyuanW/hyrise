@@ -382,7 +382,12 @@ template <typename T>
 float AbstractHistogram<T>::estimate_cardinality(const PredicateCondition predicate_type, const T value,
                                                  const std::optional<T>& value2) const {
   if constexpr (std::is_same_v<T, std::string>) {
-    Assert(value.find_first_not_of(_supported_characters) == std::string::npos, "Unsupported characters.");
+    // Only allow supported characters in search value.
+    // If predicate is (NOT) LIKE additionally allow wildcards.
+    const auto allowed_characters =
+        _supported_characters +
+        (predicate_type == PredicateCondition::Like || predicate_type == PredicateCondition::NotLike ? "_%" : "");
+    Assert(value.find_first_not_of(allowed_characters) == std::string::npos, "Unsupported characters.");
   }
 
   T cleaned_value = value;
