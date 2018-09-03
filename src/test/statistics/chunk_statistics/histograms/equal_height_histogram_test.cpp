@@ -505,6 +505,10 @@ TEST_F(EqualHeightHistogramTest, StringLikePrefix) {
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Like, "aa%"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Like, "aa%"), 0.f);
 
+  // Complexity of prefix pattern does not matter for pruning decision.
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Like, "aa%zz%"));
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Like, "aa%zz%"), 0.f);
+
   // Even though "aa%" is prunable, "a%" is not!
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Like, "a%"));
   // Since there are no values smaller than "abcd", [abcd, azzz] is the range that "a%" covers.

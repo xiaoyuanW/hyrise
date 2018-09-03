@@ -729,7 +729,8 @@ bool AbstractHistogram<std::string>::can_prune(const PredicateCondition predicat
        * bins: [a, b], [d, e]
        * predicate: col LIKE 'c%'
        *
-       * With the same argument we can also prune predicates in the form of 'c%foo'.
+       * With the same argument we can also prune predicates in the form of 'c%foo',
+       * where foo can be any pattern itself.
        * We only have to consider the pattern up to the first MatchAll character.
        */
       const auto match_all_index = value.find('%');
@@ -763,7 +764,8 @@ bool AbstractHistogram<std::string>::can_prune(const PredicateCondition predicat
        * max: crime
        * predicate: col NOT LIKE 'c%'
        *
-       * With the same argument we can also prune predicates in the form of 'c%foo'.
+       * With the same argument we can also prune predicates in the form of 'c%foo',
+       * where foo can be any pattern itself.
        * We only have to consider the pattern up to the first MatchAll character.
        */
       const auto match_all_index = value.find('%');

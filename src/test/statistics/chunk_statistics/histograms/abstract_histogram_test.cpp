@@ -95,4 +95,19 @@ TYPED_TEST(AbstractHistogramStringTest, EstimateCardinalityUnsupportedCharacters
   EXPECT_THROW(hist->estimate_cardinality(PredicateCondition::Equals, "@abc"), std::exception);
 }
 
+TYPED_TEST(AbstractHistogramStringTest, LikePruning) {
+  auto hist = TypeParam::from_column(this->_string2->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 4u,
+                                     "abcdefghijklmnopqrstuvwxyz", 4u);
+
+  // Only test that certain things are not prunable.
+  // Positive pruning tests are dependent on histogram and are tested in their respective tests.
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Like, "%"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Like, "%a"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Like, "%c"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Like, "a%"));
+
+  // Only exception.
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::NotLike, "%"));
+}
+
 }  // namespace opossum
