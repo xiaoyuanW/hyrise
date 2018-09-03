@@ -29,9 +29,9 @@ std::string next_value(const std::string& value, const std::string& supported_ch
     return value + supported_characters.front();
   }
 
-  // Special case: return first unsupported value if the value coming in is the last supported one.
+  // Special case: return value if it is the last supported one.
   if (value == std::string(string_prefix_length, supported_characters.back())) {
-    return value + supported_characters.front();
+    return value;
   }
 
   const auto cleaned_value = value.substr(0, string_prefix_length);

@@ -417,11 +417,12 @@ template <>
 bool AbstractHistogram<std::string>::can_prune(const PredicateCondition predicate_type,
                                                const AllTypeVariant& variant_value,
                                                const std::optional<AllTypeVariant>& variant_value2) const {
-  const auto value = type_cast<std::string>(variant_value).substr(0, _string_prefix_length);
+  const auto value = type_cast<std::string>(variant_value);
+  const auto trimmed_value = value.substr(0, _string_prefix_length);
 
   switch (predicate_type) {
     case PredicateCondition::Equals: {
-      const auto bin_id = _bin_for_value(value);
+      const auto bin_id = _bin_for_value(trimmed_value);
       // It is possible for EqualWidthHistograms to have empty bins.
       return bin_id == INVALID_BIN_ID || _bin_count(bin_id) == 0;
     }
@@ -464,7 +465,7 @@ bool AbstractHistogram<std::string>::can_prune(const PredicateCondition predicat
        * Therefore, we take the substring of the search value: `wa > wa` is false, and the predicate will not be pruned.
        * Note that `col >= water` will, however, not be pruned either (which it theoretically could).
        */
-      return value > max();
+      return trimmed_value > max();
     case PredicateCondition::GreaterThan:
       /**
        * We have to make sure to check the first value after the histogram here.
@@ -478,16 +479,21 @@ bool AbstractHistogram<std::string>::can_prune(const PredicateCondition predicat
        * histogram: `war >= wb` is false, and the predicate will not be pruned.
        * Note that `col > water` will, however, not be pruned either (which it theoretically could).
        */
-      return value >= get_next_value(max());
+      return trimmed_value >= get_next_value(max());
     case PredicateCondition::Between: {
       Assert(static_cast<bool>(variant_value2), "Between operator needs two values.");
-      const auto value2 = type_cast<std::string>(*variant_value2).substr(0, _string_prefix_length);
+      const auto value2 = type_cast<std::string>(*variant_value2);
+      const auto trimmed_value2 = value2.substr(0, _string_prefix_length);
       return can_prune(PredicateCondition::GreaterThanEquals, value) ||
              can_prune(PredicateCondition::LessThanEquals, value2) ||
-             (_bin_for_value(value) == INVALID_BIN_ID && _bin_for_value(value2) == INVALID_BIN_ID &&
-              _upper_bound_for_value(value) == _upper_bound_for_value(value2));
+             (_bin_for_value(trimmed_value) == INVALID_BIN_ID && _bin_for_value(trimmed_value2) == INVALID_BIN_ID &&
+              _upper_bound_for_value(trimmed_value) == _upper_bound_for_value(trimmed_value2));
     }
     case PredicateCondition::Like: {
+      if (!LikeMatcher::contains_wildcard(value)) {
+        return can_prune(PredicateCondition::Equals, value);
+      }
+
       // TODO(tim): think about ways to deal with things like "foo%bar", possibly ignore everything after first '%'.
       // Work with the non-trimmed version here to not accidentally strip special characters (e.g. '%').
 
@@ -509,21 +515,22 @@ bool AbstractHistogram<std::string>::can_prune(const PredicateCondition predicat
        */
       const auto match_all_index = value.find('%');
       if (match_all_index != std::string::npos) {
-        const auto search_prefix = value.substr(0, match_all_index);
+        const auto search_prefix =
+            value.substr(0, match_all_index > _string_prefix_length ? _string_prefix_length : match_all_index);
         const auto upper_bound = next_value(search_prefix, _supported_characters, search_prefix.length());
         return can_prune(PredicateCondition::GreaterThanEquals, search_prefix) ||
                can_prune(PredicateCondition::LessThan, upper_bound) ||
                (_bin_for_value(search_prefix) == INVALID_BIN_ID && _bin_for_value(upper_bound) == INVALID_BIN_ID &&
-                _upper_bound_for_value(value) == _upper_bound_for_value(upper_bound));
-      }
-
-      if (!LikeMatcher::contains_wildcard(value)) {
-        return can_prune(PredicateCondition::Equals, value);
+                _upper_bound_for_value(search_prefix) == _upper_bound_for_value(upper_bound));
       }
 
       return false;
     }
     case PredicateCondition::NotLike: {
+      if (!LikeMatcher::contains_wildcard(value)) {
+        return can_prune(PredicateCondition::NotEquals, value);
+      }
+
       // If the pattern starts with a MatchAll, we can only prune it if it matches all values.
       if (value.front() == '%') {
         return value == "%";
@@ -549,10 +556,6 @@ bool AbstractHistogram<std::string>::can_prune(const PredicateCondition predicat
             search_prefix == max().substr(0, search_prefix.length())) {
           return true;
         }
-      }
-
-      if (!LikeMatcher::contains_wildcard(value)) {
-        return can_prune(PredicateCondition::NotEquals, value);
       }
 
       return false;
@@ -659,12 +662,14 @@ float AbstractHistogram<T>::_estimate_cardinality(const PredicateCondition predi
   }
 }
 
+// Specialization for numbers.
 template <typename T>
 float AbstractHistogram<T>::estimate_cardinality(const PredicateCondition predicate_type, const T value,
                                                  const std::optional<T>& value2) const {
   return _estimate_cardinality(predicate_type, value, value2);
 }
 
+// Specialization for strings.
 template <>
 float AbstractHistogram<std::string>::estimate_cardinality(const PredicateCondition predicate_type,
                                                            const std::string value,
@@ -699,7 +704,8 @@ float AbstractHistogram<std::string>::estimate_cardinality(const PredicateCondit
 
       // Prefix search.
       if (value.back() == '%' && std::count(value.begin(), value.end(), '%') == 1) {
-        const auto search_prefix = value.substr(0, value.length() - 1);
+        const auto search_prefix =
+            value.substr(0, value.length() - 1 > _string_prefix_length ? _string_prefix_length : value.length() - 1);
         return estimate_cardinality(PredicateCondition::LessThan,
                                     next_value(search_prefix, _supported_characters, search_prefix.length())) -
                estimate_cardinality(PredicateCondition::LessThan, search_prefix);

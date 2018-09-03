@@ -40,11 +40,13 @@ class AbstractHistogramStringTest : public BaseTest {
   void SetUp() override {
     _string2 = load_table("src/test/tables/string2.tbl");
     _string3 = load_table("src/test/tables/string3.tbl");
+    _int_string_like_containing2 = load_table("src/test/tables/int_string_like_containing2.tbl");
   }
 
  protected:
   std::shared_ptr<Table> _string2;
   std::shared_ptr<Table> _string3;
+  std::shared_ptr<Table> _int_string_like_containing2;
 };
 
 using HistogramStringTypes = ::testing::Types<EqualNumElementsHistogram<std::string>, EqualWidthHistogram<std::string>,
@@ -96,18 +98,49 @@ TYPED_TEST(AbstractHistogramStringTest, EstimateCardinalityUnsupportedCharacters
 }
 
 TYPED_TEST(AbstractHistogramStringTest, LikePruning) {
-  auto hist = TypeParam::from_column(this->_string2->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 4u,
+  auto hist = TypeParam::from_column(this->_string3->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 4u,
                                      "abcdefghijklmnopqrstuvwxyz", 4u);
 
-  // Only test that certain things are not prunable.
-  // Positive pruning tests are dependent on histogram and are tested in their respective tests.
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Like, "%"));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Like, "%a"));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Like, "%c"));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Like, "a%"));
 
-  // Only exception.
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Like, "aa%"));
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Like, "z%"));
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Like, "z%foo"));
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Like, "z%foo%"));
+}
+
+TYPED_TEST(AbstractHistogramStringTest, NotLikePruning) {
+  auto hist = TypeParam::from_column(this->_string3->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 4u,
+                                     "abcdefghijklmnopqrstuvwxyz", 4u);
   EXPECT_TRUE(hist->can_prune(PredicateCondition::NotLike, "%"));
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::NotLike, "%a"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::NotLike, "%c"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::NotLike, "a%"));
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::NotLike, "aa%"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::NotLike, "z%"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::NotLike, "z%foo"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::NotLike, "z%foo%"));
+}
+
+TYPED_TEST(AbstractHistogramStringTest, NotLikePruningSpecial) {
+  auto hist = TypeParam::from_column(this->_int_string_like_containing2->get_chunk(ChunkID{0})->get_column(ColumnID{1}),
+                                     3u, "abcdefghijklmnopqrstuvwxyz", 4u);
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::NotLike, "d%"));
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::NotLike, "da%"));
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::NotLike, "dam%"));
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::NotLike, "damp%"));
+
+  // Even though "dampf%" is prunable, the histogram cannot decide that because the bin edges are only prefixes.
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::NotLike, "dampf%"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::NotLike, "dampfs%"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::NotLike, "dampfschifffahrtsgesellschaft%"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::NotLike, "db%"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::NotLike, "e%"));
 }
 
 }  // namespace opossum

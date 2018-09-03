@@ -514,6 +514,8 @@ TEST_F(EqualHeightHistogramTest, StringLikePrefix) {
   // Since there are no values smaller than "abcd", [abcd, azzz] is the range that "a%" covers.
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Like, "a%"),
                   hist->estimate_cardinality(PredicateCondition::Between, "abcd", "azzz"));
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Like, "a%"),
+                  hist->estimate_cardinality(PredicateCondition::Between, "a", "azzz"));
 
   // No wildcard, no party.
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Like, "abcd"));
@@ -528,6 +530,11 @@ TEST_F(EqualHeightHistogramTest, StringLikePrefix) {
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Like, "c%"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Like, "c%"),
                   hist->estimate_cardinality(PredicateCondition::Between, "c", "czzz"));
+
+  // If the search prefix is longer than the prefix_length the search prefix will be trimmed and used as a "range".
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Like, "cfoobar%"));
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Like, "cfoobar%"),
+                  hist->estimate_cardinality(PredicateCondition::Between, "cfoo", "cfoo"));
 
   // There are values matching "e%" in two bins, make sure both are included.
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Like, "e%"));

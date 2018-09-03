@@ -35,6 +35,12 @@ class AbstractHistogram : public AbstractFilter {
 
   float estimate_selectivity(const PredicateCondition predicate_type, const T value,
                              const std::optional<T>& value2 = std::nullopt) const;
+
+  /**
+   * Calculates the estimated cardinality given a predicate type and its parameter(s).
+   *
+   * This method is specialized for strings to handle predicates uniquely applicable to string columns.
+   */
   float estimate_cardinality(const PredicateCondition predicate_type, const T value,
                              const std::optional<T>& value2 = std::nullopt) const;
   float estimate_distinct_count(const PredicateCondition predicate_type, const T value,
@@ -68,6 +74,9 @@ class AbstractHistogram : public AbstractFilter {
   virtual void _generate(const std::shared_ptr<const ValueColumn<T>> distinct_column,
                          const std::shared_ptr<const ValueColumn<int64_t>> count_column, const size_t max_num_bins) = 0;
 
+  /**
+   * Calculates the estimated cardinality for predicate types supported by all data types.
+   */
   float _estimate_cardinality(const PredicateCondition predicate_type, const T value,
                               const std::optional<T>& value2 = std::nullopt) const;
 

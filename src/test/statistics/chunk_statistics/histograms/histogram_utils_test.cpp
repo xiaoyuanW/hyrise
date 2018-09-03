@@ -62,7 +62,7 @@ TEST_F(HistogramUtilsTest, NextValueString) {
   EXPECT_EQ(_next_value("abaa"), "abab");
 
   // Special case.
-  EXPECT_EQ(_next_value("zzzz"), "zzzza");
+  EXPECT_EQ(_next_value("zzzz"), "zzzz");
 }
 
 TEST_F(HistogramUtilsTest, StringToNumber) {
