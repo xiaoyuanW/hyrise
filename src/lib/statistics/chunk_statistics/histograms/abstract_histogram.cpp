@@ -379,232 +379,6 @@ float AbstractHistogram<std::string>::_bin_share(const BinID bin_id, const std::
 }
 
 template <typename T>
-float AbstractHistogram<T>::estimate_cardinality(const PredicateCondition predicate_type, const T value,
-                                                 const std::optional<T>& value2) const {
-  if constexpr (std::is_same_v<T, std::string>) {
-    // Only allow supported characters in search value.
-    // If predicate is (NOT) LIKE additionally allow wildcards.
-    const auto allowed_characters =
-        _supported_characters +
-        (predicate_type == PredicateCondition::Like || predicate_type == PredicateCondition::NotLike ? "_%" : "");
-    Assert(value.find_first_not_of(allowed_characters) == std::string::npos, "Unsupported characters.");
-  }
-
-  T cleaned_value = value;
-  if constexpr (std::is_same_v<T, std::string>) {
-    cleaned_value = value.substr(0, _string_prefix_length);
-  }
-
-  if (can_prune(predicate_type, AllTypeVariant{cleaned_value}, std::optional<AllTypeVariant>(*value2))) {
-    return 0.f;
-  }
-
-  switch (predicate_type) {
-    case PredicateCondition::Equals: {
-      const auto index = _bin_for_value(cleaned_value);
-      if (index == INVALID_BIN_ID) {
-        return 0.f;
-      }
-
-      const auto bin_count_distinct = _bin_count_distinct(index);
-      if (bin_count_distinct == 0u) {
-        return 0.f;
-      }
-
-      return static_cast<float>(_bin_count(index)) / static_cast<float>(bin_count_distinct);
-    }
-    case PredicateCondition::NotEquals: {
-      const auto index = _bin_for_value(cleaned_value);
-      if (index == INVALID_BIN_ID) {
-        return total_count();
-      }
-
-      const auto bin_count = _bin_count(index);
-      const auto bin_count_distinct = _bin_count_distinct(index);
-
-      if (bin_count == 0u || bin_count_distinct == 0u) {
-        return total_count();
-      }
-
-      return total_count() - static_cast<float>(bin_count) / static_cast<float>(bin_count_distinct);
-    }
-    case PredicateCondition::LessThan: {
-      if (cleaned_value > max()) {
-        return total_count();
-      }
-
-      if (cleaned_value <= min()) {
-        return 0.f;
-      }
-
-      auto index = _bin_for_value(cleaned_value);
-      auto cardinality = 0.f;
-
-      if (index == INVALID_BIN_ID) {
-        // The value is within the range of the histogram, but does not belong to a bin.
-        // Therefore, we need to sum up the counts of all bins with a max < value.
-        index = _upper_bound_for_value(cleaned_value);
-      } else {
-        cardinality += _bin_share(index, cleaned_value) * _bin_count(index);
-      }
-
-      // Sum up all bins before the bin (or gap) containing the value.
-      for (BinID bin = 0u; bin < index; bin++) {
-        cardinality += _bin_count(bin);
-      }
-
-      /**
-       * The cardinality is capped at total_count().
-       * It is possible for a value that is smaller than or equal to the max of the EqualHeightHistogram
-       * to yield a calculated cardinality higher than total_count.
-       * This is due to the way EqualHeightHistograms store the count for a bin,
-       * which is in a single value (count_per_bin) for all bins rather than a vector (one value for each bin).
-       * Consequently, this value is the desired count for all bins.
-       * In practice, _bin_count(n) >= _count_per_bin for n < num_bins() - 1,
-       * because bins are filled up until the count is at least _count_per_bin.
-       * The last bin typically has a count lower than _count_per_bin.
-       * Therefore, if we calculate the share of the last bin based on _count_per_bin
-       * we might end up with an estimate higher than total_count(), which is then capped.
-       */
-      return std::min(cardinality, static_cast<float>(total_count()));
-    }
-    case PredicateCondition::LessThanEquals:
-      return estimate_cardinality(PredicateCondition::LessThan, get_next_value(cleaned_value));
-    case PredicateCondition::GreaterThanEquals:
-      return total_count() - estimate_cardinality(PredicateCondition::LessThan, cleaned_value);
-    case PredicateCondition::GreaterThan:
-      return total_count() - estimate_cardinality(PredicateCondition::LessThanEquals, cleaned_value);
-    case PredicateCondition::Between: {
-      Assert(static_cast<bool>(value2), "Between operator needs two values.");
-      return estimate_cardinality(PredicateCondition::LessThanEquals, *value2) -
-             estimate_cardinality(PredicateCondition::LessThan, cleaned_value);
-    }
-    case PredicateCondition::Like: {
-      // TODO(tim): think about ways to deal with single character searches (e.g. "foo_").
-      // TODO(tim): think about ways to deal with things like "foo%bar", possibly ignore everything after first '%'.
-      // This would obviously be rather drastic, but:
-      // - it's likely to perform better than a constant
-      // - will only overestimate the cardinality as compared to true prefix searches
-      // Work with the non-trimmed version here to not accidentally strip special characters (e.g. '%').
-      if constexpr (std::is_same_v<T, std::string>) {
-        // Match everything.
-        if (value == "%") {
-          return total_count();
-        }
-
-        // Prefix search.
-        if (value.back() == '%' && std::count(value.begin(), value.end(), '%') == 1) {
-          const auto search_prefix = value.substr(0, value.length() - 1);
-          return estimate_cardinality(PredicateCondition::LessThan,
-                                      next_value(search_prefix, _supported_characters, search_prefix.length())) -
-                 estimate_cardinality(PredicateCondition::LessThan, search_prefix);
-        }
-
-        if (!LikeMatcher::contains_wildcard(value)) {
-          return estimate_cardinality(PredicateCondition::Equals, value);
-        }
-
-        // TODO(tim): Think of a possibly more meaningful default.
-        return total_count();
-      }
-
-      Fail("Predicate LIKE is not supported for non-string column.");
-    }
-    case PredicateCondition::NotLike: {
-      // TODO(tim): think about how to consistently use total_count() - estimate_cardinality(Like, value).
-      // Work with the non-trimmed version here to not accidentally strip special characters (e.g. '%').
-      if constexpr (std::is_same_v<T, std::string>) {
-        if (value.back() == '%' && std::count(value.begin(), value.end(), '%') == 1) {
-          return total_count() - estimate_cardinality(PredicateCondition::Like, value);
-        }
-
-        if (!LikeMatcher::contains_wildcard(value)) {
-          return estimate_cardinality(PredicateCondition::NotEquals, value);
-        }
-
-        return total_count();
-      }
-
-      Fail("Predicate NOT LIKE is not supported for non-string column.");
-    }
-    default:
-      // TODO(anyone): implement more meaningful things here
-      return total_count();
-  }
-}
-
-template <typename T>
-float AbstractHistogram<T>::estimate_selectivity(const PredicateCondition predicate_type, const T value,
-                                                 const std::optional<T>& value2) const {
-  return estimate_cardinality(predicate_type, value, value2) / total_count();
-}
-
-template <typename T>
-float AbstractHistogram<T>::estimate_distinct_count(const PredicateCondition predicate_type, const T value,
-                                                    const std::optional<T>& value2) const {
-  if (can_prune(predicate_type, value, value2)) {
-    return 0.f;
-  }
-
-  T cleaned_value = value;
-  if constexpr (std::is_same_v<T, std::string>) {
-    cleaned_value = value.substr(0, _string_prefix_length);
-  }
-
-  switch (predicate_type) {
-    case PredicateCondition::Equals: {
-      return 1.f;
-    }
-    case PredicateCondition::NotEquals: {
-      if (_bin_for_value(cleaned_value) == INVALID_BIN_ID) {
-        return total_count_distinct();
-      }
-
-      return total_count_distinct() - 1.f;
-    }
-    case PredicateCondition::LessThan: {
-      if (cleaned_value > max()) {
-        return total_count_distinct();
-      }
-
-      auto distinct_count = 0.f;
-      auto bin_id = _bin_for_value(cleaned_value);
-      if (bin_id == INVALID_BIN_ID) {
-        // The value is within the range of the histogram, but does not belong to a bin.
-        // Therefore, we need to sum up the distinct counts of all bins with a max < value.
-        bin_id = _upper_bound_for_value(cleaned_value);
-      } else {
-        distinct_count += _bin_share(bin_id, cleaned_value) * _bin_count_distinct(bin_id);
-      }
-
-      // Sum up all bins before the bin (or gap) containing the value.
-      for (BinID bin = 0u; bin < bin_id; bin++) {
-        distinct_count += _bin_count_distinct(bin);
-      }
-
-      return distinct_count;
-    }
-    case PredicateCondition::LessThanEquals:
-      return estimate_distinct_count(PredicateCondition::LessThan, get_next_value(cleaned_value));
-    case PredicateCondition::GreaterThanEquals:
-      return total_count_distinct() - estimate_distinct_count(PredicateCondition::LessThan, cleaned_value);
-    case PredicateCondition::GreaterThan:
-      return total_count_distinct() - estimate_distinct_count(PredicateCondition::LessThanEquals, cleaned_value);
-    case PredicateCondition::Between: {
-      Assert(static_cast<bool>(value2), "Between operator needs two values.");
-      return estimate_distinct_count(PredicateCondition::LessThanEquals, *value2) -
-             estimate_distinct_count(PredicateCondition::LessThan, cleaned_value);
-    }
-    // TODO(tim): implement like
-    // case PredicateCondition::Like:
-    // case PredicateCondition::NotLike:
-    // TODO(anyone): implement more meaningful things here
-    default:
-      return total_count_distinct();
-  }
-}
-
-template <typename T>
 bool AbstractHistogram<T>::can_prune(const PredicateCondition predicate_type, const AllTypeVariant& variant_value,
                                      const std::optional<AllTypeVariant>& variant_value2) const {
   const auto value = type_cast<T>(variant_value);
@@ -786,6 +560,240 @@ bool AbstractHistogram<std::string>::can_prune(const PredicateCondition predicat
     default:
       // Do not prune predicates we cannot (yet) handle.
       return false;
+  }
+}
+
+template <typename T>
+float AbstractHistogram<T>::_estimate_cardinality(const PredicateCondition predicate_type, const T value,
+                                                  const std::optional<T>& value2) const {
+  if (can_prune(predicate_type, AllTypeVariant{value}, std::optional<AllTypeVariant>(*value2))) {
+    return 0.f;
+  }
+
+  switch (predicate_type) {
+    case PredicateCondition::Equals: {
+      const auto index = _bin_for_value(value);
+      if (index == INVALID_BIN_ID) {
+        return 0.f;
+      }
+
+      const auto bin_count_distinct = _bin_count_distinct(index);
+      if (bin_count_distinct == 0u) {
+        return 0.f;
+      }
+
+      return static_cast<float>(_bin_count(index)) / static_cast<float>(bin_count_distinct);
+    }
+    case PredicateCondition::NotEquals: {
+      const auto index = _bin_for_value(value);
+      if (index == INVALID_BIN_ID) {
+        return total_count();
+      }
+
+      const auto bin_count = _bin_count(index);
+      const auto bin_count_distinct = _bin_count_distinct(index);
+
+      if (bin_count == 0u || bin_count_distinct == 0u) {
+        return total_count();
+      }
+
+      return total_count() - static_cast<float>(bin_count) / static_cast<float>(bin_count_distinct);
+    }
+    case PredicateCondition::LessThan: {
+      if (value > max()) {
+        return total_count();
+      }
+
+      if (value <= min()) {
+        return 0.f;
+      }
+
+      auto index = _bin_for_value(value);
+      auto cardinality = 0.f;
+
+      if (index == INVALID_BIN_ID) {
+        // The value is within the range of the histogram, but does not belong to a bin.
+        // Therefore, we need to sum up the counts of all bins with a max < value.
+        index = _upper_bound_for_value(value);
+      } else {
+        cardinality += _bin_share(index, value) * _bin_count(index);
+      }
+
+      // Sum up all bins before the bin (or gap) containing the value.
+      for (BinID bin = 0u; bin < index; bin++) {
+        cardinality += _bin_count(bin);
+      }
+
+      /**
+       * The cardinality is capped at total_count().
+       * It is possible for a value that is smaller than or equal to the max of the EqualHeightHistogram
+       * to yield a calculated cardinality higher than total_count.
+       * This is due to the way EqualHeightHistograms store the count for a bin,
+       * which is in a single value (count_per_bin) for all bins rather than a vector (one value for each bin).
+       * Consequently, this value is the desired count for all bins.
+       * In practice, _bin_count(n) >= _count_per_bin for n < num_bins() - 1,
+       * because bins are filled up until the count is at least _count_per_bin.
+       * The last bin typically has a count lower than _count_per_bin.
+       * Therefore, if we calculate the share of the last bin based on _count_per_bin
+       * we might end up with an estimate higher than total_count(), which is then capped.
+       */
+      return std::min(cardinality, static_cast<float>(total_count()));
+    }
+    case PredicateCondition::LessThanEquals:
+      return estimate_cardinality(PredicateCondition::LessThan, get_next_value(value));
+    case PredicateCondition::GreaterThanEquals:
+      return total_count() - estimate_cardinality(PredicateCondition::LessThan, value);
+    case PredicateCondition::GreaterThan:
+      return total_count() - estimate_cardinality(PredicateCondition::LessThanEquals, value);
+    case PredicateCondition::Between: {
+      Assert(static_cast<bool>(value2), "Between operator needs two values.");
+      return estimate_cardinality(PredicateCondition::LessThanEquals, *value2) -
+             estimate_cardinality(PredicateCondition::LessThan, value);
+    }
+    case PredicateCondition::Like:
+    case PredicateCondition::NotLike:
+      Fail("Predicate NOT LIKE is not supported for non-string columns.");
+    default:
+      // TODO(anyone): implement more meaningful things here
+      return total_count();
+  }
+}
+
+template <typename T>
+float AbstractHistogram<T>::estimate_cardinality(const PredicateCondition predicate_type, const T value,
+                                                 const std::optional<T>& value2) const {
+  return _estimate_cardinality(predicate_type, value, value2);
+}
+
+template <>
+float AbstractHistogram<std::string>::estimate_cardinality(const PredicateCondition predicate_type,
+                                                           const std::string value,
+                                                           const std::optional<std::string>& value2) const {
+  // Only allow supported characters in search value.
+  // If predicate is (NOT) LIKE additionally allow wildcards.
+  const auto allowed_characters =
+      _supported_characters +
+      (predicate_type == PredicateCondition::Like || predicate_type == PredicateCondition::NotLike ? "_%" : "");
+  Assert(value.find_first_not_of(allowed_characters) == std::string::npos, "Unsupported characters.");
+
+  if (can_prune(predicate_type, AllTypeVariant{value}, std::optional<AllTypeVariant>(*value2))) {
+    return 0.f;
+  }
+
+  switch (predicate_type) {
+    case PredicateCondition::Like: {
+      // TODO(tim): think about ways to deal with single character searches (e.g. "foo_").
+      // TODO(tim): think about ways to deal with things like "foo%bar", possibly ignore everything after first '%'.
+      // This would obviously be rather drastic, but:
+      // - it's likely to perform better than a constant
+      // - will only overestimate the cardinality as compared to true prefix searches
+      // Work with the non-trimmed version here to not accidentally strip special characters (e.g. '%').
+      if (!LikeMatcher::contains_wildcard(value)) {
+        return estimate_cardinality(PredicateCondition::Equals, value);
+      }
+
+      // Match everything.
+      if (value == "%") {
+        return total_count();
+      }
+
+      // Prefix search.
+      if (value.back() == '%' && std::count(value.begin(), value.end(), '%') == 1) {
+        const auto search_prefix = value.substr(0, value.length() - 1);
+        return estimate_cardinality(PredicateCondition::LessThan,
+                                    next_value(search_prefix, _supported_characters, search_prefix.length())) -
+               estimate_cardinality(PredicateCondition::LessThan, search_prefix);
+      }
+
+      // TODO(tim): Think of a possibly more meaningful default.
+      return total_count();
+    }
+    case PredicateCondition::NotLike: {
+      // TODO(tim): think about how to consistently use total_count() - estimate_cardinality(Like, value).
+      // Work with the non-trimmed version here to not accidentally strip special characters (e.g. '%').
+      if (!LikeMatcher::contains_wildcard(value)) {
+        return estimate_cardinality(PredicateCondition::NotEquals, value);
+      }
+
+      if (value.back() == '%' && std::count(value.begin(), value.end(), '%') == 1) {
+        return total_count() - estimate_cardinality(PredicateCondition::Like, value);
+      }
+
+      return total_count();
+    }
+    default:
+      return _estimate_cardinality(predicate_type, value.substr(0, _string_prefix_length), value2);
+  }
+}
+
+template <typename T>
+float AbstractHistogram<T>::estimate_selectivity(const PredicateCondition predicate_type, const T value,
+                                                 const std::optional<T>& value2) const {
+  return estimate_cardinality(predicate_type, value, value2) / total_count();
+}
+
+template <typename T>
+float AbstractHistogram<T>::estimate_distinct_count(const PredicateCondition predicate_type, const T value,
+                                                    const std::optional<T>& value2) const {
+  if (can_prune(predicate_type, value, value2)) {
+    return 0.f;
+  }
+
+  T cleaned_value = value;
+  if constexpr (std::is_same_v<T, std::string>) {
+    cleaned_value = value.substr(0, _string_prefix_length);
+  }
+
+  switch (predicate_type) {
+    case PredicateCondition::Equals: {
+      return 1.f;
+    }
+    case PredicateCondition::NotEquals: {
+      if (_bin_for_value(cleaned_value) == INVALID_BIN_ID) {
+        return total_count_distinct();
+      }
+
+      return total_count_distinct() - 1.f;
+    }
+    case PredicateCondition::LessThan: {
+      if (cleaned_value > max()) {
+        return total_count_distinct();
+      }
+
+      auto distinct_count = 0.f;
+      auto bin_id = _bin_for_value(cleaned_value);
+      if (bin_id == INVALID_BIN_ID) {
+        // The value is within the range of the histogram, but does not belong to a bin.
+        // Therefore, we need to sum up the distinct counts of all bins with a max < value.
+        bin_id = _upper_bound_for_value(cleaned_value);
+      } else {
+        distinct_count += _bin_share(bin_id, cleaned_value) * _bin_count_distinct(bin_id);
+      }
+
+      // Sum up all bins before the bin (or gap) containing the value.
+      for (BinID bin = 0u; bin < bin_id; bin++) {
+        distinct_count += _bin_count_distinct(bin);
+      }
+
+      return distinct_count;
+    }
+    case PredicateCondition::LessThanEquals:
+      return estimate_distinct_count(PredicateCondition::LessThan, get_next_value(cleaned_value));
+    case PredicateCondition::GreaterThanEquals:
+      return total_count_distinct() - estimate_distinct_count(PredicateCondition::LessThan, cleaned_value);
+    case PredicateCondition::GreaterThan:
+      return total_count_distinct() - estimate_distinct_count(PredicateCondition::LessThanEquals, cleaned_value);
+    case PredicateCondition::Between: {
+      Assert(static_cast<bool>(value2), "Between operator needs two values.");
+      return estimate_distinct_count(PredicateCondition::LessThanEquals, *value2) -
+             estimate_distinct_count(PredicateCondition::LessThan, cleaned_value);
+    }
+    // TODO(tim): implement like
+    // case PredicateCondition::Like:
+    // case PredicateCondition::NotLike:
+    // TODO(anyone): implement more meaningful things here
+    default:
+      return total_count_distinct();
   }
 }
 

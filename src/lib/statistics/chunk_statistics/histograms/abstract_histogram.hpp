@@ -68,6 +68,9 @@ class AbstractHistogram : public AbstractFilter {
   virtual void _generate(const std::shared_ptr<const ValueColumn<T>> distinct_column,
                          const std::shared_ptr<const ValueColumn<int64_t>> count_column, const size_t max_num_bins) = 0;
 
+  float _estimate_cardinality(const PredicateCondition predicate_type, const T value,
+                              const std::optional<T>& value2 = std::nullopt) const;
+
   uint64_t _convert_string_to_number_representation(const std::string& value) const;
   std::string _convert_number_representation_to_string(const uint64_t value) const;
   float _bin_share(const BinID bin_id, const T value) const;
