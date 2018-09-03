@@ -14,16 +14,19 @@
 #include "utils/timer.hpp"
 #include "jit_evaluation_helper.hpp"
 #include <papi.h>
+#include "utils/tracing/probes.hpp"
 
 namespace opossum {
 
 AbstractOperator::AbstractOperator(const OperatorType type, const std::shared_ptr<const AbstractOperator>& left,
-                                   const std::shared_ptr<const AbstractOperator>& right)
-    : _type(type), _input_left(left), _input_right(right) {}
+                                   const std::shared_ptr<const AbstractOperator>& right,
+                                   std::unique_ptr<OperatorPerformanceData> performance_data)
+    : _type(type), _input_left(left), _input_right(right), _performance_data(std::move(performance_data)) {}
 
 OperatorType AbstractOperator::type() const { return _type; }
 
 void AbstractOperator::execute() {
+  DTRACE_PROBE1(HYRISE, OPERATOR_STARTED, name().c_str());
   DebugAssert(!_input_left || _input_left->get_output(), "Left input has not yet been executed");
   DebugAssert(!_input_right || _input_right->get_output(), "Right input has not yet been executed");
   DebugAssert(!_output, "Operator has already been executed");
@@ -93,13 +96,17 @@ void AbstractOperator::execute() {
       throw std::logic_error("PAPI_stop_counters: PAPI error " + std::to_string(PAPI_stop_counters(papi_values, num_counters)));
   }
 
-  _base_performance_data.walltime = performance_timer.lap();
+  _performance_data->walltime = performance_timer.lap();
 
-  nlohmann::json op2 = {{"name", name()}, {"prepare", false}, {"walltime", _base_performance_data.walltime.count()}};
+  nlohmann::json op2 = {{"name", name()}, {"prepare", false}, {"walltime", _performance_data->walltime.count()}};
   for (uint32_t i = 0; i < num_counters; ++i) {
     op2[papi_events[i].get<std::string>()] = papi_values[i];
   }
   result["operators"].push_back(op2);
+
+  DTRACE_PROBE5(HYRISE, OPERATOR_EXECUTED, name().c_str(), _performance_data->walltime.count(),
+                _output ? _output->row_count() : 0, _output ? _output->chunk_count() : 0,
+                reinterpret_cast<uintptr_t>(this));
 }
 
 // returns the result of the operator
@@ -162,7 +169,7 @@ std::shared_ptr<AbstractOperator> AbstractOperator::mutable_input_right() const 
   return std::const_pointer_cast<AbstractOperator>(_input_right);
 }
 
-const BaseOperatorPerformanceData& AbstractOperator::base_performance_data() const { return _base_performance_data; }
+const OperatorPerformanceData& AbstractOperator::performance_data() const { return *_performance_data; }
 
 std::shared_ptr<const AbstractOperator> AbstractOperator::input_left() const { return _input_left; }
 
@@ -175,7 +182,7 @@ void AbstractOperator::print(std::ostream& stream) const {
     if (op->input_right()) children.emplace_back(op->input_right());
     return children;
   };
-  const auto node_print_fn = [](const auto& op, auto& stream) {
+  const auto node_print_fn = [& performance_data = *_performance_data](const auto& op, auto& stream) {
     stream << op->description();
 
     // If the operator was already executed, print some info about data and performance
@@ -186,9 +193,7 @@ void AbstractOperator::print(std::ostream& stream) const {
 
       stream << format_bytes(output->estimate_memory_usage());
       stream << "/";
-      stream << format_duration(
-                    std::chrono::duration_cast<std::chrono::nanoseconds>(op->base_performance_data().walltime))
-             << ")";
+      stream << performance_data.to_string(DescriptionMode::SingleLine) << ")";
     }
   };
 
