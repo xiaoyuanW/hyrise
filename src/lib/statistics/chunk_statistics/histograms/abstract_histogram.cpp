@@ -576,40 +576,22 @@ float AbstractHistogram<T>::_estimate_cardinality(const PredicateCondition predi
   switch (predicate_type) {
     case PredicateCondition::Equals: {
       const auto index = _bin_for_value(value);
-      if (index == INVALID_BIN_ID) {
-        return 0.f;
-      }
-
       const auto bin_count_distinct = _bin_count_distinct(index);
-      if (bin_count_distinct == 0u) {
-        return 0.f;
-      }
+
+      // This should never be false because can_prune should have been true further up if this was the case.
+      DebugAssert(bin_count_distinct > 0u, "0 distinct values in bin.");
 
       return static_cast<float>(_bin_count(index)) / static_cast<float>(bin_count_distinct);
     }
-    case PredicateCondition::NotEquals: {
-      const auto index = _bin_for_value(value);
-      if (index == INVALID_BIN_ID) {
-        return total_count();
-      }
-
-      const auto bin_count = _bin_count(index);
-      const auto bin_count_distinct = _bin_count_distinct(index);
-
-      if (bin_count == 0u || bin_count_distinct == 0u) {
-        return total_count();
-      }
-
-      return total_count() - static_cast<float>(bin_count) / static_cast<float>(bin_count_distinct);
-    }
+    case PredicateCondition::NotEquals:
+      return total_count() - _estimate_cardinality(PredicateCondition::Equals, value);
     case PredicateCondition::LessThan: {
       if (value > max()) {
         return total_count();
       }
 
-      if (value <= min()) {
-        return 0.f;
-      }
+      // This should never be false because can_prune should have been true further up if this was the case.
+      DebugAssert(value >= min(), "Value smaller than min of histogram.");
 
       auto index = _bin_for_value(value);
       auto cardinality = 0.f;
