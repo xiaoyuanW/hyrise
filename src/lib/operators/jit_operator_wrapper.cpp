@@ -155,6 +155,13 @@ std::shared_ptr<const Table> JitOperatorWrapper::_on_execute() {
     if (context.chunk_offset == std::numeric_limits<ChunkOffset>::max()) break;
   }
 
+  std::cerr << "JitRead time in micro s: " << std::chrono::duration_cast<std::chrono::microseconds>(context.read_time).count() << std::endl;
+
+  std::cerr << "write_time in micro s: " << std::chrono::duration_cast<std::chrono::microseconds>(context.write_time).count() << std::endl;
+  std::cerr << "compute_time in micro s: " << std::chrono::duration_cast<std::chrono::microseconds>(context.compute_time).count() << std::endl;
+  std::cerr << "filter_time in micro s: " << std::chrono::duration_cast<std::chrono::microseconds>(context.filter_time).count() << std::endl;
+  std::cerr << "aggregate_time in micro s: " << std::chrono::duration_cast<std::chrono::microseconds>(context.aggregate_time).count() << std::endl;
+
   _sink()->after_query(*out_table, context);
 
   return out_table;

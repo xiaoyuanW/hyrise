@@ -12,7 +12,11 @@ std::string JitFilter::description() const { return "[Filter] on x" + std::to_st
 JitTupleValue JitFilter::condition() { return _condition; }
 
 void JitFilter::_consume(JitRuntimeContext& context) const {
-  if (!_condition.is_null(context) && _condition.get<bool>(context)) {
+	auto begin = std::chrono::high_resolution_clock::now();
+	bool keep_tuple = !_condition.is_null(context) && _condition.get<bool>(context);
+	auto end = std::chrono::high_resolution_clock::now();
+  context.filter_time += end - begin;
+  if (keep_tuple) {
     _emit(context);
   }
 }

@@ -55,9 +55,12 @@ std::map<size_t, bool> JitWriteTuples::accessed_column_ids() const {
 }
 
 void JitWriteTuples::_consume(JitRuntimeContext& context) const {
+  auto begin = std::chrono::high_resolution_clock::now();
   for (const auto& output : context.outputs) {
     output->write_value(context);
   }
+  auto end = std::chrono::high_resolution_clock::now();
+  context.write_time += end - begin;
 }
 
 void JitWriteTuples::_create_output_chunk(JitRuntimeContext& context) const {

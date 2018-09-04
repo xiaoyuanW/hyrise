@@ -48,7 +48,10 @@ void JitCompute::set_load_column(const size_t tuple_id, const size_t input_colum
 }
 
 void JitCompute::_consume(JitRuntimeContext& context) const {
-  _expression->compute(context);
+    auto begin = std::chrono::high_resolution_clock::now();
+    _expression->compute(context);
+  auto end = std::chrono::high_resolution_clock::now();
+  context.compute_time += end - begin;
   _emit(context);
 }
 

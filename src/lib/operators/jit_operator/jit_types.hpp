@@ -1,5 +1,7 @@
 #pragma once
 
+#include <chrono>
+
 #include <boost/preprocessor/seq/for_each.hpp>
 
 #include "all_type_variant.hpp"
@@ -142,6 +144,11 @@ struct JitRuntimeContext {
   TransactionID transaction_id;
   CommitID snapshot_commit_id;
   int64_t limit_rows;  // signed integer used to allow decrementing below 0
+  std::chrono::nanoseconds read_time;
+  std::chrono::nanoseconds write_time;
+  std::chrono::nanoseconds compute_time;
+  std::chrono::nanoseconds filter_time;
+  std::chrono::nanoseconds aggregate_time;
 };
 
 // The JitTupleValue represents a value in the runtime tuple.
