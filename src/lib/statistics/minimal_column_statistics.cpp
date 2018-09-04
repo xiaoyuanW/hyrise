@@ -176,9 +176,10 @@ FilterByValueEstimate MinimalColumnStatistics<ColumnDataType>::estimate_predicat
     }
     case PredicateCondition::Like:
     case PredicateCondition::NotLike: {
-      const auto selectivity = predicate_condition == PredicateCondition::Like ? TableStatistics::DEFAULT_LIKE_SELECTIVITY
-                                                                               : 1.0f - TableStatistics::DEFAULT_LIKE_SELECTIVITY;
-      return { non_null_value_ratio() * selectivity, without_null_values() };
+      const auto selectivity = predicate_condition == PredicateCondition::Like
+                                   ? TableStatistics::DEFAULT_LIKE_SELECTIVITY
+                                   : 1.0f - TableStatistics::DEFAULT_LIKE_SELECTIVITY;
+      return {non_null_value_ratio() * selectivity, without_null_values()};
     }
     default:
       return {non_null_value_ratio(), without_null_values()};
