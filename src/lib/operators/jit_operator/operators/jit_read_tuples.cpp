@@ -40,11 +40,6 @@ std::string JitReadTuples::description() const {
 void JitReadTuples::before_query(const Table& in_table, JitRuntimeContext& context) const {
   // Create a runtime tuple of the appropriate size
   context.tuple.resize(_num_tuple_values);
-  context.read_time = std::chrono::nanoseconds::zero();
-  context.write_time = std::chrono::nanoseconds::zero();
-  context.compute_time = std::chrono::nanoseconds::zero();
-  context.filter_time = std::chrono::nanoseconds::zero();
-  context.aggregate_time = std::chrono::nanoseconds::zero();
   if (_row_count_expression) {
     const auto num_rows_expression_result =
         ExpressionEvaluator{}.evaluate_expression_to_result<int64_t>(*_row_count_expression);
@@ -127,12 +122,16 @@ void JitReadTuples::execute(JitRuntimeContext& context) const {
     }
      */
     // DTRACE_PROBE1(HYRISE, JIT_OPERATOR_STARTED, std::string("ReadTuple").c_str());
+#if JIT_MEASURE
     auto begin = std::chrono::high_resolution_clock::now();
+#endif
     for (const auto& input : context.inputs) {
       input->read_value(context);
     }
+#if JIT_MEASURE
     auto end = std::chrono::high_resolution_clock::now();
     context.read_time += end - begin;
+#endif
     // DTRACE_PROBE1(HYRISE, JIT_OPERATOR_EXECUTED, std::string("ReadTuple").c_str());
     _emit(context);
   }

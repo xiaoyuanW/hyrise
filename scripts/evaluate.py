@@ -35,6 +35,8 @@ def calc_sum(operators):
 	prepare = 0
 	execute = 0
 	for operator in operators:
+		if operator['name'].startswith('_'):
+			continue
 		prepare += operator['prepare']
 		execute += operator['execute']
 	return (prepare, execute)
@@ -49,6 +51,7 @@ for experiment in data['results']:
 		continue
 	total_pipeline = int()
 	summary, runtimes = combine_results(experiment['results'])
+	summary.sort(key=lambda x: x['name'])
 	compile_time, execution_time, optimize_time, total_time = runtimes
 	print('Query: ' + experiment['experiment']['query_id'] + ', Engine: ' + experiment['experiment']['engine'])
 	print('compile time: %.0f' % compile_time+ ', execution time: %.0f' % execution_time + ', optimize time: %.0f' % optimize_time + ', total time: %.0f' % total_time + ' (micro s)')
@@ -59,9 +62,9 @@ for experiment in data['results']:
 	table_data.append(['Operator          ', 'Prepare', 'Execution', 'Total time', 'share Prepare', 'share Execution', 'share Total'])
 	for row in summary:
 		row_total = row['prepare'] + row['execute']
-		table_data.append([row['name'], "%.0f" % row['prepare'], "%.0f" % row['execute'], "%.0f" % row_total,
+		table_data.append([row['name'], "{:,.0f}".format(row['prepare']), "{:,.0f}".format(row['execute']), "{:,.0f}".format(row_total),
 			"%.3f" % ((row['prepare']/prepare) if prepare != 0 else 0.), "%.3f" % (row['execute']/execute), "%.3f" % (row_total/total) ])
-	table_data.append(['Total', "%.0f" % prepare, "%.0f" % execute, "%.0f" % total, '', '', ''])
+	table_data.append(['Total', "{:,.0f}".format(prepare), "{:,.0f}".format(execute), "{:,.0f}".format(total), '', '', ''])
 
 	table = AsciiTable(table_data)
 	for i in range(1, 7):
@@ -85,7 +88,7 @@ for key, query in d.iteritems():
 			opossum = float(query['opossum'][index][_index])
 			jit = float(query['jit'][index][_index])
 			share = jit / opossum * 100 if opossum != 0 else 0
-			table_data.append([_value, "%.0f" % opossum, "%.0f" % jit, "%.0f" % (jit - opossum), ("%.2f" % share if opossum != 0 else 'inf') + '%', ('+' if share >= 100 else '') + ("%.2f" % (share-100) if opossum != 0 else 'inf') + '%'])
+			table_data.append([_value, "{:,.0f}".format(opossum), "{:,.0f}".format(jit), "{:,.0f}".format(jit - opossum), ("%.2f" % share if opossum != 0 else 'inf') + '%', ('+' if share >= 100 else '') + ("%.2f" % (share-100) if opossum != 0 else 'inf') + '%'])
 
 	for i in range(1, 6):
 		table.justify_columns[i] = 'right'

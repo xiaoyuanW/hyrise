@@ -31,6 +31,9 @@ std::string JitValidate<input_table_type>::description() const {
 
 template <TableType input_table_type>
 void JitValidate<input_table_type>::_consume(JitRuntimeContext& context) const {
+#if JIT_MEASURE
+  auto begin = std::chrono::high_resolution_clock::now();
+#endif
   bool row_is_visible;
   if constexpr (input_table_type == TableType::References) {
     const auto row_id = (*context.pos_list)[context.chunk_offset];
@@ -42,6 +45,10 @@ void JitValidate<input_table_type>::_consume(JitRuntimeContext& context) const {
     row_is_visible = jit_is_row_visible(context.transaction_id, context.snapshot_commit_id, context.chunk_offset,
                                         *context.mvcc_columns);
   }
+#if JIT_MEASURE
+  auto end = std::chrono::high_resolution_clock::now();
+  context.validate_time += end - begin;
+#endif
   if (row_is_visible) _emit(context);
 }
 

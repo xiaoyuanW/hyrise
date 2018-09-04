@@ -246,6 +246,9 @@ std::map<size_t, bool> JitAggregate::accessed_column_ids() const {
 }
 
 void JitAggregate::_consume(JitRuntimeContext& context) const {
+#if JIT_MEASURE
+  auto begin = std::chrono::high_resolution_clock::now();
+#endif
   // We use index-based for loops in this function, since the LLVM optimizer is not able to properly unroll range-based
   // loops, and we need the unrolling for proper specialization.
 
@@ -367,6 +370,10 @@ void JitAggregate::_consume(JitRuntimeContext& context) const {
       }
     }
   }
+#if JIT_MEASURE
+  auto end = std::chrono::high_resolution_clock::now();
+  context.aggregate_time += end - begin;
+#endif
 }
 
 bool JitAggregate::_limit_reached(JitRuntimeContext& context) const { return false; }

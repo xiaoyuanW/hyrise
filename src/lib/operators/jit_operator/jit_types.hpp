@@ -25,6 +25,8 @@ namespace opossum {
 #define JIT_VARIANT_VECTOR_MEMBER(r, d, type) \
   std::vector<BOOST_PP_TUPLE_ELEM(3, 0, type)> BOOST_PP_TUPLE_ELEM(3, 1, type);
 
+#define JIT_MEASURE 1
+
 // Expression uses int32_t to store booleans (see src/lib/expression/evaluation/expression_evaluator.hpp)
 using Bool = int32_t;
 static constexpr auto DataTypeBool = DataType::Int;
@@ -144,11 +146,14 @@ struct JitRuntimeContext {
   TransactionID transaction_id;
   CommitID snapshot_commit_id;
   int64_t limit_rows;  // signed integer used to allow decrementing below 0
-  std::chrono::nanoseconds read_time;
-  std::chrono::nanoseconds write_time;
-  std::chrono::nanoseconds compute_time;
-  std::chrono::nanoseconds filter_time;
-  std::chrono::nanoseconds aggregate_time;
+#if JIT_MEASURE
+  std::chrono::nanoseconds read_time{0};
+  std::chrono::nanoseconds write_time{0};
+  std::chrono::nanoseconds compute_time{0};
+  std::chrono::nanoseconds filter_time{0};
+  std::chrono::nanoseconds aggregate_time{0};
+  std::chrono::nanoseconds validate_time{0};
+#endif
 };
 
 // The JitTupleValue represents a value in the runtime tuple.
