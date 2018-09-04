@@ -135,6 +135,7 @@ void JitOperatorWrapper::_choose_execute_func() {
 }
 
 std::shared_ptr<const Table> JitOperatorWrapper::_on_execute() {
+  auto begin_total = std::chrono::high_resolution_clock::now();
   const auto& in_table = *input_left()->get_output();
   auto out_table = _sink()->create_output_table(in_table.max_chunk_size());
 
@@ -143,26 +144,70 @@ std::shared_ptr<const Table> JitOperatorWrapper::_on_execute() {
     context.transaction_id = transaction_context()->transaction_id();
     context.snapshot_commit_id = transaction_context()->snapshot_commit_id();
   }
-  _source()->before_query(in_table, context);
-  _sink()->before_query(*out_table, context);
+
+  std::chrono::nanoseconds before_query_time = std::chrono::nanoseconds::zero();
+  std::chrono::nanoseconds after_query_time = std::chrono::nanoseconds::zero();
+  std::chrono::nanoseconds before_chunk_time = std::chrono::nanoseconds::zero();
+  std::chrono::nanoseconds after_chunk_time = std::chrono::nanoseconds::zero();
+
+  {
+    auto begin = std::chrono::high_resolution_clock::now();
+    _source()->before_query(in_table, context);
+    _sink()->before_query(*out_table, context);
+    auto end = std::chrono::high_resolution_clock::now();
+    before_query_time += end - begin;
+  }
+
 
   for (opossum::ChunkID chunk_id{0}; chunk_id < in_table.chunk_count(); ++chunk_id) {
-    const auto& in_chunk = *in_table.get_chunk(chunk_id);
-    _source()->before_chunk(in_table, in_chunk, context);
+    { 
+      auto begin = std::chrono::high_resolution_clock::now();     
+      const auto& in_chunk = *in_table.get_chunk(chunk_id);
+      _source()->before_chunk(in_table, in_chunk, context);
+      auto end = std::chrono::high_resolution_clock::now();
+      before_chunk_time += end - begin;
+    }
     _execute_func(_source().get(), context);
-    _sink()->after_chunk(*out_table, context);
+    {
+      auto begin = std::chrono::high_resolution_clock::now();
+      _sink()->after_chunk(*out_table, context);
+      auto end = std::chrono::high_resolution_clock::now();
+      after_chunk_time += end - begin;
+    }
     // break, if limit is reached
     if (context.chunk_offset == std::numeric_limits<ChunkOffset>::max()) break;
   }
+  auto end_total = std::chrono::high_resolution_clock::now();
+  auto diff_total = std::chrono::duration_cast<std::chrono::microseconds>(end_total - begin_total).count();
+  {
+    auto begin = std::chrono::high_resolution_clock::now();
+    _sink()->after_query(*out_table, context);
+    auto end = std::chrono::high_resolution_clock::now();
+    after_query_time += end - begin;
+  }
+  auto before_query_time_count = std::chrono::duration_cast<std::chrono::microseconds>(before_query_time).count();
+  std::cerr << "Before query time in micro s: " << before_query_time_count << std::endl;
+  auto before_chunk_time_count = std::chrono::duration_cast<std::chrono::microseconds>(before_chunk_time).count();
+  std::cerr << "Before chunk time in micro s: " << before_chunk_time_count << std::endl;
 
-  std::cerr << "JitRead time in micro s: " << std::chrono::duration_cast<std::chrono::microseconds>(context.read_time).count() << std::endl;
+  auto read_time_count = std::chrono::duration_cast<std::chrono::microseconds>(context.read_time).count();
+  std::cerr << "JitRead time in micro s: " << read_time_count << std::endl;
+  auto compute_time_count = std::chrono::duration_cast<std::chrono::microseconds>(context.compute_time).count();
+  std::cerr << "compute_time in micro s: " << compute_time_count << std::endl;
+  auto filter_time_count = std::chrono::duration_cast<std::chrono::microseconds>(context.filter_time).count();
+  std::cerr << "filter_time in micro s: " << filter_time_count << std::endl;
+  
+  auto aggregate_time_count = std::chrono::duration_cast<std::chrono::microseconds>(context.aggregate_time).count();
+  if (aggregate_time_count) std::cerr << "aggregate_time in micro s: " << aggregate_time_count << std::endl;
+  auto write_time_count = std::chrono::duration_cast<std::chrono::microseconds>(context.write_time).count();
+  if (write_time_count) std::cerr << "write_time in micro s: " << write_time_count << std::endl;
+  auto after_chunk_count = std::chrono::duration_cast<std::chrono::microseconds>(after_chunk_time).count();
+  std::cerr << "After chunk time in micro s: " << after_chunk_count << std::endl;
+  auto after_query_count = std::chrono::duration_cast<std::chrono::microseconds>(after_query_time).count();
+  std::cerr << "After query time in micro s: " << after_query_count << std::endl;
+    auto sum = before_query_time_count + before_chunk_time_count + read_time_count + compute_time_count + filter_time_count + aggregate_time_count + write_time_count + after_chunk_count + after_query_count;
+  std::cerr << "Total time in micro s: " << diff_total << " ratio: " << static_cast<double>(sum) / diff_total << std::endl;
 
-  std::cerr << "write_time in micro s: " << std::chrono::duration_cast<std::chrono::microseconds>(context.write_time).count() << std::endl;
-  std::cerr << "compute_time in micro s: " << std::chrono::duration_cast<std::chrono::microseconds>(context.compute_time).count() << std::endl;
-  std::cerr << "filter_time in micro s: " << std::chrono::duration_cast<std::chrono::microseconds>(context.filter_time).count() << std::endl;
-  std::cerr << "aggregate_time in micro s: " << std::chrono::duration_cast<std::chrono::microseconds>(context.aggregate_time).count() << std::endl;
-
-  _sink()->after_query(*out_table, context);
 
   return out_table;
 }
