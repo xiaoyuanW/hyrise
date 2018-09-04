@@ -23,10 +23,14 @@ TYPED_TEST_CASE(AbstractHistogramIntTest, HistogramIntTypes);
 TYPED_TEST(AbstractHistogramIntTest, EqualsPruning) {
   const auto hist = TypeParam::from_column(this->_int_float4->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 2u);
 
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{0}));
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{11}));
-  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{123'457}));
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{12}));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{123'456}));
+
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{123'457}));
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{1'000'000}));
 }
 
 TYPED_TEST(AbstractHistogramIntTest, LessThanPruning) {
@@ -83,6 +87,7 @@ TYPED_TEST(AbstractHistogramIntTest, BetweenPruning) {
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Between, AllTypeVariant{11}, AllTypeVariant{12}));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Between, AllTypeVariant{11}, AllTypeVariant{123'456}));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Between, AllTypeVariant{11}, AllTypeVariant{123'457}));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Between, AllTypeVariant{11}, AllTypeVariant{1'000'000}));
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Between, AllTypeVariant{12}, AllTypeVariant{12}));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Between, AllTypeVariant{12}, AllTypeVariant{123'456}));
