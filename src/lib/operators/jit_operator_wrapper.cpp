@@ -149,7 +149,6 @@ std::shared_ptr<const Table> JitOperatorWrapper::_on_execute() {
   std::chrono::nanoseconds before_chunk_time{0};
   std::chrono::nanoseconds after_chunk_time{0};
   std::chrono::nanoseconds function_time{0};
-  std::chrono::nanoseconds operator_total_time{0};
 
   Timer timer;
   _source()->before_query(in_table, context);
@@ -188,6 +187,7 @@ std::shared_ptr<const Table> JitOperatorWrapper::_on_execute() {
   add_time("_Function", function_time);
 
 #if JIT_MEASURE
+  std::chrono::nanoseconds operator_total_time{0};
   for (size_t index = 0; index < JitOperatorType::Size; ++index) {
     add_time( "_" + jit_operator_type_to_string.left.at(static_cast<JitOperatorType>(index)), context.times[index]);
     operator_total_time += context.times[index];
