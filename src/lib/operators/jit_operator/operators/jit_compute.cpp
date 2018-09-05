@@ -49,7 +49,7 @@ void JitCompute::set_load_column(const size_t tuple_id, const size_t input_colum
 
 void JitCompute::_consume(JitRuntimeContext& context) const {
   _expression->compute(context);
-  jit_end_operator_limit();
+  // jit_end_operator_compute();
   _emit(context);
 }
 

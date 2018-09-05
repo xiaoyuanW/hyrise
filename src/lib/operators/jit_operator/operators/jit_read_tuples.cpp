@@ -123,6 +123,7 @@ void JitReadTuples::execute(JitRuntimeContext& context) const {
 #if JIT_MEASURE
   context.begin_operator = std::chrono::high_resolution_clock::now();
 #endif
+  // jit_start_operator();
   for (; context.chunk_offset < context.chunk_size; ++context.chunk_offset) {
     /*
     _emit(context);
@@ -131,11 +132,10 @@ void JitReadTuples::execute(JitRuntimeContext& context) const {
     }
      */
     // DTRACE_PROBE1(HYRISE, JIT_OPERATOR_STARTED, std::string("ReadTuple").c_str());
-    jit_start_operator();
     for (const auto& input : context.inputs) {
       input->read_value(context);
     }
-    jit_end_operator_read();
+    // jit_end_operator_read();
     // DTRACE_PROBE1(HYRISE, JIT_OPERATOR_EXECUTED, std::string("ReadTuple").c_str());
     _emit(context);
   }
