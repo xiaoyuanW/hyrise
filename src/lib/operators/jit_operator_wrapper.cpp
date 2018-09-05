@@ -6,6 +6,8 @@
 #include "operators/jit_operator/operators/jit_compute.hpp"
 #include "operators/jit_operator/operators/jit_read_value.hpp"
 #include "operators/jit_operator/operators/jit_validate.hpp"
+#include "utils/timer.hpp"
+#include "operators/jit_operator/jit_constant_mappings.hpp"
 
 #include "jit_evaluation_helper.hpp"
 
@@ -143,19 +145,55 @@ std::shared_ptr<const Table> JitOperatorWrapper::_on_execute() {
     context.transaction_id = transaction_context()->transaction_id();
     context.snapshot_commit_id = transaction_context()->snapshot_commit_id();
   }
+
+  std::chrono::nanoseconds before_chunk_time{0};
+  std::chrono::nanoseconds after_chunk_time{0};
+  std::chrono::nanoseconds function_time{0};
+
+  Timer timer;
   _source()->before_query(in_table, context);
   _sink()->before_query(*out_table, context);
+  auto before_query_time = timer.lap();
+
 
   for (opossum::ChunkID chunk_id{0}; chunk_id < in_table.chunk_count(); ++chunk_id) {
     const auto& in_chunk = *in_table.get_chunk(chunk_id);
     _source()->before_chunk(in_table, in_chunk, context);
+    before_chunk_time += timer.lap();
     _execute_func(_source().get(), context);
+    function_time += timer.lap();
     _sink()->after_chunk(*out_table, context);
+    after_chunk_time += timer.lap();
     // break, if limit is reached
     if (context.chunk_offset == std::numeric_limits<ChunkOffset>::max()) break;
   }
 
   _sink()->after_query(*out_table, context);
+  auto after_query_time = timer.lap();
+
+  auto& operators = JitEvaluationHelper::get().result()["operators"];
+  auto add_time = [&operators] (const std::string& name, const auto& time) {
+    const auto micro_s = std::chrono::duration_cast<std::chrono::microseconds>(time).count();
+    if (micro_s > 0) {
+      nlohmann::json jit_op = {{"name", name}, {"prepare", false}, {"walltime", micro_s}};
+      operators.push_back(jit_op);
+    }
+  };
+
+  add_time("_JitBeforeQuery", before_query_time);
+  add_time("_JitAfterQuery", after_query_time);
+  add_time("_JitBeforChunk", before_chunk_time);
+  add_time("_JitAfterChunk", after_chunk_time);
+  add_time("_Function", function_time);
+
+#if JIT_MEASURE
+  std::chrono::nanoseconds operator_total_time{0};
+  for (size_t index = 0; index < JitOperatorType::Size; ++index) {
+    add_time( "_" + jit_operator_type_to_string.left.at(static_cast<JitOperatorType>(index)), context.times[index]);
+    operator_total_time += context.times[index];
+  }
+  add_time("_Jit_OperatorsTotal", operator_total_time);
+#endif
 
   return out_table;
 }

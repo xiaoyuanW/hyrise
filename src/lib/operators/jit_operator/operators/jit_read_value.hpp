@@ -8,7 +8,7 @@ namespace opossum {
 class JitReadValue : public AbstractJittable {
  public:
   explicit JitReadValue(const JitInputColumn input_column, const size_t input_column_index)
-      : _input_column(input_column), _input_column_index(input_column_index) {}
+      : AbstractJittable(JitOperatorType::ReadValue), _input_column(input_column), _input_column_index(input_column_index) {}
 
   std::string description() const final;
 

@@ -84,6 +84,13 @@
       "task": "pqp"
     },
     {
+      "engine": "opossum",
+      "optimize": true,
+      "pqp_file": "Q-D-pqp-opossum",
+      "query_id": "Q-D",
+      "task": "pqp"
+    },
+    {
       "engine": "jit",
       "lqp_file": "Q-E-lqp",
       "optimize": true,
@@ -98,6 +105,13 @@
       "task": "pqp"
     },
     {
+      "engine": "opossum",
+      "optimize": true,
+      "pqp_file": "Q-E-pqp-opossum",
+      "query_id": "Q-E",
+      "task": "pqp"
+    },
+    {
       "engine": "jit",
       "lqp_file": "Q-K-lqp",
       "optimize": true,
@@ -108,6 +122,13 @@
       "engine": "jit",
       "optimize": true,
       "pqp_file": "Q-K-pqp",
+      "query_id": "Q-K",
+      "task": "pqp"
+    },
+    {
+      "engine": "opossum",
+      "optimize": true,
+      "pqp_file": "Q-K-pqp-opossum",
       "query_id": "Q-K",
       "task": "pqp"
     },

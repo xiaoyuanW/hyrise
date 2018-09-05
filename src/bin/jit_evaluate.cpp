@@ -94,8 +94,9 @@ void pqp() {
 
   const std::string query_string = opossum::JitEvaluationHelper::get().queries()[query_id]["query"];
 
-  opossum::SQLPipeline pipeline = opossum::SQLPipelineBuilder(query_string).with_mvcc(UseMvcc(mvcc)).create_pipeline();
-  opossum::SQLQueryPlan query_plan(opossum::CleanupTemporaries::Yes);
+  opossum::SQLPipeline pipeline = opossum::SQLPipelineBuilder(query_string).with_mvcc(UseMvcc(mvcc)).dont_cleanup_temporaries().create_pipeline();
+  pipeline.get_result_table();
+  opossum::SQLQueryPlan query_plan(opossum::CleanupTemporaries::No);
   const auto plans = pipeline.get_query_plans();
   for (const auto& plan : plans) {
     query_plan.append_plan(*plan);
@@ -106,6 +107,7 @@ void pqp() {
 }
 
 void run() {
+  opossum::Global::get().jit_evaluate = true;
   auto& experiment = opossum::JitEvaluationHelper::get().experiment();
   const std::string query_id = experiment["query_id"];
   const auto query = opossum::JitEvaluationHelper::get().queries()[query_id];
@@ -143,6 +145,7 @@ void run() {
   result["pipeline_compile_time"] = pipeline.metrics().statement_metrics.front()->compile_time_micros.count();
   result["pipeline_execution_time"] = pipeline.metrics().statement_metrics.front()->execution_time_micros.count();
   result["pipeline_optimize_time"] = pipeline.metrics().statement_metrics.front()->optimize_time_micros.count();
+  opossum::Global::get().jit_evaluate = false;
 }
 
 int main(int argc, char* argv[]) {
@@ -195,8 +198,6 @@ int main(int argc, char* argv[]) {
   if (PAPI_library_init(PAPI_VER_CURRENT) < 0) throw std::logic_error("PAPI error");
   std::cerr << "  supports " << PAPI_num_counters() << " event counters" << std::endl;
   std::cout << "{" << std::endl << "\"results\":[" << std::endl;
-
-  opossum::Global::get().jit_evaluate = true;
 
   const size_t num_experiments = config["experiments"].size();
   for (size_t current_experiment = 0; current_experiment < num_experiments; ++current_experiment) {

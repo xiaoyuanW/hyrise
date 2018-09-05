@@ -1,15 +1,19 @@
 #include "jit_read_tuples.hpp"
 
+#include <chrono>
+
 #include "../jit_types.hpp"
 #include "constant_mappings.hpp"
 #include "expression/evaluation/expression_evaluator.hpp"
 #include "resolve_type.hpp"
 #include "storage/create_iterable_from_column.hpp"
+#include "../jit_utils.hpp"
+// #include "utils/tracing/probes.hpp"
 
 namespace opossum {
 
 JitReadTuples::JitReadTuples(const bool has_validate, const std::shared_ptr<AbstractExpression>& row_count_expression)
-    : _has_validate(has_validate), _row_count_expression(row_count_expression) {}
+    : AbstractJittable(JitOperatorType::Read), _has_validate(has_validate), _row_count_expression(row_count_expression) {}
 
 std::string JitReadTuples::description() const {
   std::stringstream desc;
@@ -37,6 +41,11 @@ std::string JitReadTuples::description() const {
 void JitReadTuples::before_query(const Table& in_table, JitRuntimeContext& context) const {
   // Create a runtime tuple of the appropriate size
   context.tuple.resize(_num_tuple_values);
+#if JIT_MEASURE
+  for (size_t index = 0; index < JitOperatorType::Size; ++index) {
+    context.times[index] = std::chrono::nanoseconds::zero();
+  }
+#endif
   if (_row_count_expression) {
     const auto num_rows_expression_result =
         ExpressionEvaluator{}.evaluate_expression_to_result<int64_t>(*_row_count_expression);
@@ -111,6 +120,9 @@ void JitReadTuples::before_chunk(const Table& in_table, const Chunk& in_chunk, J
 }
 
 void JitReadTuples::execute(JitRuntimeContext& context) const {
+#if JIT_MEASURE
+  context.begin_operator = std::chrono::high_resolution_clock::now();
+#endif
   for (; context.chunk_offset < context.chunk_size; ++context.chunk_offset) {
     /*
     _emit(context);
@@ -118,9 +130,13 @@ void JitReadTuples::execute(JitRuntimeContext& context) const {
       input->increment();
     }
      */
+    // DTRACE_PROBE1(HYRISE, JIT_OPERATOR_STARTED, std::string("ReadTuple").c_str());
+    jit_start_operator();
     for (const auto& input : context.inputs) {
       input->read_value(context);
     }
+    jit_end_operator_read();
+    // DTRACE_PROBE1(HYRISE, JIT_OPERATOR_EXECUTED, std::string("ReadTuple").c_str());
     _emit(context);
   }
 }

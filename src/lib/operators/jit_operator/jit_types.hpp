@@ -1,5 +1,7 @@
 #pragma once
 
+#include <chrono>
+
 #include <boost/preprocessor/seq/for_each.hpp>
 
 #include "all_type_variant.hpp"
@@ -22,6 +24,8 @@ namespace opossum {
 
 #define JIT_VARIANT_VECTOR_MEMBER(r, d, type) \
   std::vector<BOOST_PP_TUPLE_ELEM(3, 0, type)> BOOST_PP_TUPLE_ELEM(3, 1, type);
+
+#define JIT_MEASURE 1
 
 // Expression uses int32_t to store booleans (see src/lib/expression/evaluation/expression_evaluator.hpp)
 using Bool = int32_t;
@@ -126,6 +130,8 @@ struct JitRuntimeHashmap {
   std::vector<JitVariantVector> columns;
 };
 
+enum JitOperatorType{Read = 0, Write = 1, Aggregate = 2, Filter = 3, Compute = 4, Validate = 5, Limit = 6, ReadValue = 7, Size = 8};
+
 // The structure encapsulates all data available to the JitOperatorWrapper at runtime,
 // but NOT during code specialization.
 struct JitRuntimeContext {
@@ -142,6 +148,10 @@ struct JitRuntimeContext {
   TransactionID transaction_id;
   CommitID snapshot_commit_id;
   int64_t limit_rows;  // signed integer used to allow decrementing below 0
+#if JIT_MEASURE
+  std::chrono::nanoseconds times[JitOperatorType::Size];
+  std::chrono::time_point<std::chrono::high_resolution_clock> begin_operator;
+#endif
 };
 
 // The JitTupleValue represents a value in the runtime tuple.
