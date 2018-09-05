@@ -204,7 +204,7 @@ void JitCodeSpecializer::_inline_function_calls(SpecializationContext& context) 
     // All function that are not in the opossum:: namespace are not considered for inlining. Instead, a function
     // declaration (without a function body) is created.
     if (!function_has_opossum_namespace && function_name != "__clang_call_terminate") {
-      if (print) std::cout << "Func: " << function_name << " ! function_has_opossum_namespace" << std::endl;
+      if (print) std::cerr << "Func: " << function_name << " ! function_has_opossum_namespace" << std::endl;
       context.llvm_value_map[&function] = _create_function_declaration(context, function, function.getName());
       call_sites.pop();
       continue;
@@ -224,7 +224,7 @@ void JitCodeSpecializer::_inline_function_calls(SpecializationContext& context) 
       // std::cout << "first_argument_cannot_be_resolved for func: " << function_name << std::endl;
     }
     if (first_argument_cannot_be_resolved && function_name != "__clang_call_terminate") {
-      if (print) std::cout << "Func: " << function_name << " first_argument_cannot_be_resolved" << std::endl;
+      if (print) std::cerr << "Func: " << function_name << " first_argument_cannot_be_resolved" << std::endl;
       call_sites.pop();
       continue;
     }
@@ -260,13 +260,13 @@ void JitCodeSpecializer::_inline_function_calls(SpecializationContext& context) 
     llvm::InlineFunctionInfo info;
     if (InlineFunction(call_site, info, nullptr, false, nullptr, context)) {
       if (Global::get().jit_evaluate) JitEvaluationHelper::get().result()["inlined_functions"] = JitEvaluationHelper::get().result()["inlined_functions"].get<int32_t>() + 1;
-      if (print) std::cout << "Func: " << function_name << " inlined" << std::endl;
+      if (print) std::cerr << "Func: " << function_name << " inlined" << std::endl;
       // std::cout << "+++     inlined func: " << function_name << std::endl;
       for (const auto& new_call_site : info.InlinedCallSites) {
         call_sites.push(new_call_site);
       }
     } else {
-      if (print) std::cout << "Func: " << function_name << " not inlined" << std::endl;
+      if (print) std::cerr << "Func: " << function_name << " not inlined" << std::endl;
       // std::cout << "--- not inlined func: " << function_name << std::endl;
     }
 

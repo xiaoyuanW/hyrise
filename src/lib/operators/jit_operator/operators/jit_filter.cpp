@@ -13,9 +13,11 @@ JitTupleValue JitFilter::condition() { return _condition; }
 
 void JitFilter::_consume(JitRuntimeContext& context) const {
   if (!_condition.is_null(context) && _condition.get<bool>(context)) {
+    jit_end_operator_filter();
     _emit(context);
-#if JIT_MEASURE
   } else {
+    jit_end_operator_filter();
+#if JIT_MEASURE
     _end(context);
 #endif
   }

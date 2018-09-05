@@ -7,6 +7,7 @@
 #include "expression/evaluation/expression_evaluator.hpp"
 #include "resolve_type.hpp"
 #include "storage/create_iterable_from_column.hpp"
+#include "../jit_utils.hpp"
 // #include "utils/tracing/probes.hpp"
 
 namespace opossum {
@@ -130,9 +131,11 @@ void JitReadTuples::execute(JitRuntimeContext& context) const {
     }
      */
     // DTRACE_PROBE1(HYRISE, JIT_OPERATOR_STARTED, std::string("ReadTuple").c_str());
+    jit_start_operator();
     for (const auto& input : context.inputs) {
       input->read_value(context);
     }
+    jit_end_operator_read();
     // DTRACE_PROBE1(HYRISE, JIT_OPERATOR_EXECUTED, std::string("ReadTuple").c_str());
     _emit(context);
   }

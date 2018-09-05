@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "operators/jit_operator/jit_types.hpp"
+#include "../jit_utils.hpp"
 
 namespace opossum {
 
