@@ -12,7 +12,7 @@
 namespace opossum {
 
 JitReadTuples::JitReadTuples(const bool has_validate, const std::shared_ptr<AbstractExpression>& row_count_expression)
-    : _has_validate(has_validate), _row_count_expression(row_count_expression) {}
+    : AbstractJittable(JitOperatorType::Read), _has_validate(has_validate), _row_count_expression(row_count_expression) {}
 
 std::string JitReadTuples::description() const {
   std::stringstream desc;
@@ -40,6 +40,9 @@ std::string JitReadTuples::description() const {
 void JitReadTuples::before_query(const Table& in_table, JitRuntimeContext& context) const {
   // Create a runtime tuple of the appropriate size
   context.tuple.resize(_num_tuple_values);
+  for (size_t index = 0; index < JitOperatorType::Size; ++index) {
+    context.times[index] = std::chrono::nanoseconds::zero();
+  }
   if (_row_count_expression) {
     const auto num_rows_expression_result =
         ExpressionEvaluator{}.evaluate_expression_to_result<int64_t>(*_row_count_expression);
@@ -114,6 +117,7 @@ void JitReadTuples::before_chunk(const Table& in_table, const Chunk& in_chunk, J
 }
 
 void JitReadTuples::execute(JitRuntimeContext& context) const {
+  context.begin_operator = std::chrono::high_resolution_clock::now();
   for (; context.chunk_offset < context.chunk_size; ++context.chunk_offset) {
     /*
     _emit(context);
@@ -122,16 +126,9 @@ void JitReadTuples::execute(JitRuntimeContext& context) const {
     }
      */
     // DTRACE_PROBE1(HYRISE, JIT_OPERATOR_STARTED, std::string("ReadTuple").c_str());
-#if JIT_MEASURE
-    auto begin = std::chrono::high_resolution_clock::now();
-#endif
     for (const auto& input : context.inputs) {
       input->read_value(context);
     }
-#if JIT_MEASURE
-    auto end = std::chrono::high_resolution_clock::now();
-    context.read_time += end - begin;
-#endif
     // DTRACE_PROBE1(HYRISE, JIT_OPERATOR_EXECUTED, std::string("ReadTuple").c_str());
     _emit(context);
   }

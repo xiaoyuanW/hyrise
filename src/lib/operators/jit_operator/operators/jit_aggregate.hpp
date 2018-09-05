@@ -59,6 +59,8 @@ class JitAggregate : public AbstractJittableSink {
  public:
   std::string description() const;
 
+  JitAggregate() : AbstractJittableSink(JitOperatorType::Aggregate) {}
+
   // Creates the output table with appropriate column definitions
   std::shared_ptr<Table> create_output_table(const ChunkOffset input_table_chunk_size) const final;
 

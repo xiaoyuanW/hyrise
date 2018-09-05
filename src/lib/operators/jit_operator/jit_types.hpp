@@ -130,6 +130,8 @@ struct JitRuntimeHashmap {
   std::vector<JitVariantVector> columns;
 };
 
+enum JitOperatorType{Read = 0, Write = 1, Aggregate = 2, Filter = 3, Compute = 4, Validate = 5, Limit = 6, ReadValue = 7, Size = 8};
+
 // The structure encapsulates all data available to the JitOperatorWrapper at runtime,
 // but NOT during code specialization.
 struct JitRuntimeContext {
@@ -147,12 +149,8 @@ struct JitRuntimeContext {
   CommitID snapshot_commit_id;
   int64_t limit_rows;  // signed integer used to allow decrementing below 0
 #if JIT_MEASURE
-  std::chrono::nanoseconds read_time{0};
-  std::chrono::nanoseconds write_time{0};
-  std::chrono::nanoseconds compute_time{0};
-  std::chrono::nanoseconds filter_time{0};
-  std::chrono::nanoseconds aggregate_time{0};
-  std::chrono::nanoseconds validate_time{0};
+  std::chrono::nanoseconds times[JitOperatorType::Size];
+  std::chrono::time_point<std::chrono::high_resolution_clock> begin_operator;
 #endif
 };
 

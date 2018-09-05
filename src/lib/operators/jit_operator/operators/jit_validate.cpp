@@ -19,7 +19,7 @@ __attribute__((optnone)) bool jit_is_row_visible(CommitID our_tid, CommitID snap
 }  // namespace
 
 template <TableType input_table_type>
-JitValidate<input_table_type>::JitValidate() {
+JitValidate<input_table_type>::JitValidate() : AbstractJittable(JitOperatorType::Validate) {
   if constexpr (input_table_type == TableType::References)
     PerformanceWarning("Jit Validate is used with reference table as input.");
 }
@@ -31,9 +31,6 @@ std::string JitValidate<input_table_type>::description() const {
 
 template <TableType input_table_type>
 void JitValidate<input_table_type>::_consume(JitRuntimeContext& context) const {
-#if JIT_MEASURE
-  auto begin = std::chrono::high_resolution_clock::now();
-#endif
   bool row_is_visible;
   if constexpr (input_table_type == TableType::References) {
     const auto row_id = (*context.pos_list)[context.chunk_offset];
@@ -45,11 +42,13 @@ void JitValidate<input_table_type>::_consume(JitRuntimeContext& context) const {
     row_is_visible = jit_is_row_visible(context.transaction_id, context.snapshot_commit_id, context.chunk_offset,
                                         *context.mvcc_columns);
   }
+  if (row_is_visible) {
+    _emit(context);
 #if JIT_MEASURE
-  auto end = std::chrono::high_resolution_clock::now();
-  context.validate_time += end - begin;
+  } else {
+    _end(context);
 #endif
-  if (row_is_visible) _emit(context);
+  }
 }
 
 template class JitValidate<TableType::Data>;

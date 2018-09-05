@@ -7,6 +7,7 @@
 #include "operators/jit_operator/operators/jit_read_value.hpp"
 #include "operators/jit_operator/operators/jit_validate.hpp"
 #include "utils/timer.hpp"
+#include "operators/jit_operator/jit_constant_mappings.hpp"
 
 #include "jit_evaluation_helper.hpp"
 
@@ -145,9 +146,10 @@ std::shared_ptr<const Table> JitOperatorWrapper::_on_execute() {
     context.snapshot_commit_id = transaction_context()->snapshot_commit_id();
   }
 
-  std::chrono::nanoseconds before_chunk_time = std::chrono::nanoseconds::zero();
-  std::chrono::nanoseconds after_chunk_time = std::chrono::nanoseconds::zero();
-  std::chrono::nanoseconds function_time = std::chrono::nanoseconds::zero();
+  std::chrono::nanoseconds before_chunk_time{0};
+  std::chrono::nanoseconds after_chunk_time{0};
+  std::chrono::nanoseconds function_time{0};
+  std::chrono::nanoseconds operator_total_time{0};
 
   Timer timer;
   _source()->before_query(in_table, context);
@@ -173,8 +175,10 @@ std::shared_ptr<const Table> JitOperatorWrapper::_on_execute() {
   auto& operators = JitEvaluationHelper::get().result()["operators"];
   auto add_time = [&operators] (const std::string& name, const auto& time) {
     const auto micro_s = std::chrono::duration_cast<std::chrono::microseconds>(time).count();
-    nlohmann::json jit_op = {{"name", name}, {"prepare", false}, {"walltime", micro_s}};
-    operators.push_back(jit_op);
+    if (micro_s > 0) {
+      nlohmann::json jit_op = {{"name", name}, {"prepare", false}, {"walltime", micro_s}};
+      operators.push_back(jit_op);
+    }
   };
 
   add_time("_JitBeforeQuery", before_query_time);
@@ -184,16 +188,11 @@ std::shared_ptr<const Table> JitOperatorWrapper::_on_execute() {
   add_time("_Function", function_time);
 
 #if JIT_MEASURE
-  auto is_aggregate = static_cast<bool>(std::dynamic_pointer_cast<JitAggregate>(_sink()));
-  if (is_aggregate) {
-    add_time("_JitAggregate", context.aggregate_time);
-  } else {
-    add_time("_JitWrite", context.write_time);
+  for (size_t index = 0; index < JitOperatorType::Size; ++index) {
+    add_time( "_" + jit_operator_type_to_string.left.at(static_cast<JitOperatorType>(index)), context.times[index]);
+    operator_total_time += context.times[index];
   }
-  add_time("_JitRead", context.read_time);
-  add_time("_JitFilter", context.filter_time);
-  add_time("_JitCompute", context.compute_time);
-  add_time("_Jit_OperatorsTotal", context.aggregate_time + context.write_time + context.read_time + context.filter_time + context.compute_time);
+  add_time("_Jit_OperatorsTotal", operator_total_time);
 #endif
 
   return out_table;

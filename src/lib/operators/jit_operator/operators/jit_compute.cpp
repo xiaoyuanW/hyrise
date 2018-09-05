@@ -4,7 +4,7 @@
 
 namespace opossum {
 
-JitCompute::JitCompute(const std::shared_ptr<const JitExpression>& expression) : _expression{expression} {}
+JitCompute::JitCompute(const std::shared_ptr<const JitExpression>& expression) : AbstractJittable(JitOperatorType::Compute), _expression{expression} {}
 
 std::string JitCompute::description() const {
   return "[Compute] x" + std::to_string(_expression->result().tuple_index()) + " = " + _expression->to_string();
@@ -48,14 +48,7 @@ void JitCompute::set_load_column(const size_t tuple_id, const size_t input_colum
 }
 
 void JitCompute::_consume(JitRuntimeContext& context) const {
-#if JIT_MEASURE
-  auto begin = std::chrono::high_resolution_clock::now();
-#endif
   _expression->compute(context);
-#if JIT_MEASURE
-  auto end = std::chrono::high_resolution_clock::now();
-  context.compute_time += end - begin;
-#endif
   _emit(context);
 }
 

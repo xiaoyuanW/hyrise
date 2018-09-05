@@ -9,6 +9,8 @@ namespace opossum {
  */
 class JitLimit : public AbstractJittable {
  public:
+  JitLimit() : AbstractJittable(JitOperatorType::Limit) {}
+
   std::string description() const final;
 
  protected:
