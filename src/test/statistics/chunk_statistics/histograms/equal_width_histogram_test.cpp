@@ -761,4 +761,18 @@ TEST_F(EqualWidthHistogramTest, StringLikePrefix) {
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Like, "z%"), 0.f);
 }
 
+TEST_F(EqualWidthHistogramTest, IntBetweenPruning) {
+  // One bin for each value between min and max.
+  const auto hist =
+      EqualWidthHistogram<int32_t>::from_column(this->_int_int4->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 19u);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Between, AllTypeVariant{0}, AllTypeVariant{0}));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Between, AllTypeVariant{0}, AllTypeVariant{1}));
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Between, AllTypeVariant{1}, AllTypeVariant{1}));
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Between, AllTypeVariant{1}, AllTypeVariant{5}));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Between, AllTypeVariant{1}, AllTypeVariant{6}));
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Between, AllTypeVariant{10}, AllTypeVariant{12}));
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Between, AllTypeVariant{14}, AllTypeVariant{17}));
+}
+
 }  // namespace opossum

@@ -101,7 +101,38 @@ TYPED_TEST(AbstractHistogramIntTest, BetweenPruning) {
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Between, AllTypeVariant{123'457}, AllTypeVariant{123'457}));
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Between, AllTypeVariant{123'457}, AllTypeVariant{1'000'000}));
 
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Between, AllTypeVariant{1'000'000}, AllTypeVariant{0}));
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Between, AllTypeVariant{1'000'000}, AllTypeVariant{1'000'000}));
+}
+
+TYPED_TEST(AbstractHistogramIntTest, CardinalityEstimationOutOfBounds) {
+  const auto hist = TypeParam::from_column(this->_int_float4->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 2u);
+  const auto total_count = this->_int_float4->row_count();
+
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 11), 0.f);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 123'457), 0.f);
+
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::NotEquals, 11), total_count);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::NotEquals, 123'457), total_count);
+
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 12), 0.f);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 123'457), total_count);
+
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThanEquals, 11), 0.f);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThanEquals, 123'456), total_count);
+
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::GreaterThanEquals, 12), total_count);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::GreaterThanEquals, 123'457), 0.f);
+
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::GreaterThan, 11), total_count);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::GreaterThan, 123'456), 0.f);
+
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Between, 0, 11), 0.f);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Between, 11, 11), 0.f);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Between, 12, 123'456), total_count);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Between, 0, 1'000'000), total_count);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Between, 123'457, 123'457), 0.f);
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Between, 123'457, 1'000'000), 0.f);
 }
 
 template <typename T>

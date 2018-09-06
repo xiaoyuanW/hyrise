@@ -401,11 +401,43 @@ bool AbstractHistogram<T>::can_prune(const PredicateCondition predicate_type, co
       return value >= max();
     case PredicateCondition::Between: {
       Assert(static_cast<bool>(variant_value2), "Between operator needs two values.");
+
+      if (can_prune(PredicateCondition::GreaterThanEquals, value)) {
+        return true;
+      }
+
       const auto value2 = type_cast<T>(*variant_value2);
-      return can_prune(PredicateCondition::GreaterThanEquals, value) ||
-             can_prune(PredicateCondition::LessThanEquals, value2) ||
-             (_bin_for_value(value) == INVALID_BIN_ID && _bin_for_value(value2) == INVALID_BIN_ID &&
-              _upper_bound_for_value(value) == _upper_bound_for_value(value2));
+      if (can_prune(PredicateCondition::LessThanEquals, value2)) {
+        return true;
+      }
+
+      if (value2 < value) {
+        return true;
+      }
+
+      const auto value_bin = _bin_for_value(value);
+      const auto value2_bin = _bin_for_value(value2);
+
+      // In an EqualNumElementsHistogram, if both values fall into the same gap, we can prune the predicate.
+      // We need to have at least two bins to rule out pruning if value < min and value2 > max.
+      if (value_bin == INVALID_BIN_ID && value2_bin == INVALID_BIN_ID && num_bins() > 1ul &&
+          _upper_bound_for_value(value) == _upper_bound_for_value(value2)) {
+        return true;
+      }
+
+      // In an EqualWidthHistogram, if both values fall into a bin that has no elements,
+      // and there are either no bins in between or none of them have any elements, we can also prune the predicate.
+      if (value_bin != INVALID_BIN_ID && value2_bin != INVALID_BIN_ID && _bin_count(value_bin) == 0 &&
+          _bin_count(value2_bin) == 0) {
+        for (auto current_bin = value_bin + 1; current_bin < value2_bin; current_bin++) {
+          if (_bin_count(current_bin) > 0ul) {
+            return false;
+          }
+        }
+        return true;
+      }
+
+      return false;
     }
     default:
       // Do not prune predicates we cannot (yet) handle.
@@ -481,12 +513,44 @@ bool AbstractHistogram<std::string>::can_prune(const PredicateCondition predicat
       return trimmed_value >= get_next_value(max());
     case PredicateCondition::Between: {
       Assert(static_cast<bool>(variant_value2), "Between operator needs two values.");
+
+      if (can_prune(PredicateCondition::GreaterThanEquals, value)) {
+        return true;
+      }
+
       const auto value2 = type_cast<std::string>(*variant_value2);
+      if (can_prune(PredicateCondition::LessThanEquals, value2)) {
+        return true;
+      }
+
+      if (value2 < value) {
+        return true;
+      }
+
       const auto trimmed_value2 = value2.substr(0, _string_prefix_length);
-      return can_prune(PredicateCondition::GreaterThanEquals, value) ||
-             can_prune(PredicateCondition::LessThanEquals, value2) ||
-             (_bin_for_value(trimmed_value) == INVALID_BIN_ID && _bin_for_value(trimmed_value2) == INVALID_BIN_ID &&
-              _upper_bound_for_value(trimmed_value) == _upper_bound_for_value(trimmed_value2));
+      const auto value_bin = _bin_for_value(trimmed_value);
+      const auto value2_bin = _bin_for_value(trimmed_value2);
+
+      // In an EqualNumElementsHistogram, if both values fall into the same gap, we can prune the predicate.
+      // We need to have at least two bins to rule out pruning if value < min and value2 > max.
+      if (value_bin == INVALID_BIN_ID && value2_bin == INVALID_BIN_ID && num_bins() > 1ul &&
+          _upper_bound_for_value(trimmed_value) == _upper_bound_for_value(trimmed_value2)) {
+        return true;
+      }
+
+      // In an EqualWidthHistogram, if both values fall into a bin that has no elements,
+      // and there are either no bins in between or none of them have any elements, we can also prune the predicate.
+      if (value_bin != INVALID_BIN_ID && value2_bin != INVALID_BIN_ID && _bin_count(value_bin) == 0 &&
+          _bin_count(value2_bin) == 0) {
+        for (auto current_bin = value_bin + 1; current_bin < value2_bin; current_bin++) {
+          if (_bin_count(current_bin) > 0ul) {
+            return false;
+          }
+        }
+        return true;
+      }
+
+      return false;
     }
     case PredicateCondition::Like: {
       if (!LikeMatcher::contains_wildcard(value)) {
@@ -631,6 +695,11 @@ float AbstractHistogram<T>::_estimate_cardinality(const PredicateCondition predi
       return total_count() - estimate_cardinality(PredicateCondition::LessThanEquals, value);
     case PredicateCondition::Between: {
       Assert(static_cast<bool>(value2), "Between operator needs two values.");
+
+      if (*value2 < value) {
+        return 0.f;
+      }
+
       return estimate_cardinality(PredicateCondition::LessThanEquals, *value2) -
              estimate_cardinality(PredicateCondition::LessThan, value);
     }
@@ -772,6 +841,11 @@ float AbstractHistogram<T>::estimate_distinct_count(const PredicateCondition pre
       return total_count_distinct() - estimate_distinct_count(PredicateCondition::LessThanEquals, cleaned_value);
     case PredicateCondition::Between: {
       Assert(static_cast<bool>(value2), "Between operator needs two values.");
+
+      if (*value2 < value) {
+        return 0.f;
+      }
+
       return estimate_distinct_count(PredicateCondition::LessThanEquals, *value2) -
              estimate_distinct_count(PredicateCondition::LessThan, cleaned_value);
     }
