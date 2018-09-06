@@ -363,11 +363,28 @@ bool _expressions_are_jittable(const std::vector<std::shared_ptr<AbstractExpress
         return false;
       case ExpressionType::Predicate: {
         const auto predicate_expression = std::static_pointer_cast<AbstractPredicateExpression>(expression);
-        if (predicate_expression->predicate_condition == PredicateCondition::In) return false;
+        switch (predicate_expression->predicate_condition) {
+          case PredicateCondition::In:
+          case PredicateCondition::Like:
+          case PredicateCondition::NotLike:
+            return false;
+          default:
+            break;
+        }
       }
       case ExpressionType::Arithmetic:
       case ExpressionType::Logical:
-        if (!_expressions_are_jittable(expression->arguments)) return false;
+        return _expressions_are_jittable(expression->arguments);
+      case ExpressionType::Value: {
+        const auto value_expression = std::static_pointer_cast<const ValueExpression>(expression);
+        return data_type_from_all_type_variant(value_expression->value) != DataType::String;
+      }
+      case ExpressionType::Parameter: {
+        const auto parameter = std::dynamic_pointer_cast<const ParameterExpression>(expression);
+        // ParameterExpressionType::ValuePlaceholder used in prepared statements not supported as it does not provide
+        // type information
+        return parameter->parameter_expression_type == ParameterExpressionType::External || parameter->value();
+      }
       default:
         break;
     }
@@ -393,14 +410,7 @@ bool JitAwareLQPTranslator::_node_is_jittable(const std::shared_ptr<AbstractLQPN
   }
 
   if (auto predicate_node = std::dynamic_pointer_cast<PredicateNode>(node)) {
-    // jit does not support place holders (arguments.size() > 0)
-    for (const auto& argument : predicate_node->predicate->arguments) {
-      if (const auto parameter = std::dynamic_pointer_cast<const ParameterExpression>(argument)) {
-        // ParameterExpressionType::ValuePlaceholder used in prepared statements not supported as it does not provide
-        // type information
-        return parameter->parameter_expression_type == ParameterExpressionType::External || parameter->value();
-      }
-    }
+    if (!_expressions_are_jittable({predicate_node->predicate})) return false;
     return predicate_node->scan_type == ScanType::TableScan;
   }
 
