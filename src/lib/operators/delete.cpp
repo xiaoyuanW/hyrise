@@ -4,6 +4,7 @@
 #include <string>
 
 #include "concurrency/transaction_context.hpp"
+#include "concurrency/transaction_manager.hpp"
 #include "statistics/table_statistics.hpp"
 #include "storage/reference_column.hpp"
 #include "storage/storage_manager.hpp"
@@ -47,11 +48,21 @@ std::shared_ptr<const Table> Delete::_on_execute(std::shared_ptr<TransactionCont
           referenced_chunk->get_scoped_mvcc_columns_lock()->tids[row_id.chunk_offset].compare_exchange_strong(
               expected, _transaction_id);
 
-      // the row is already locked and the transaction needs to be rolled back
-      if (!success) {
-        _mark_as_failed();
-        return nullptr;
+      if (success) continue;
+
+      // If the row has a set TID, it might be a row that our TX inserted
+      // No need to compare-and-swap here, because we can only run into conflicts when two transactions try to
+      // change this row from the initial tid
+      if (auto mvcc_data = referenced_chunk->get_scoped_mvcc_columns_lock();
+          mvcc_data->tids[row_id.chunk_offset] == _transaction_id) {
+        // Make sure that even we don't see it anymore
+        mvcc_data->tids[row_id.chunk_offset] = TransactionManager::INVALID_TRANSACTION_ID;
+        continue;
       }
+
+      // the row is already locked by someone else and the transaction needs to be rolled back
+      _mark_as_failed();
+      return nullptr;
     }
   }
 
@@ -74,9 +85,7 @@ void Delete::_on_commit_records(const CommitID cid) {
 void Delete::_finish_commit() {
   const auto table_statistics = _table->table_statistics();
   if (table_statistics) {
-    _table->set_table_statistics(std::make_shared<TableStatistics>(table_statistics->table_type(),
-                                                                   table_statistics->row_count() - _num_rows_deleted,
-                                                                   table_statistics->column_statistics()));
+    table_statistics->increase_invalid_row_count(_num_rows_deleted);
   }
 }
 

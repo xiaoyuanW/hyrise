@@ -16,6 +16,8 @@ TableType TableStatistics::table_type() const { return _table_type; }
 
 float TableStatistics::row_count() const { return _row_count; }
 
+uint64_t TableStatistics::approx_valid_row_count() const { return row_count() - _approx_invalid_row_count; }
+
 const std::vector<std::shared_ptr<const BaseColumnStatistics>>& TableStatistics::column_statistics() const {
   return _column_statistics;
 }
@@ -43,7 +45,13 @@ TableStatistics TableStatistics::estimate_predicate(const ColumnID column_id,
 
   const auto left_operand_column_statistics = _column_statistics[column_id];
 
-  if (is_column_id(value)) {
+  if (predicate_condition == PredicateCondition::IsNotNull) {
+    predicated_column_statistics[column_id] = left_operand_column_statistics->without_null_values();
+    predicated_row_count *= 1.0 - left_operand_column_statistics->non_null_value_ratio();
+  } else if (predicate_condition == PredicateCondition::IsNull) {
+    predicated_column_statistics[column_id] = left_operand_column_statistics->only_null_values();
+    predicated_row_count *= left_operand_column_statistics->non_null_value_ratio();
+  } else if (is_column_id(value)) {
     const auto value_column_id = boost::get<ColumnID>(value);
 
     const auto estimation = left_operand_column_statistics->estimate_predicate_with_column(
@@ -252,6 +260,8 @@ TableStatistics TableStatistics::estimate_predicated_join(const TableStatistics&
 
   return join_table_stats;
 }
+
+void TableStatistics::increase_invalid_row_count(uint64_t count) { _approx_invalid_row_count += count; }
 
 TableStatistics TableStatistics::estimate_disjunction(const TableStatistics& right_table_statistics) const {
   // TODO(anybody) this is just a dummy implementation

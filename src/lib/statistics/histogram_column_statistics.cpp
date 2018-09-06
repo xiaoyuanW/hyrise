@@ -77,6 +77,10 @@ FilterByValueEstimate HistogramColumnStatistics<ColumnDataType>::estimate_predic
       return estimate_range(selectivity, can_prune, _histogram->get_next_value(value), _histogram->max());
     case PredicateCondition::Between:
       return estimate_range(selectivity, can_prune, value, value2);
+    case PredicateCondition::Like:
+    case PredicateCondition::NotLike:
+      // TODO(anybody): think about better min/max values
+      return estimate_range(selectivity, can_prune, _histogram->min(), _histogram->max());
     default:
       Fail("Predicate type not supported yet.");
   }
@@ -175,7 +179,11 @@ FilterByColumnComparisonEstimate HistogramColumnStatistics<ColumnDataType>::esti
    *  = 29 / 40 = 72.5 % // NOLINT
    */
 
-  Assert(_data_type == base_right_column_statistics->data_type(), "Cannot compare columns of different type");
+  // Cannot currently compare columns of different types.
+  // TODO(anybody): fix
+  if (_data_type != base_right_column_statistics->data_type()) {
+    return {1.0f, without_null_values(), base_right_column_statistics->without_null_values()};
+  }
 
   const auto& right_histogram_column_statistics =
       std::dynamic_pointer_cast<const HistogramColumnStatistics<ColumnDataType>>(base_right_column_statistics);

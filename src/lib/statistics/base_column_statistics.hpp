@@ -66,6 +66,11 @@ class BaseColumnStatistics {
                                         const std::optional<AllTypeVariant>& variant_value2) const = 0;
 
   /**
+   * @return a clone() of this, with the null_value_ratio set to 1
+   */
+  std::shared_ptr<BaseColumnStatistics> only_null_values() const;
+
+  /**
    * @defgroup Cardinality estimation
    * @{
    */

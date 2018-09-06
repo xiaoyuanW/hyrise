@@ -82,16 +82,8 @@ set(
     import_export/csv_parser.hpp
     import_export/csv_writer.cpp
     import_export/csv_writer.hpp
-    cost_model/abstract_cost_feature_proxy.cpp
-    cost_model/abstract_cost_feature_proxy.hpp
-    cost_model/abstract_cost_model.cpp
-    cost_model/abstract_cost_model.hpp
-    cost_model/cost_feature.cpp
-    cost_model/cost_feature.hpp
-    cost_model/cost_feature_lqp_node_proxy.cpp
-    cost_model/cost_feature_lqp_node_proxy.hpp
-    cost_model/cost_feature_operator_proxy.cpp
-    cost_model/cost_feature_operator_proxy.hpp
+    cost_model/abstract_cost_estimator.cpp
+    cost_model/abstract_cost_estimator.hpp
     cost_model/cost.hpp
     cost_model/cost_model_logical.cpp
     cost_model/cost_model_logical.hpp
@@ -241,6 +233,16 @@ set(
     operators/update.hpp
     operators/validate.cpp
     operators/validate.hpp
+    optimizer/dp_ccp.cpp
+    optimizer/dp_ccp.hpp
+    optimizer/enumerate_ccp.cpp
+    optimizer/enumerate_ccp.hpp
+    optimizer/join_graph.cpp
+    optimizer/join_graph.hpp
+    optimizer/join_graph_builder.cpp
+    optimizer/join_graph_builder.hpp
+    optimizer/join_graph_edge.cpp
+    optimizer/join_graph_edge.hpp
     optimizer/optimizer.cpp
     optimizer/optimizer.hpp
     optimizer/strategy/abstract_rule.cpp
@@ -255,6 +257,8 @@ set(
     optimizer/strategy/index_scan_rule.hpp
     optimizer/strategy/join_detection_rule.cpp
     optimizer/strategy/join_detection_rule.hpp
+    optimizer/strategy/join_ordering_rule.cpp
+    optimizer/strategy/join_ordering_rule.hpp
     optimizer/strategy/predicate_pushdown_rule.cpp
     optimizer/strategy/predicate_pushdown_rule.hpp
     optimizer/strategy/predicate_reordering_rule.cpp
@@ -360,6 +364,7 @@ set(
     statistics/table_statistics.cpp
     statistics/table_statistics.hpp
     storage/base_column.cpp
+    storage/base_column_accessor.hpp
     storage/base_column_encoder.hpp
     storage/base_column.hpp
     storage/base_dictionary_column.hpp
@@ -372,6 +377,7 @@ set(
     storage/chunk_encoder.cpp
     storage/chunk_encoder.hpp
     storage/chunk.hpp
+    storage/column_accessor.hpp
     storage/column_encoding_utils.cpp
     storage/column_encoding_utils.hpp
     storage/column_iterables/any_column_iterable.hpp
@@ -526,6 +532,7 @@ set(
     utils/template_type.hpp
     utils/timer.cpp
     utils/timer.hpp
+    utils/tracing/probes.hpp
     ${CMAKE_BINARY_DIR}/version.hpp
 )
 
@@ -592,6 +599,16 @@ endif()
 if (${ENABLE_NUMA_SUPPORT})
     set(LIBRARIES ${LIBRARIES} ${NUMA_LIBRARY} hpinuma_msource_s)
 endif()
+
+# Generate header file in order to define probes needed for dtrace
+set(PROVIDER_FILE "${CMAKE_BINARY_DIR}/provider.hpp")
+add_custom_command (
+    OUTPUT ${PROVIDER_FILE}
+    DEPENDS utils/tracing/provider.d
+    COMMAND dtrace -h -s ${CMAKE_SOURCE_DIR}/src/lib/utils/tracing/provider.d -o ${PROVIDER_FILE}
+)
+
+set(SOURCES ${SOURCES} ${CMAKE_BINARY_DIR}/provider.hpp)
 
 # Configure the regular hyrise library used for tests/server/playground...
 add_library(hyrise STATIC ${SOURCES})
