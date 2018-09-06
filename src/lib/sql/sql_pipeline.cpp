@@ -150,8 +150,9 @@ const std::vector<std::shared_ptr<AbstractLQPNode>>& SQLPipeline::get_optimized_
 
   _optimized_logical_plans.reserve(statement_count());
   for (auto& pipeline_statement : _sql_pipeline_statements) {
-    try {
+    // try {
       _optimized_logical_plans.push_back(pipeline_statement->get_optimized_logical_plan());
+    /*
     } catch (const std::exception& exception) {
       _failed_pipeline_statement = pipeline_statement;
 
@@ -159,6 +160,7 @@ const std::vector<std::shared_ptr<AbstractLQPNode>>& SQLPipeline::get_optimized_
       _optimized_logical_plans.clear();
       throw;
     }
+     */
   }
 
   // The optimizer works on the original unoptimized LQP nodes. After optimizing, the unoptimized version is also

@@ -72,5 +72,5 @@ target_link_libraries(
     jitEvaluate
     hyrise
     hyriseBenchmarkLib
-    papi
+    # ${PAPI_LIBRARIES}
 )

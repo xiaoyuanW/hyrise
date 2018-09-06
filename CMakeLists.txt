@@ -2,7 +2,11 @@
 cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 
 project(Hyrise)
-set(CMAKE_EXE_LINKER_FLAGS -Wl,--export-dynamic)
+if(APPLE)
+    set(CMAKE_EXE_LINKER_FLAGS -Wl,-export_dynamic)
+else()
+    set(CMAKE_EXE_LINKER_FLAGS -Wl,--export-dynamic)
+endif()
 option(ENABLE_UNSUPPORTED_COMPILER "Set to ON to build Hyrise even if the compiler is not supported. Default: OFF" OFF)
 function(compiler_not_supported message)
     if (${ENABLE_UNSUPPORTED_COMPILER})
@@ -77,6 +81,8 @@ find_package(Tbb REQUIRED)
 find_package(Readline REQUIRED)
 find_package(Curses REQUIRED)
 find_package(Sqlite3 REQUIRED)
+set(PAPI_PREFIX "${CMAKE_SOURCE_DIR}/../papi")
+find_package(PAPI REQUIRED)
 
 if(${LLVM_FOUND})
     # FindLLVM does not provide a LLVM_LIBRARY or LLVM_LIBRARIES output variable, so we have to build it ourselves

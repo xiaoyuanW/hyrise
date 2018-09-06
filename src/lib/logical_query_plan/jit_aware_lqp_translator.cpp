@@ -288,7 +288,7 @@ bool JitAwareLQPTranslator::_has_another_condition(const std::shared_ptr<Abstrac
 
 bool JitAwareLQPTranslator::_node_is_jittable(const std::shared_ptr<AbstractLQPNode>& node,
                                               const bool allow_aggregate_node) const {
-  const bool jit_predicate = JitEvaluationHelper::get().experiment()["jit_predicate"];
+  const bool jit_predicate = !JitEvaluationHelper::get().experiment().count("jit_predicate") || JitEvaluationHelper::get().experiment()["jit_predicate"];
   switch (node->type()) {
     case LQPNodeType::Aggregate:
       return allow_aggregate_node;

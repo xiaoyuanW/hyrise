@@ -14,6 +14,7 @@
 #include "sql/sql_pipeline.hpp"
 #include "tpch/tpch_db_generator.hpp"
 #include "tpch/tpch_queries.hpp"
+#include "jit_evaluation_helper.hpp"
 
 /**
  * This benchmark measures Hyrise's performance executing the TPC-H queries, it doesn't (yet) support running the TPC-H
@@ -376,6 +377,10 @@ int main(int argc, char* argv[]) {
     return 1;
   }
   opossum::out() << "- Running benchmark in '" << benchmark_mode_str << "' mode" << std::endl;
+
+  auto experiment = nlohmann::json::object();
+  experiment["engine"] = "jit";
+  opossum::JitEvaluationHelper::get().experiment() = experiment;
 
   // Run the benchmark
   opossum::TpchBenchmark(benchmark_mode, query_ids, chunk_size, scale_factor, num_iterations,

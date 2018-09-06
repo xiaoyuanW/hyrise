@@ -181,13 +181,15 @@ const std::shared_ptr<AbstractLQPNode>& SQLPipelineStatement::get_unoptimized_lo
   }
 
   const auto& parsed_sql = get_parsed_sql_statement();
-  try {
+  // try {
     const auto lqp_roots = SQLTranslator{_use_mvcc == UseMvcc::Yes}.translate_parse_result(*parsed_sql);
     DebugAssert(lqp_roots.size() == 1, "LQP translation returned no or more than one LQP root for a single statement.");
     _unoptimized_logical_plan = lqp_roots.front();
+  /*
   } catch (const std::exception& exception) {
     throw std::runtime_error("Error while compiling query plan:\n  " + std::string(exception.what()));
   }
+   */
 
   return _unoptimized_logical_plan;
 }

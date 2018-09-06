@@ -1,6 +1,7 @@
 #include "jit_operator.hpp"
 
 #include "jit_evaluation_helper.hpp"
+#include "operators/jit_operator/operators/jit_aggregate.hpp"
 
 namespace opossum {
 
@@ -43,7 +44,9 @@ void JitOperator::_prepare() {
   DebugAssert(_source(), "JitOperator does not have a valid source node.");
   DebugAssert(_sink(), "JitOperator does not have a valid sink node.");
 
-  if (JitEvaluationHelper::get().experiment().at("jit_use_jit")) {
+  JitEvaluationHelper::get().experiment()["jit_second_pass"] = static_cast<bool>(std::dynamic_pointer_cast<JitAggregate>(_sink()));
+
+  if (!JitEvaluationHelper::get().experiment().count("jit_use_jit") || JitEvaluationHelper::get().experiment().at("jit_use_jit")) {
     auto start = std::chrono::high_resolution_clock::now();
     _module.specialize(std::make_shared<JitConstantRuntimePointer>(_source().get()));
     auto runtime = std::round(

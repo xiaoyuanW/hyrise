@@ -14,7 +14,7 @@
 #include <storage/deprecated_dictionary_column/fitted_attribute_vector.hpp>
 #include <scheduler/current_scheduler.hpp>
 
-#include <papi.h>
+// #include <papi.h>
 
 const size_t cache_line = 64;
 
@@ -66,7 +66,7 @@ void remove_table_from_cache(opossum::Table& table) {
 
 void lqp() {
   const std::string query_id = opossum::JitEvaluationHelper::get().experiment()["query_id"];
-  const bool optimize = opossum::JitEvaluationHelper::get().experiment()["optimize"];
+  const bool optimize = !opossum::JitEvaluationHelper::get().experiment().count("optimize") || opossum::JitEvaluationHelper::get().experiment()["optimize"];
   const std::string lqp_file = opossum::JitEvaluationHelper::get().experiment()["lqp_file"];
 
   const std::string query_string = opossum::JitEvaluationHelper::get().queries()[query_id]["query"];
@@ -171,9 +171,11 @@ int main(int argc, char* argv[]) {
   std::cerr << "Initializing JIT repository" << std::endl;
   opossum::JitRepository::get();
 
+  /*
   std::cerr << "Initializing PAPI" << std::endl;
   if (PAPI_library_init(PAPI_VER_CURRENT) < 0) throw std::logic_error("PAPI error");
   std::cerr << "  supports " << PAPI_num_counters() << " event counters" << std::endl;
+  */
 
   auto current_experiment = 0;
   const auto num_experiments = config["experiments"].size();
