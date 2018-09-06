@@ -390,7 +390,7 @@ bool AbstractHistogram<T>::can_prune(const PredicateCondition predicate_type, co
       return bin_id == INVALID_BIN_ID || _bin_count(bin_id) == 0;
     }
     case PredicateCondition::NotEquals:
-      return num_bins() == 1 && _bin_min(0) == value && _bin_max(0) == value;
+      return min() == value && max() == value;
     case PredicateCondition::LessThan:
       return value <= min();
     case PredicateCondition::LessThanEquals:
@@ -447,8 +447,7 @@ bool AbstractHistogram<std::string>::can_prune(const PredicateCondition predicat
        * If there was another value then either the lower or upper boundary of the bin would be different,
        * or there would be more than one bin.
        */
-      return value.size() < _string_prefix_length ? num_bins() == 1 && _bin_min(0) == value && _bin_max(0) == value
-                                                  : false;
+      return value.size() < _string_prefix_length ? min() == value && max() == value : false;
     case PredicateCondition::LessThan:
       return value <= min();
     case PredicateCondition::LessThanEquals:

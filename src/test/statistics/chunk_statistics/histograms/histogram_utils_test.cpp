@@ -67,75 +67,108 @@ TEST_F(HistogramUtilsTest, NextValueString) {
 
 TEST_F(HistogramUtilsTest, StringToNumber) {
   EXPECT_EQ(_convert_string_to_number_representation(""), 0ul);
-  EXPECT_EQ(_convert_string_to_number_representation("a"), 0 * (ipow(26, 3)) + 1);
-  EXPECT_EQ(_convert_string_to_number_representation("aa"),
-            0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-                0 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1);
-  EXPECT_EQ(_convert_string_to_number_representation("aaaa"),
-            0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-                0 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 0 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-                0 * (ipow(26, 0)) + 1);
-  EXPECT_EQ(_convert_string_to_number_representation("aaab"),
-            0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-                0 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 0 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-                1 * (ipow(26, 0)) + 1);
-  EXPECT_EQ(_convert_string_to_number_representation("azzz"),
-            0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-                25 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 25 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-                25 * (ipow(26, 0)) + 1);
-  EXPECT_EQ(_convert_string_to_number_representation("b"),
-            1 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1);
-  EXPECT_EQ(_convert_string_to_number_representation("ba"),
-            1 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-                0 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1);
-  EXPECT_EQ(_convert_string_to_number_representation("bhja"),
-            1 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-                7 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 9 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-                0 * (ipow(26, 0)) + 1);
-  EXPECT_EQ(_convert_string_to_number_representation("cde"),
-            2 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-                3 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 4 * (ipow(26, 1) + ipow(26, 0)) + 1);
-  EXPECT_EQ(_convert_string_to_number_representation("zzzz"),
-            25 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-                25 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 25 * (ipow(26, 1) + ipow(26, 0)) + 1 +
-                25 * (ipow(26, 0)) + 1);
+
+  // 0 * (ipow(26, 3)) + 1
+  EXPECT_EQ(_convert_string_to_number_representation("a"), 1ul);
+
+  // 0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 0 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1
+  EXPECT_EQ(_convert_string_to_number_representation("aa"), 2ul);
+
+  // 0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 0 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 0 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 0 * (ipow(26, 0)) + 1
+  EXPECT_EQ(_convert_string_to_number_representation("aaaa"), 4ul);
+
+  // 0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 0 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 0 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 1 * (ipow(26, 0)) + 1
+  EXPECT_EQ(_convert_string_to_number_representation("aaab"), 5ul);
+
+  // 0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 25 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 25 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 25 * (ipow(26, 0)) + 1
+  EXPECT_EQ(_convert_string_to_number_representation("azzz"), 18'279ul);
+
+  // 1 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1
+  EXPECT_EQ(_convert_string_to_number_representation("b"), 18'280ul);
+
+  // 1 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 0 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1
+  EXPECT_EQ(_convert_string_to_number_representation("ba"), 18'281ul);
+
+  // 1 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 7 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 9 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 0 * (ipow(26, 0)) + 1
+  EXPECT_EQ(_convert_string_to_number_representation("bhja"), 23'447ul);
+
+  // 2 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 3 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 4 * (ipow(26, 1) + ipow(26, 0)) + 1
+  EXPECT_EQ(_convert_string_to_number_representation("cde"), 38'778ul);
+
+  // 25 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 25 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 25 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 25 * (ipow(26, 0)) + 1
+  EXPECT_EQ(_convert_string_to_number_representation("zzzz"), 475'254ul);
 }
 
 TEST_F(HistogramUtilsTest, NumberToString) {
   EXPECT_EQ(_convert_number_representation_to_string(0ul), "");
-  EXPECT_EQ(_convert_number_representation_to_string(0 * (ipow(26, 3)) + 1), "a");
-  EXPECT_EQ(_convert_number_representation_to_string(0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-                                                     0 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1),
-            "aa");
-  EXPECT_EQ(_convert_number_representation_to_string(0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-                                                     0 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-                                                     0 * (ipow(26, 1) + ipow(26, 0)) + 1 + 0 * (ipow(26, 0)) + 1),
-            "aaaa");
-  EXPECT_EQ(_convert_number_representation_to_string(0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-                                                     0 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-                                                     0 * (ipow(26, 1) + ipow(26, 0)) + 1 + 1 * (ipow(26, 0)) + 1),
-            "aaab");
-  EXPECT_EQ(_convert_number_representation_to_string(0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-                                                     25 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-                                                     25 * (ipow(26, 1) + ipow(26, 0)) + 1 + 25 * (ipow(26, 0)) + 1),
-            "azzz");
-  EXPECT_EQ(_convert_number_representation_to_string(1 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1),
-            "b");
-  EXPECT_EQ(_convert_number_representation_to_string(1 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-                                                     0 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1),
-            "ba");
-  EXPECT_EQ(_convert_number_representation_to_string(1 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-                                                     7 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-                                                     9 * (ipow(26, 1) + ipow(26, 0)) + 1 + 0 * (ipow(26, 0)) + 1),
-            "bhja");
-  EXPECT_EQ(_convert_number_representation_to_string(2 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-                                                     3 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-                                                     4 * (ipow(26, 1) + ipow(26, 0)) + 1),
-            "cde");
-  EXPECT_EQ(_convert_number_representation_to_string(25 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-                                                     25 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
-                                                     25 * (ipow(26, 1) + ipow(26, 0)) + 1 + 25 * (ipow(26, 0)) + 1),
-            "zzzz");
+
+  // 0 * (ipow(26, 3)) + 1
+  EXPECT_EQ(_convert_number_representation_to_string(1ul), "a");
+
+  // 0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 0 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1
+  EXPECT_EQ(_convert_number_representation_to_string(2ul), "aa");
+
+  // 0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 0 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 0 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 0 * (ipow(26, 0)) + 1
+  EXPECT_EQ(_convert_number_representation_to_string(4ul), "aaaa");
+
+  // 0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 0 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 0 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 1 * (ipow(26, 0)) + 1
+  EXPECT_EQ(_convert_number_representation_to_string(5ul), "aaab");
+
+  // 0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 25 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 25 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 25 * (ipow(26, 0)) + 1
+  EXPECT_EQ(_convert_number_representation_to_string(18'279ul), "azzz");
+
+  // 1 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1
+  EXPECT_EQ(_convert_number_representation_to_string(18'280ul), "b");
+
+  // 1 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 0 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1
+  EXPECT_EQ(_convert_number_representation_to_string(18'281ul), "ba");
+
+  // 1 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 7 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 9 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 0 * (ipow(26, 0)) + 1
+  EXPECT_EQ(_convert_number_representation_to_string(23'447ul), "bhja");
+
+  // 2 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 3 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 4 * (ipow(26, 1) + ipow(26, 0)) + 1
+  EXPECT_EQ(_convert_number_representation_to_string(38'778ul), "cde");
+
+  // 25 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 25 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 25 * (ipow(26, 1) + ipow(26, 0)) + 1 +
+  // 25 * (ipow(26, 0)) + 1
+  EXPECT_EQ(_convert_number_representation_to_string(475'254ul), "zzzz");
 }
 
 TEST_F(HistogramUtilsTest, NumberToStringBruteForce) {
@@ -157,6 +190,32 @@ TEST_F(HistogramUtilsTest, StringToNumberBruteForce) {
 
   for (auto number = 0u; number < max; number++) {
     EXPECT_EQ(_convert_string_to_number_representation(_convert_number_representation_to_string(number)), number);
+  }
+}
+
+TEST_F(HistogramUtilsTest, PreviousValueBruteForce) {
+  constexpr auto max = 475'254ul;
+
+  EXPECT_EQ(_convert_string_to_number_representation(""), 0ul);
+  EXPECT_EQ(_convert_string_to_number_representation("zzzz"), max);
+
+  for (auto number = 0u; number < max; number++) {
+    const auto number_string = _convert_number_representation_to_string(number);
+    const auto previous_value_of_next_number = _previous_value(_convert_number_representation_to_string(number + 1));
+    EXPECT_EQ(number_string, previous_value_of_next_number);
+  }
+}
+
+TEST_F(HistogramUtilsTest, NextValueBruteForce) {
+  constexpr auto max = 475'254ul;
+
+  EXPECT_EQ(_convert_string_to_number_representation(""), 0ul);
+  EXPECT_EQ(_convert_string_to_number_representation("zzzz"), max);
+
+  for (auto number = 1u; number <= max; number++) {
+    const auto number_string = _convert_number_representation_to_string(number);
+    const auto next_value_of_previous_number = _next_value(_convert_number_representation_to_string(number - 1));
+    EXPECT_EQ(number_string, next_value_of_previous_number);
   }
 }
 
