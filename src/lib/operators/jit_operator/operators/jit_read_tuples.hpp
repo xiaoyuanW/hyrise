@@ -70,23 +70,19 @@ class JitReadTuples : public AbstractJittable {
   class JitColumnReader : public BaseJitColumnReader {
    public:
     JitColumnReader(const Iterator& iterator, const JitTupleValue& tuple_value)
-        : _iterator{iterator}, _tuple_value{tuple_value} {}
+        : _iterator{iterator}, _tuple_index{tuple_value.tuple_index()} {}
 
     // Reads a value from the _iterator into the _tuple_value and increments the _iterator.
     void read_value(JitRuntimeContext& context) const {
       const auto& value = *_iterator;
       // clang-format off
       if constexpr (Nullable) {
-        context.tuple.set_is_null(_tuple_value.tuple_index(), value.is_null());
+        context.tuple.set_is_null(_tuple_index, value.is_null());
         if (!value.is_null()) {
-          context.tuple.set<DataType>(_tuple_value.tuple_index(), value.value());
+          context.tuple.set<DataType>(_tuple_index, value.value());
         }
       } else {
-        context.tuple.set<DataType>(_tuple_value.tuple_index(), value.value());
-      }
-      // Non-jit operators store bool values as int values
-      if constexpr (std::is_same_v<DataType, Bool>) {
-        context.tuple.set<bool>(_tuple_value.tuple_index(), value.value());
+        context.tuple.set<DataType>(_tuple_index, value.value());
       }
       // clang-format on
     }
@@ -95,7 +91,7 @@ class JitReadTuples : public AbstractJittable {
 
    private:
     Iterator _iterator;
-    JitTupleValue _tuple_value;
+    const size_t _tuple_index;
   };
 
  public:

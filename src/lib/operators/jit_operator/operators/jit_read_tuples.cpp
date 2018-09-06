@@ -15,7 +15,8 @@ std::string JitReadTuples::description() const {
   std::stringstream desc;
   desc << "[ReadTuple] ";
   for (const auto& input_column : _input_columns) {
-    desc << "(" << data_type_to_string.left.at(input_column.tuple_value.data_type()) << " x"
+    desc << "(" << (input_column.tuple_value.data_type() == DataType::Bool ?
+    "Bool" : data_type_to_string.left.at(input_column.tuple_value.data_type())) << " x"
          << input_column.tuple_value.tuple_index() << " = Col#" << input_column.column_id << "), ";
   }
   for (const auto& input_literal : _input_literals) {
@@ -96,19 +97,31 @@ void JitReadTuples::before_chunk(const Table& in_table, const ChunkID chunk_id, 
     const auto column_id = input_column.column_id;
     const auto column = in_chunk.get_column(column_id);
     const auto is_nullable = in_table.column_is_nullable(column_id);
-    resolve_data_and_column_type(*column, [&](auto type, auto& typed_column) {
-      using ColumnDataType = typename decltype(type)::type;
-      create_iterable_from_column<ColumnDataType>(typed_column).with_iterators([&](auto it, auto end) {
-        using IteratorType = decltype(it);
-        if (is_nullable) {
+    if (input_column.tuple_value.data_type() == DataType::Bool) {
+      resolve_column_type<Bool>(*column, [&](auto& typed_column) {
+        create_iterable_from_column<Bool>(typed_column).with_iterators([&](auto it, auto end) {
+          using IteratorType = decltype(it);
+          // If Data type is bool, the input column is a compute non-null int column
           context.inputs.push_back(
-              std::make_shared<JitColumnReader<IteratorType, ColumnDataType, true>>(it, input_column.tuple_value));
-        } else {
-          context.inputs.push_back(
-              std::make_shared<JitColumnReader<IteratorType, ColumnDataType, false>>(it, input_column.tuple_value));
-        }
+                    std::make_shared<JitColumnReader<IteratorType, bool, false>>(it, input_column.tuple_value));
+        });
       });
-    });
+    } else {
+      resolve_data_and_column_type(*column, [&](auto type, auto& typed_column) {
+        using ColumnDataType = typename decltype(type)::type;
+        create_iterable_from_column<ColumnDataType>(typed_column).with_iterators([&](auto it, auto end) {
+          using IteratorType = decltype(it);
+          if (is_nullable) {
+            context.inputs.push_back(std::make_shared<JitColumnReader<IteratorType, ColumnDataType, true>>(it,
+                    input_column.tuple_value));
+          } else {
+            context.inputs.push_back(
+                    std::make_shared<JitColumnReader<IteratorType, ColumnDataType, false>>(it,
+                            input_column.tuple_value));
+          }
+        });
+      });
+    }
   }
 }
 

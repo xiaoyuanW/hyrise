@@ -261,11 +261,11 @@ std::shared_ptr<JitOperatorWrapper> JitAwareLQPTranslator::_try_translate_sub_pl
 
 std::shared_ptr<const JitExpression> JitAwareLQPTranslator::_try_translate_expression_to_jit_expression(
     const AbstractExpression& expression, JitReadTuples& jit_source,
-    const std::shared_ptr<AbstractLQPNode>& input_node) const {
+    const std::shared_ptr<AbstractLQPNode>& input_node, const bool can_be_bool_column) const {
   const auto input_node_column_id = input_node->find_column_id(expression);
   if (input_node_column_id) {
-    const auto tuple_value =
-        jit_source.add_input_column(expression.data_type(), expression.is_nullable(), *input_node_column_id);
+    const auto tuple_value =  jit_source.add_input_column(can_be_bool_column ?
+        DataType::Bool : expression.data_type(), expression.is_nullable(), *input_node_column_id);
     return std::make_shared<JitExpression>(tuple_value);
   }
 
@@ -304,7 +304,7 @@ std::shared_ptr<const JitExpression> JitAwareLQPTranslator::_try_translate_expre
         const auto& value = std::static_pointer_cast<ValueExpression>(expression.arguments[1])->value;
         if (data_type_from_all_type_variant(value) == DataType::Int && boost::get<int32_t>(value) == 0 &&
             !variant_is_null(value)) {
-          return _try_translate_expression_to_jit_expression(*expression.arguments[0], jit_source, input_node);
+          return _try_translate_expression_to_jit_expression(*expression.arguments[0], jit_source, input_node, true);
         }
       }
 
