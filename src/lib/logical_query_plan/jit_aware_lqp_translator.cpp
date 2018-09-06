@@ -385,6 +385,11 @@ bool _expressions_are_jittable(const std::vector<std::shared_ptr<AbstractExpress
         // type information
         return parameter->parameter_expression_type == ParameterExpressionType::External || parameter->value();
       }
+      case ExpressionType::LQPColumn: {
+        const auto column = std::dynamic_pointer_cast<const LQPColumnExpression>(expression);
+        // Filter or computation on string columns is expensive
+        return column->data_type() != DataType::String;
+      }
       default:
         break;
     }

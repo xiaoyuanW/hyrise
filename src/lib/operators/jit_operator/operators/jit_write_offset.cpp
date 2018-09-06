@@ -32,7 +32,7 @@ std::shared_ptr<Table> JitWriteOffset::create_output_table(const ChunkOffset inp
 }
 
 void JitWriteOffset::before_query(const Table& in_table, Table& out_table, JitRuntimeContext& context) const {
-  _create_output_chunk(context, in_table.get_chunk(ChunkID(0))->size());
+  _create_output_chunk(context, in_table.chunk_count() ? in_table.get_chunk(ChunkID(0))->size() : 0);
 }
 
 void JitWriteOffset::after_chunk(const std::shared_ptr<const Table>& in_table, Table& out_table,
