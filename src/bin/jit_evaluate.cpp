@@ -177,8 +177,10 @@ int main(int argc, char* argv[]) {
   std::cerr << "  supports " << PAPI_num_counters() << " event counters" << std::endl;
   */
 
-  auto current_experiment = 0;
-  const auto num_experiments = config["experiments"].size();
+  std::cout << "{" << std::endl << "\"results\":[" << std::endl;
+
+  size_t current_experiment = 0;
+  const size_t num_experiments = config["experiments"].size();
   for (const auto& experiment : config["experiments"]) {
     current_experiment++;
     opossum::JitEvaluationHelper::get().experiment() = experiment;
@@ -202,7 +204,11 @@ int main(int argc, char* argv[]) {
       }
       output["results"].push_back(opossum::JitEvaluationHelper::get().result());
     }
-    std::cout << output << std::endl;
+    std::cout << output;
+    bool not_last = current_experiment < num_experiments;
+    if (not_last) std::cout << ",";
+    std::cout << std::endl;
   }
+  std::cout << "]" << std::endl << "}" << std::endl;
   std::cerr << "Done" << std::endl;
 }
