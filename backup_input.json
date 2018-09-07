@@ -1,0 +1,193 @@
+{
+  "globals": {
+    "dictionary_compress": false,
+    "_papi_events": [
+      "PAPI_TOT_INS",
+      "PAPI_LD_INS",
+      "PAPI_BR_INS",
+      "PAPI_SR_INS"
+    ],
+    "papi_events": [],
+    "scale_factor": 0.001,
+    "use_other_tables": true,
+    "use_tpch_tables": false
+  },
+  "queries": {
+    "0": {
+      "query": "SELECT l_returnflag, l_linestatus, SUM(l_quantity) as sum_qty, SUM(l_extendedprice) as sum_base_price, SUM(l_extendedprice*(1.0-l_discount)) as sum_disc_price, SUM(l_extendedprice*(1.0-l_discount)*(1.0+l_tax)) as sum_charge, AVG(l_quantity) as avg_qty, AVG(l_extendedprice) as avg_price, AVG(l_discount) as avg_disc, COUNT(*) as count_order FROM lineitem WHERE l_shipdate <= '1998-12-01' GROUP BY l_returnflag, l_linestatus ORDER BY l_returnflag, l_linestatus;",
+      "tables": [
+        "lineitem"
+      ]
+    },
+    "Q-D": {
+      "query": "SELECT X100 FROM TABLE_AGGREGATE WHERE A > 5 AND B > 5 AND C > 5 AND D > 5;",
+      "tables": [
+        "TABLE_AGGREGATE"
+      ]
+    },
+    "Q-E": {
+      "query": "SELECT A + B + C + D + E + F FROM TABLE_AGGREGATE WHERE (A + B + C + D + E + F) > X1",
+      "tables": [
+        "TABLE_AGGREGATE"
+      ]
+    },
+    "Q-F": {
+      "query": "SELECT C, SUM(A), SUM(B) FROM TABLE_AGGREGATE WHERE A > 2 GROUP BY C, D, E;",
+      "tables": [
+        "TABLE_AGGREGATE"
+      ]
+    },
+    "Q-G": {
+      "query": "SELECT SUM(A), SUM(B), SUM(C), SUM(D), SUM(E), SUM(F) FROM TABLE_AGGREGATE GROUP BY X100;",
+      "tables": [
+        "TABLE_AGGREGATE"
+      ]
+    },
+    "Q-H": {
+      "query": "SELECT X100, SUM(A), SUM(B), SUM(C), SUM(D), SUM(F) FROM TABLE_AGGREGATE GROUP BY X100;",
+      "tables": [
+        "TABLE_AGGREGATE"
+      ]
+    },
+    "Q-I": {
+      "query": "SELECT X100, SUM(A) FROM TABLE_AGGREGATE GROUP BY X100;",
+      "tables": [
+        "TABLE_AGGREGATE"
+      ]
+    },
+    "Q-J": {
+      "query": "SELECT A, B, C, D, E, SUM(F) FROM TABLE_AGGREGATE GROUP BY A, B, C, D, E;",
+      "tables": [
+        "TABLE_AGGREGATE"
+      ]
+    },
+    "Q-K": {
+      "query": "SELECT A + B + C + D + E FROM TABLE_AGGREGATE WHERE (A + B + C + D + E) > X10;",
+      "tables": [
+        "TABLE_AGGREGATE"
+      ]
+    }
+  },
+  "experiments": [
+    {
+      "engine": "jit",
+      "lqp_file": "Q-D-lqp",
+      "query_id": "Q-D",
+      "task": "lqp"
+    },
+    {
+      "engine": "jit",
+      "pqp_file": "Q-D-pqp",
+      "query_id": "Q-D",
+      "task": "pqp"
+    },
+    {
+      "engine": "opossum",
+      "pqp_file": "Q-D-pqp-opossum",
+      "query_id": "Q-D",
+      "task": "pqp"
+    },
+    {
+      "engine": "jit",
+      "lqp_file": "Q-E-lqp",
+      "query_id": "Q-E",
+      "task": "lqp"
+    },
+    {
+      "engine": "jit",
+      "pqp_file": "Q-E-pqp",
+      "query_id": "Q-E",
+      "task": "pqp"
+    },
+    {
+      "engine": "opossum",
+      "pqp_file": "Q-E-pqp-opossum",
+      "query_id": "Q-E",
+      "task": "pqp"
+    },
+    {
+      "engine": "jit",
+      "lqp_file": "Q-K-lqp",
+      "query_id": "Q-K",
+      "task": "lqp"
+    },
+    {
+      "engine": "jit",
+      "pqp_file": "Q-K-pqp",
+      "query_id": "Q-K",
+      "task": "pqp"
+    },
+    {
+      "engine": "opossum",
+      "pqp_file": "Q-K-pqp-opossum",
+      "query_id": "Q-K",
+      "task": "pqp"
+    },
+    {
+      "engine": "jit",
+      "query_id": "Q-D",
+      "repetitions": 10,
+      "task": "run"
+    },
+    {
+      "engine": "jit",
+      "query_id": "Q-E",
+      "repetitions": 10,
+      "task": "run"
+    },
+    {
+      "engine": "jit",
+      "query_id": "Q-F",
+      "repetitions": 10,
+      "task": "run"
+    },
+    {
+      "engine": "jit",
+      "query_id": "Q-G",
+      "repetitions": 10,
+      "task": "run"
+    },
+    {
+      "engine": "jit",
+      "query_id": "Q-H",
+      "repetitions": 10,
+      "task": "run"
+    },
+    {
+      "engine": "jit",
+      "query_id": "Q-I",
+      "repetitions": 10,
+      "task": "run"
+    },
+    {
+      "engine": "jit",
+      "query_id": "Q-J",
+      "repetitions": 10,
+      "task": "run"
+    },
+    {
+      "engine": "jit",
+      "query_id": "Q-K",
+      "repetitions": 10,
+      "task": "run"
+    },
+    {
+      "engine": "opossum",
+      "query_id": "Q-D",
+      "repetitions": 10,
+      "task": "run"
+    },
+    {
+      "engine": "opossum",
+      "query_id": "Q-E",
+      "repetitions": 10,
+      "task": "run"
+    },
+    {
+      "engine": "opossum",
+      "query_id": "Q-K",
+      "repetitions": 10,
+      "task": "run"
+    }
+  ]
+}
