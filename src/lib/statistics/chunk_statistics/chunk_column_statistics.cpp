@@ -89,13 +89,7 @@ std::shared_ptr<ChunkColumnStatistics> ChunkColumnStatistics::build_statistics(
       num_bins = std::max(num_bins, proposed_bins);
     }
 
-    if (std::is_same_v<DataTypeT, std::string>) {
-      statistics->add_filter(EqualNumElementsHistogram<DataTypeT>::from_column(
-          column, num_bins,
-          " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~", 9));
-    } else {
-      statistics->add_filter(EqualNumElementsHistogram<DataTypeT>::from_column(column, num_bins));
-    }
+    statistics->add_filter(EqualNumElementsHistogram<DataTypeT>::from_column(column, num_bins));
   });
 
   return statistics;

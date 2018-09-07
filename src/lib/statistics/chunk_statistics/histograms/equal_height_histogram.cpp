@@ -12,11 +12,7 @@ namespace opossum {
 template <typename T>
 EqualHeightHistogram<T>::EqualHeightHistogram(const std::vector<T>& maxs, const std::vector<uint64_t>& distinct_counts,
                                               T min, const uint64_t total_count)
-    : AbstractHistogram<T>(nullptr),
-      _maxs(maxs),
-      _distinct_counts(distinct_counts),
-      _min(min),
-      _total_count(total_count) {}
+    : AbstractHistogram<T>(), _maxs(maxs), _distinct_counts(distinct_counts), _min(min), _total_count(total_count) {}
 
 template <>
 EqualHeightHistogram<std::string>::EqualHeightHistogram(const std::vector<std::string>& maxs,
@@ -24,11 +20,15 @@ EqualHeightHistogram<std::string>::EqualHeightHistogram(const std::vector<std::s
                                                         const std::string& min, const uint64_t total_count,
                                                         const std::string& supported_characters,
                                                         const uint64_t string_prefix_length)
-    : AbstractHistogram<std::string>(nullptr, supported_characters, string_prefix_length),
+    : AbstractHistogram<std::string>(supported_characters, string_prefix_length),
       _maxs(maxs),
       _distinct_counts(distinct_counts),
       _min(min),
-      _total_count(total_count) {}
+      _total_count(total_count) {
+  for (const auto& edge : maxs) {
+    Assert(edge.find_first_not_of(supported_characters) == std::string::npos, "Unsupported characters.");
+  }
+}
 
 template <typename T>
 EqualHeightBinStats<T> EqualHeightHistogram<T>::_get_bin_stats(const std::vector<std::pair<T, uint64_t>>& value_counts,
@@ -48,6 +48,8 @@ EqualHeightBinStats<T> EqualHeightHistogram<T>::_get_bin_stats(const std::vector
 
   std::vector<T> maxs;
   std::vector<uint64_t> distinct_counts;
+  maxs.reserve(num_bins);
+  distinct_counts.reserve(num_bins);
 
   auto current_begin = 0u;
   auto current_height = 0u;
@@ -74,39 +76,18 @@ EqualHeightBinStats<T> EqualHeightHistogram<T>::_get_bin_stats(const std::vector
   return {maxs, distinct_counts, min, total_count};
 }
 
-template <>
-std::shared_ptr<EqualHeightHistogram<std::string>> EqualHeightHistogram<std::string>::from_column(
-    const std::shared_ptr<const BaseColumn>& column, const size_t max_num_bins, const std::string& supported_characters,
-    const uint64_t string_prefix_length) {
-  Assert(supported_characters.length() > 1, "String range must consist of more than one character.");
-  Assert(ipow(supported_characters.length() + 1, string_prefix_length) < ipow(2ul, 63ul), "Prefix too long.");
-
-  for (auto it = supported_characters.begin(); it < supported_characters.end(); it++) {
-    Assert(std::distance(supported_characters.begin(), it) == *it - supported_characters.front(),
-           "Non-consecutive or unordered string ranges are not supported.");
-  }
-
-  const auto value_counts =
-      AbstractHistogram<std::string>::_calculate_value_counts(column, supported_characters, string_prefix_length);
-
-  const auto bin_stats = EqualHeightHistogram<std::string>::_get_bin_stats(value_counts, max_num_bins);
-
-  return std::make_shared<EqualHeightHistogram<std::string>>(bin_stats.maxs, bin_stats.distinct_counts, bin_stats.min,
-                                                             bin_stats.total_count, supported_characters,
-                                                             string_prefix_length);
-}
-
-template <>
-std::shared_ptr<EqualHeightHistogram<std::string>> EqualHeightHistogram<std::string>::from_column(
-    const std::shared_ptr<const BaseColumn>& column, const size_t max_num_bins) {
-  return EqualHeightHistogram<std::string>::from_column(
-      column, max_num_bins,
-      " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~", 9);
-}
-
 template <typename T>
 std::shared_ptr<EqualHeightHistogram<T>> EqualHeightHistogram<T>::from_column(
-    const std::shared_ptr<const BaseColumn>& column, const size_t max_num_bins) {
+    const std::shared_ptr<const BaseColumn>& column, const size_t max_num_bins,
+    const std::optional<std::string>& supported_characters, const std::optional<uint64_t>& string_prefix_length) {
+  std::string characters;
+  uint64_t prefix_length;
+  if constexpr (std::is_same_v<T, std::string>) {
+    const auto pair = AbstractHistogram<T>::_get_or_check_prefix_settings(supported_characters, string_prefix_length);
+    characters = pair.first;
+    prefix_length = pair.second;
+  }
+
   const auto value_counts = AbstractHistogram<T>::_calculate_value_counts(column);
 
   if (value_counts.empty()) {
@@ -115,8 +96,13 @@ std::shared_ptr<EqualHeightHistogram<T>> EqualHeightHistogram<T>::from_column(
 
   const auto bin_stats = EqualHeightHistogram<T>::_get_bin_stats(value_counts, max_num_bins);
 
-  return std::make_shared<EqualHeightHistogram<T>>(bin_stats.maxs, bin_stats.distinct_counts, bin_stats.min,
-                                                   bin_stats.total_count);
+  if constexpr (std::is_same_v<T, std::string>) {
+    return std::make_shared<EqualHeightHistogram<T>>(bin_stats.maxs, bin_stats.distinct_counts, bin_stats.min,
+                                                     bin_stats.total_count, characters, prefix_length);
+  } else {
+    return std::make_shared<EqualHeightHistogram<T>>(bin_stats.maxs, bin_stats.distinct_counts, bin_stats.min,
+                                                     bin_stats.total_count);
+  }
 }
 
 template <typename T>
@@ -142,13 +128,13 @@ size_t EqualHeightHistogram<T>::num_bins() const {
 
 template <typename T>
 BinID EqualHeightHistogram<T>::_bin_for_value(const T value) const {
-  if constexpr (std::is_same_v<T, std::string>) {
-    DebugAssert(value.length() <= this->_string_prefix_length, "Value is longer than allowed prefix.");
+  if (value < _min) {
+    return INVALID_BIN_ID;
   }
 
   const auto it = std::lower_bound(_maxs.begin(), _maxs.end(), value);
 
-  if (it == _maxs.end() || value < _min) {
+  if (it == _maxs.end()) {
     return INVALID_BIN_ID;
   }
 
@@ -156,27 +142,7 @@ BinID EqualHeightHistogram<T>::_bin_for_value(const T value) const {
 }
 
 template <typename T>
-BinID EqualHeightHistogram<T>::_lower_bound_for_value(const T value) const {
-  if constexpr (std::is_same_v<T, std::string>) {
-    DebugAssert(value.length() <= this->_string_prefix_length, "Value is longer than allowed prefix.");
-  }
-
-  const auto it = std::lower_bound(_maxs.begin(), _maxs.end(), value);
-  const auto index = static_cast<BinID>(std::distance(_maxs.begin(), it));
-
-  if (it == _maxs.end()) {
-    return INVALID_BIN_ID;
-  }
-
-  return index;
-}
-
-template <typename T>
 BinID EqualHeightHistogram<T>::_upper_bound_for_value(const T value) const {
-  if constexpr (std::is_same_v<T, std::string>) {
-    DebugAssert(value.length() <= this->_string_prefix_length, "Value is longer than allowed prefix.");
-  }
-
   const auto it = std::upper_bound(_maxs.begin(), _maxs.end(), value);
   const auto index = static_cast<BinID>(std::distance(_maxs.begin(), it));
 
@@ -189,7 +155,7 @@ BinID EqualHeightHistogram<T>::_upper_bound_for_value(const T value) const {
 
 template <typename T>
 T EqualHeightHistogram<T>::_bin_min(const BinID index) const {
-  DebugAssert(index < _maxs.size(), "Index is not a valid bin.");
+  DebugAssert(index < this->num_bins(), "Index is not a valid bin.");
 
   // If it's the first bin, return _min.
   if (index == 0u) {
@@ -226,59 +192,6 @@ uint64_t EqualHeightHistogram<T>::total_count() const {
 template <typename T>
 uint64_t EqualHeightHistogram<T>::total_count_distinct() const {
   return std::accumulate(_distinct_counts.begin(), _distinct_counts.end(), 0ul);
-}
-
-template <typename T>
-void EqualHeightHistogram<T>::_generate(const std::shared_ptr<const ValueColumn<T>> distinct_column,
-                                        const std::shared_ptr<const ValueColumn<int64_t>> count_column,
-                                        const size_t max_num_bins) {
-  _min = distinct_column->get(0u);
-
-  auto table = this->_table.lock();
-  DebugAssert(table != nullptr, "Corresponding table of histogram is deleted.");
-
-  const auto num_bins = max_num_bins <= distinct_column->size() ? max_num_bins : distinct_column->size();
-
-  // Bins shall have (approximately) the same height.
-  _total_count = table->row_count();
-  auto count_per_bin = _total_count / num_bins;
-
-  if (_total_count % num_bins > 0u) {
-    // Add 1 so that we never create more bins than requested.
-    count_per_bin++;
-  }
-
-  auto current_begin = 0u;
-  auto current_height = 0u;
-  for (auto current_end = 0u; current_end < distinct_column->size(); current_end++) {
-    current_height += count_column->get(current_end);
-
-    if (current_height >= count_per_bin) {
-      const auto current_value = distinct_column->get(current_end);
-
-      if constexpr (std::is_same_v<T, std::string>) {
-        Assert(current_value.find_first_not_of(this->_supported_characters) == std::string::npos,
-               "Unsupported characters.");
-      }
-
-      _maxs.emplace_back(current_value);
-      _distinct_counts.emplace_back(current_end - current_begin + 1);
-      current_height = 0u;
-      current_begin = current_end + 1;
-    }
-  }
-
-  if (current_height > 0u) {
-    const auto current_value = distinct_column->get(distinct_column->size() - 1);
-
-    if constexpr (std::is_same_v<T, std::string>) {
-      Assert(current_value.find_first_not_of(this->_supported_characters) == std::string::npos,
-             "Unsupported characters.");
-    }
-
-    _maxs.emplace_back(current_value);
-    _distinct_counts.emplace_back(distinct_column->size() - current_begin);
-  }
 }
 
 EXPLICITLY_INSTANTIATE_DATA_TYPES(EqualHeightHistogram);

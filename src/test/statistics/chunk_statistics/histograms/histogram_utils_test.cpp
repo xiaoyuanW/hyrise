@@ -20,32 +20,12 @@ class HistogramUtilsTest : public BaseTest {
     return convert_number_representation_to_string(value, _supported_characters, _prefix_length);
   }
 
-  std::string _previous_value(const std::string& value) {
-    return previous_value(value, _supported_characters, _prefix_length);
-  }
-
   std::string _next_value(const std::string& value) { return next_value(value, _supported_characters, _prefix_length); }
 
  protected:
   std::string _supported_characters;
   uint64_t _prefix_length;
 };
-
-TEST_F(HistogramUtilsTest, PreviousValueString) {
-  // Special case.
-  EXPECT_EQ(_previous_value(""), "");
-
-  EXPECT_EQ(_previous_value("a"), "");
-  EXPECT_EQ(_previous_value("b"), "azzz");
-  EXPECT_EQ(_previous_value("z"), "yzzz");
-  EXPECT_EQ(_previous_value("az"), "ayzz");
-  EXPECT_EQ(_previous_value("aaa"), "aa");
-  EXPECT_EQ(_previous_value("abcd"), "abcc");
-  EXPECT_EQ(_previous_value("abzz"), "abzy");
-  EXPECT_EQ(_previous_value("abca"), "abc");
-  EXPECT_EQ(_previous_value("abaa"), "aba");
-  EXPECT_EQ(_previous_value("aba"), "ab");
-}
 
 TEST_F(HistogramUtilsTest, NextValueString) {
   EXPECT_EQ(_next_value(""), "a");
@@ -190,19 +170,6 @@ TEST_F(HistogramUtilsTest, StringToNumberBruteForce) {
 
   for (auto number = 0u; number < max; number++) {
     EXPECT_EQ(_convert_string_to_number_representation(_convert_number_representation_to_string(number)), number);
-  }
-}
-
-TEST_F(HistogramUtilsTest, PreviousValueBruteForce) {
-  constexpr auto max = 475'254ul;
-
-  EXPECT_EQ(_convert_string_to_number_representation(""), 0ul);
-  EXPECT_EQ(_convert_string_to_number_representation("zzzz"), max);
-
-  for (auto number = 0u; number < max; number++) {
-    const auto number_string = _convert_number_representation_to_string(number);
-    const auto previous_value_of_next_number = _previous_value(_convert_number_representation_to_string(number + 1));
-    EXPECT_EQ(number_string, previous_value_of_next_number);
   }
 }
 

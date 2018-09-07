@@ -188,14 +188,11 @@ TEST_F(EqualNumElementsHistogramTest, StringPruning) {
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "aaa"));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "b"));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "bir"));
-
-  // Even though these values are greater than the stored bin edge (birne truncated to three characters),
-  // these values are not prunable because their truncated substring is the same as the bin edge.
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "bira"));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "birne"));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "birz"));
 
   // These values are between bin 0 and 1.
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "birnea"));
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "bis"));
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "biscuit"));
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "bja"));
@@ -212,12 +209,9 @@ TEST_F(EqualNumElementsHistogramTest, StringPruning) {
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "tt"));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "ttt"));
 
-  // Even though these values are greater than the stored bin edge (ttt),
-  // these values are not prunable because their truncated substring is the same as the bin edge.
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "tttu"));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "tttzzzzz"));
-
   // These values are between bin 1 and 2.
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "ttta"));
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "tttzzzzz"));
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "turkey"));
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "uut"));
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "uutzzzzz"));
@@ -234,12 +228,9 @@ TEST_F(EqualNumElementsHistogramTest, StringPruning) {
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "xxw"));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "xxx"));
 
-  // Even though these values are greater than the stored bin edge (xxx),
-  // these values are not prunable because their truncated substring is the same as the bin edge.
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "xxxa"));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "xxxzzzzzz"));
-
   // These values are between bin 2 and 3.
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "xxxa"));
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "xxxzzzzzz"));
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "xy"));
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "xyzz"));
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "y"));
@@ -253,10 +244,9 @@ TEST_F(EqualNumElementsHistogramTest, StringPruning) {
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "z"));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "zzz"));
 
-  // Even though these values are greater than the stored bin edge (zzz),
-  // these values are not prunable because their truncated substring is the same as the bin edge.
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "zzza"));
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "zzzzzzzzz"));
+  // These values are greater than the upper bound of the histogram.
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "zzza"));
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "zzzzzzzzz"));
 }
 
 TEST_F(EqualNumElementsHistogramTest, LessThan) {

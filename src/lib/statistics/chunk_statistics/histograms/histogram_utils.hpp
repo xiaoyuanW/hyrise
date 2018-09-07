@@ -26,11 +26,10 @@ std::enable_if_t<std::is_floating_point_v<T>, T> next_value(const T value) {
   return std::nextafter(value, value + 1);
 }
 
-std::string previous_value(const std::string& value, const std::string& supported_characters,
-                           const uint64_t string_prefix_length);
-
 std::string next_value(const std::string& value, const std::string& supported_characters,
                        const uint64_t string_prefix_length);
+
+std::string next_value(const std::string& value, const std::string& supported_characters);
 
 uint64_t ipow(uint64_t base, uint64_t exp);
 

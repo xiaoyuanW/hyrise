@@ -355,8 +355,8 @@ set(
     statistics/generate_table_statistics.hpp
     statistics/generate_column_statistics.cpp
     statistics/generate_column_statistics.hpp
-    statistics/histogram_column_statistics.cpp
-    statistics/histogram_column_statistics.hpp
+#    statistics/histogram_column_statistics.cpp
+#    statistics/histogram_column_statistics.hpp
     statistics/minimal_column_statistics.cpp
     statistics/minimal_column_statistics.hpp
     statistics/statistics_import_export.cpp

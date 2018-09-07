@@ -13,7 +13,7 @@ template <typename T>
 EqualWidthHistogram<T>::EqualWidthHistogram(const T min, const T max, const std::vector<uint64_t>& counts,
                                             const std::vector<uint64_t>& distinct_counts,
                                             const uint64_t num_bins_with_larger_range)
-    : AbstractHistogram<T>(nullptr),
+    : AbstractHistogram<T>(),
       _min(min),
       _max(max),
       _counts(counts),
@@ -27,12 +27,15 @@ EqualWidthHistogram<std::string>::EqualWidthHistogram(const std::string& min, co
                                                       const uint64_t num_bins_with_larger_range,
                                                       const std::string& supported_characters,
                                                       const uint64_t string_prefix_length)
-    : AbstractHistogram<std::string>(nullptr, supported_characters, string_prefix_length),
+    : AbstractHistogram<std::string>(supported_characters, string_prefix_length),
       _min(min),
       _max(max),
       _counts(counts),
       _distinct_counts(distinct_counts),
-      _num_bins_with_larger_range(num_bins_with_larger_range) {}
+      _num_bins_with_larger_range(num_bins_with_larger_range) {
+  Assert(min.find_first_not_of(supported_characters) == std::string::npos, "Unsupported characters.");
+  Assert(max.find_first_not_of(supported_characters) == std::string::npos, "Unsupported characters.");
+}
 
 template <typename T>
 EqualWidthBinStats<T> EqualWidthHistogram<T>::_get_bin_stats(const std::vector<std::pair<T, uint64_t>>& value_counts,
@@ -59,6 +62,9 @@ EqualWidthBinStats<T> EqualWidthHistogram<T>::_get_bin_stats(const std::vector<s
 
   std::vector<uint64_t> counts;
   std::vector<uint64_t> distinct_counts;
+  counts.reserve(num_bins);
+  distinct_counts.reserve(num_bins);
+
   T current_begin_value = min;
   auto current_begin_it = value_counts.cbegin();
   auto current_begin_index = 0l;
@@ -82,7 +88,6 @@ EqualWidthBinStats<T> EqualWidthHistogram<T>::_get_bin_stats(const std::vector<s
       }
     }
 
-    // TODO(tim): think about replacing with binary search (same for other hists)
     auto next_begin_it = current_begin_it;
     while (next_begin_it != value_counts.cend() && (*next_begin_it).first <= current_end_value) {
       next_begin_it++;
@@ -116,40 +121,42 @@ EqualWidthBinStats<std::string> EqualWidthHistogram<std::string>::_get_bin_stats
   const auto min = value_counts.front().first;
   const auto max = value_counts.back().first;
 
-  const auto repr_min = convert_string_to_number_representation(min, supported_characters, string_prefix_length);
-  const auto repr_max = convert_string_to_number_representation(max, supported_characters, string_prefix_length);
+  const auto num_min = convert_string_to_number_representation(min, supported_characters, string_prefix_length);
+  const auto num_max = convert_string_to_number_representation(max, supported_characters, string_prefix_length);
 
   // Never have more bins than representable values.
   const auto num_bins =
-      max_num_bins <= static_cast<uint64_t>(repr_max - repr_min + 1) ? max_num_bins : repr_max - repr_min + 1;
+      max_num_bins <= static_cast<uint64_t>(num_max - num_min + 1) ? max_num_bins : num_max - num_min + 1;
 
   std::vector<uint64_t> counts;
   std::vector<uint64_t> distinct_counts;
-  uint64_t num_bins_with_larger_range;
+  counts.reserve(num_bins);
+  distinct_counts.reserve(num_bins);
 
-  const auto num_min = convert_string_to_number_representation(min, supported_characters, string_prefix_length);
-  const auto num_max = convert_string_to_number_representation(max, supported_characters, string_prefix_length);
   const auto base_width = num_max - num_min + 1;
   const auto bin_width = base_width / num_bins;
-
-  num_bins_with_larger_range = base_width % num_bins;
+  const uint64_t num_bins_with_larger_range = base_width % num_bins;
 
   auto current_begin_value = min;
   auto current_begin_it = value_counts.cbegin();
   auto current_begin_index = 0l;
+
+  // TODO(tim): look into refactoring of begin/end values, feels like there could be less strings
+
   for (auto current_bin_id = 0u; current_bin_id < num_bins; current_bin_id++) {
     auto num_current_begin_value =
         convert_string_to_number_representation(current_begin_value, supported_characters, string_prefix_length);
+    auto current_end_value = convert_number_representation_to_string(num_current_begin_value + bin_width - 1u,
+                                                                     supported_characters, string_prefix_length);
     auto next_begin_value = convert_number_representation_to_string(num_current_begin_value + bin_width,
                                                                     supported_characters, string_prefix_length);
-    auto current_end_value = previous_value(next_begin_value, supported_characters, string_prefix_length);
 
     if (current_bin_id < num_bins_with_larger_range) {
       current_end_value = next_begin_value;
-      next_begin_value = next_value(next_begin_value, supported_characters, string_prefix_length);
+      next_begin_value = convert_number_representation_to_string(num_current_begin_value + bin_width + 1u,
+                                                                 supported_characters, string_prefix_length);
     }
 
-    // TODO(tim): think about replacing with binary search (same for other hists)
     auto next_begin_it = current_begin_it;
     while (next_begin_it != value_counts.cend() && (*next_begin_it).first <= current_end_value) {
       next_begin_it++;
@@ -168,50 +175,35 @@ EqualWidthBinStats<std::string> EqualWidthHistogram<std::string>::_get_bin_stats
   return {min, max, counts, distinct_counts, num_bins_with_larger_range};
 }
 
-template <>
-std::shared_ptr<EqualWidthHistogram<std::string>> EqualWidthHistogram<std::string>::from_column(
-    const std::shared_ptr<const BaseColumn>& column, const size_t max_num_bins, const std::string& supported_characters,
-    const uint64_t string_prefix_length) {
-  Assert(supported_characters.length() > 1, "String range must consist of more than one character.");
-  Assert(ipow(supported_characters.length() + 1, string_prefix_length) < ipow(2ul, 63ul), "Prefix too long.");
-
-  for (auto it = supported_characters.begin(); it < supported_characters.end(); it++) {
-    Assert(std::distance(supported_characters.begin(), it) == *it - supported_characters.front(),
-           "Non-consecutive or unordered string ranges are not supported.");
-  }
-
-  const auto value_counts =
-      AbstractHistogram<std::string>::_calculate_value_counts(column, supported_characters, string_prefix_length);
-
-  const auto bin_stats = EqualWidthHistogram<std::string>::_get_bin_stats(value_counts, max_num_bins,
-                                                                          supported_characters, string_prefix_length);
-
-  return std::make_shared<EqualWidthHistogram<std::string>>(
-      bin_stats.min, bin_stats.max, bin_stats.counts, bin_stats.distinct_counts, bin_stats.num_bins_with_larger_range,
-      supported_characters, string_prefix_length);
-}
-
-template <>
-std::shared_ptr<EqualWidthHistogram<std::string>> EqualWidthHistogram<std::string>::from_column(
-    const std::shared_ptr<const BaseColumn>& column, const size_t max_num_bins) {
-  return EqualWidthHistogram<std::string>::from_column(
-      column, max_num_bins,
-      " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~", 9);
-}
-
 template <typename T>
 std::shared_ptr<EqualWidthHistogram<T>> EqualWidthHistogram<T>::from_column(
-    const std::shared_ptr<const BaseColumn>& column, const size_t max_num_bins) {
+    const std::shared_ptr<const BaseColumn>& column, const size_t max_num_bins,
+    const std::optional<std::string>& supported_characters, const std::optional<uint64_t>& string_prefix_length) {
+  std::string characters;
+  uint64_t prefix_length;
+  if constexpr (std::is_same_v<T, std::string>) {
+    const auto pair = AbstractHistogram<T>::_get_or_check_prefix_settings(supported_characters, string_prefix_length);
+    characters = pair.first;
+    prefix_length = pair.second;
+  }
+
   const auto value_counts = AbstractHistogram<T>::_calculate_value_counts(column);
 
   if (value_counts.empty()) {
     return nullptr;
   }
 
-  const auto bin_stats = EqualWidthHistogram<T>::_get_bin_stats(value_counts, max_num_bins);
-
-  return std::make_shared<EqualWidthHistogram<T>>(bin_stats.min, bin_stats.max, bin_stats.counts,
-                                                  bin_stats.distinct_counts, bin_stats.num_bins_with_larger_range);
+  if constexpr (std::is_same_v<T, std::string>) {
+    const auto bin_stats =
+        EqualWidthHistogram<T>::_get_bin_stats(value_counts, max_num_bins, characters, prefix_length);
+    return std::make_shared<EqualWidthHistogram<T>>(bin_stats.min, bin_stats.max, bin_stats.counts,
+                                                    bin_stats.distinct_counts, bin_stats.num_bins_with_larger_range,
+                                                    characters, prefix_length);
+  } else {
+    const auto bin_stats = EqualWidthHistogram<T>::_get_bin_stats(value_counts, max_num_bins);
+    return std::make_shared<EqualWidthHistogram<T>>(bin_stats.min, bin_stats.max, bin_stats.counts,
+                                                    bin_stats.distinct_counts, bin_stats.num_bins_with_larger_range);
+  }
 }
 
 template <typename T>
@@ -275,36 +267,16 @@ T EqualWidthHistogram<T>::_bin_width(const BinID index) const {
   return base_width;
 }
 
-template <>
-uint64_t EqualWidthHistogram<std::string>::_string_bin_width(const BinID index) const {
-  DebugAssert(index < num_bins(), "Index is not a valid bin.");
-
-  const auto num_min = this->_convert_string_to_number_representation(_min);
-  const auto num_max = this->_convert_string_to_number_representation(_max);
-  const auto base_width = (num_max - num_min + 1) / this->num_bins();
-  return base_width + (index < _num_bins_with_larger_range ? 1 : 0);
-}
-
-template <>
-std::string EqualWidthHistogram<std::string>::_bin_min(const BinID index) const {
-  DebugAssert(index < num_bins(), "Index is not a valid bin.");
-
-  const auto num_min = this->_convert_string_to_number_representation(_min);
-  const auto base_min = num_min + index * _string_bin_width(index);
-  return this->_convert_number_representation_to_string(base_min + std::min(index, _num_bins_with_larger_range));
-}
-
 template <typename T>
 T EqualWidthHistogram<T>::_bin_min(const BinID index) const {
   DebugAssert(index < num_bins(), "Index is not a valid bin.");
 
-  const auto base_min = _min + index * _bin_width(index);
-
-  if constexpr (std::is_integral_v<T>) {
-    return base_min + std::min(index, _num_bins_with_larger_range);
+  // If it's the first bin, return _min.
+  if (index == 0u) {
+    return _min;
   }
 
-  return base_min;
+  return this->get_next_value(this->_bin_max(index - 1));
 }
 
 template <typename T>
@@ -316,8 +288,23 @@ T EqualWidthHistogram<T>::_bin_max(const BinID index) const {
     return _max;
   }
 
-  // Otherwise it is the value just before the minimum of the next bin.
-  return this->get_previous_value(_bin_min(index + 1));
+  // Calculate the lower edge of the bin right after index, assuming every bin has the same width.
+  // If there are no wider bins, take the previous value from the lower edge of the following bin to get the
+  // upper edge of this one.
+  // Otherwise, add the index to compensate one element for every bin preceding this bin.
+  // Add at most _num_bins_with_larger_range - 1 because we already start adding from the next bin's lower edge.
+  if constexpr (std::is_same_v<T, std::string>) {
+    const auto num_min = this->_convert_string_to_number_representation(_min);
+    const auto num_max = this->_convert_string_to_number_representation(_max);
+    const auto base = num_min + (index + 1u) * ((num_max - num_min + 1) / num_bins());
+    const auto bin_max = _num_bins_with_larger_range == 0u ? previous_value(base)
+                                                           : base + std::min(index, _num_bins_with_larger_range - 1u);
+    return this->_convert_number_representation_to_string(bin_max);
+  } else {
+    const auto base = _min + (index + 1u) * _bin_width(num_bins() - 1u);
+    return _num_bins_with_larger_range == 0u ? previous_value(base)
+                                             : base + std::min(index, _num_bins_with_larger_range - 1u);
+  }
 }
 
 template <typename T>
@@ -338,142 +325,36 @@ BinID EqualWidthHistogram<T>::_bin_for_value(const T value) const {
 
 template <>
 BinID EqualWidthHistogram<std::string>::_bin_for_value(const std::string value) const {
-  DebugAssert(value.length() <= _string_prefix_length, "Value is longer than allowed prefix.");
-
   if (value < _min || value > _max) {
     return INVALID_BIN_ID;
   }
 
   const auto num_value = this->_convert_string_to_number_representation(value);
 
+  BinID bin_id;
   if (_num_bins_with_larger_range == 0u || value <= _bin_max(_num_bins_with_larger_range - 1u)) {
     const auto num_min = this->_convert_string_to_number_representation(_min);
-    return (num_value - num_min) / _string_bin_width(0u);
+    bin_id = (num_value - num_min) / this->_string_bin_width(0u);
+  } else {
+    const auto num_base_min = this->_convert_string_to_number_representation(_bin_min(_num_bins_with_larger_range));
+    bin_id =
+        _num_bins_with_larger_range + (num_value - num_base_min) / this->_string_bin_width(_num_bins_with_larger_range);
   }
 
-  const auto num_base_min = this->_convert_string_to_number_representation(_bin_min(_num_bins_with_larger_range));
-  return _num_bins_with_larger_range + (num_value - num_base_min) / _string_bin_width(_num_bins_with_larger_range);
-}
-
-template <typename T>
-BinID EqualWidthHistogram<T>::_lower_bound_for_value(const T value) const {
-  if constexpr (std::is_same_v<T, std::string>) {
-    DebugAssert(value.length() <= this->_string_prefix_length, "Value is longer than allowed prefix.");
-  }
-
-  if (value < _min) {
-    return 0u;
-  }
-
-  return _bin_for_value(value);
+  // We calculate numerical values for strings with substrings, and the bin edge calculation works with that.
+  // Therefore, if the search string is longer than the supported prefix length and starts with the upper bin edge,
+  // we have to return the next bin.
+  return bin_id + (value.length() > _string_prefix_length && value.find(_bin_max(bin_id)) == 0 ? 1 : 0);
 }
 
 template <typename T>
 BinID EqualWidthHistogram<T>::_upper_bound_for_value(const T value) const {
-  if constexpr (std::is_same_v<T, std::string>) {
-    DebugAssert(value.length() <= this->_string_prefix_length, "Value is longer than allowed prefix.");
-  }
-
   if (value < _min) {
     return 0u;
   }
 
   const auto index = _bin_for_value(value);
   return index < num_bins() - 2 ? index + 1 : INVALID_BIN_ID;
-}
-
-template <typename T>
-void EqualWidthHistogram<T>::_generate(const std::shared_ptr<const ValueColumn<T>> distinct_column,
-                                       const std::shared_ptr<const ValueColumn<int64_t>> count_column,
-                                       const size_t max_num_bins) {
-  // Bins shall have the same range.
-  _min = distinct_column->get(0);
-  _max = distinct_column->get(distinct_column->size() - 1u);
-
-  const auto num_bins = max_num_bins <= distinct_column->size() ? max_num_bins : distinct_column->size();
-
-  if constexpr (!std::is_same_v<T, std::string>) {
-    const T base_width = _max - _min;
-    const T bin_width = this->get_next_value(base_width) / num_bins;
-
-    if constexpr (std::is_integral_v<T>) {
-      _num_bins_with_larger_range = (base_width + 1) % num_bins;
-    } else {
-      _num_bins_with_larger_range = 0u;
-    }
-
-    T current_begin_value = _min;
-    auto current_begin_it = distinct_column->values().cbegin();
-    auto current_begin_index = 0l;
-    for (auto current_bin_id = 0u; current_bin_id < num_bins; current_bin_id++) {
-      T next_begin_value = current_begin_value + bin_width;
-      T current_end_value = this->get_previous_value(next_begin_value);
-
-      if constexpr (std::is_integral_v<T>) {
-        if (current_bin_id < _num_bins_with_larger_range) {
-          current_end_value++;
-          next_begin_value++;
-        }
-      }
-
-      // TODO(tim): think about replacing with binary search (same for other hists)
-      auto next_begin_it = current_begin_it;
-      while (next_begin_it != distinct_column->values().cend() && *next_begin_it <= current_end_value) {
-        next_begin_it++;
-      }
-
-      const auto next_begin_index = std::distance(distinct_column->values().cbegin(), next_begin_it);
-      _counts.emplace_back(std::accumulate(count_column->values().begin() + current_begin_index,
-                                           count_column->values().begin() + next_begin_index, uint64_t{0}));
-      _distinct_counts.emplace_back(next_begin_index - current_begin_index);
-
-      current_begin_value = next_begin_value;
-      current_begin_index = next_begin_index;
-    }
-  } else {
-    const auto num_min = this->_convert_string_to_number_representation(_min);
-    const auto num_max = this->_convert_string_to_number_representation(_max);
-    const auto base_width = num_max - num_min + 1;
-    const auto bin_width = base_width / num_bins;
-
-    _num_bins_with_larger_range = base_width % num_bins;
-
-    T current_begin_value = _min;
-    auto current_begin_it = distinct_column->values().cbegin();
-    auto current_begin_index = 0l;
-    for (auto current_bin_id = 0u; current_bin_id < num_bins; current_bin_id++) {
-      Assert(current_begin_value.find_first_not_of(this->_supported_characters) == std::string::npos,
-             "Unsupported characters.");
-
-      auto num_current_begin_value = this->_convert_string_to_number_representation(current_begin_value);
-      T next_begin_value = this->_convert_number_representation_to_string(num_current_begin_value + bin_width);
-      T current_end_value = this->get_previous_value(next_begin_value);
-
-      if (current_bin_id < _num_bins_with_larger_range) {
-        current_end_value = next_begin_value;
-        next_begin_value = this->get_next_value(next_begin_value);
-      }
-
-      Assert(current_end_value.find_first_not_of(this->_supported_characters) == std::string::npos,
-             "Unsupported characters.");
-      Assert(next_begin_value.find_first_not_of(this->_supported_characters) == std::string::npos,
-             "Unsupported characters.");
-
-      // TODO(tim): think about replacing with binary search (same for other hists)
-      auto next_begin_it = current_begin_it;
-      while (next_begin_it != distinct_column->values().cend() && *next_begin_it <= current_end_value) {
-        next_begin_it++;
-      }
-
-      const auto next_begin_index = std::distance(distinct_column->values().cbegin(), next_begin_it);
-      _counts.emplace_back(std::accumulate(count_column->values().begin() + current_begin_index,
-                                           count_column->values().begin() + next_begin_index, uint64_t{0}));
-      _distinct_counts.emplace_back(next_begin_index - current_begin_index);
-
-      current_begin_value = next_begin_value;
-      current_begin_index = next_begin_index;
-    }
-  }
 }
 
 EXPLICITLY_INSTANTIATE_DATA_TYPES(EqualWidthHistogram);

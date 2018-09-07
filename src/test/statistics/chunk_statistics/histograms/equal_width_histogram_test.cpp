@@ -508,9 +508,8 @@ TEST_F(EqualWidthHistogramTest, StringLessThan) {
   const auto hist_width = hist_upper - hist_lower + 1;
   // Convert to float so that calculations further down are floating point divisions.
   // The division here, however, must be integral.
-  const auto bin_width = static_cast<float>(hist_width / 4u);
-
   // hist_width % bin_width == 1, so there is one bin storing one additional value.
+  const auto bin_width = static_cast<float>(hist_width / 4u);
   const auto bin_1_width = bin_width + 1;
   const auto bin_2_width = bin_width;
   const auto bin_3_width = bin_width;
@@ -561,6 +560,9 @@ TEST_F(EqualWidthHistogramTest, StringLessThan) {
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "ghbp"),
                   (bin_1_width - 1) / bin_1_width * bin_1_count);
 
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "ghbpa"));
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "ghbpa"), bin_1_count);
+
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "ghbq"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "ghbq"), bin_1_count);
 
@@ -608,6 +610,9 @@ TEST_F(EqualWidthHistogramTest, StringLessThan) {
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "mnba"),
                   (bin_2_width - 1) / bin_2_width * bin_2_count + bin_1_count);
 
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "mnbaa"));
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "mnbaa"), bin_1_count + bin_2_count);
+
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "mnbb"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "mnbb"), bin_1_count + bin_2_count);
 
@@ -650,6 +655,10 @@ TEST_F(EqualWidthHistogramTest, StringLessThan) {
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "stam"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "stam"),
                   (bin_3_width - 1) / bin_3_width * bin_3_count + bin_1_count + bin_2_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "stama"));
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "stama"),
+                  bin_1_count + bin_2_count + bin_3_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "stan"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "stan"),

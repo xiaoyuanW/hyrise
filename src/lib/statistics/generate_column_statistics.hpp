@@ -4,7 +4,7 @@
 
 #include "base_column_statistics.hpp"
 #include "chunk_statistics/histograms/equal_num_elements_histogram.hpp"
-#include "histogram_column_statistics.hpp"
+// #include "histogram_column_statistics.hpp"
 #include "minimal_column_statistics.hpp"
 #include "resolve_type.hpp"
 #include "storage/create_iterable_from_column.hpp"
@@ -59,15 +59,16 @@ template <>
 std::shared_ptr<BaseColumnStatistics> generate_column_statistics<std::string>(const std::shared_ptr<const Table>& table,
                                                                               const ColumnID column_id);
 
-template <typename ColumnDataType>
-std::shared_ptr<BaseColumnStatistics> generate_column_statistics(const std::shared_ptr<const Table>& table,
-                                                                 const ColumnID column_id, const int64_t num_bins) {
-  auto histogram = std::make_shared<EqualNumElementsHistogram<ColumnDataType>>(table);
-  histogram->generate(column_id, num_bins > 0 ? static_cast<size_t>(num_bins) : 100u);
-
-  // TODO(tim): incorporate into Histograms
-  const auto null_value_ratio = 0.0f;
-  return std::make_shared<HistogramColumnStatistics<ColumnDataType>>(histogram, null_value_ratio);
-}
+// TODO(tim): this needs to create the column wrapper that aggregates chunk-level statistics
+// template <typename ColumnDataType>
+// std::shared_ptr<BaseColumnStatistics> generate_column_statistics(const std::shared_ptr<const Table>& table,
+//                                                                  const ColumnID column_id, const int64_t num_bins) {
+//   auto histogram = std::make_shared<EqualNumElementsHistogram<ColumnDataType>>(table);
+//   histogram->generate(column_id, num_bins > 0 ? static_cast<size_t>(num_bins) : 100u);
+//
+//   // TODO(tim): incorporate into Histograms
+//   const auto null_value_ratio = 0.0f;
+//   return std::make_shared<HistogramColumnStatistics<ColumnDataType>>(histogram, null_value_ratio);
+// }
 
 }  // namespace opossum

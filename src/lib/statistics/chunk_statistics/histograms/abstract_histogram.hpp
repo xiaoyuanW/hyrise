@@ -17,10 +17,8 @@ class AbstractHistogram : public AbstractFilter {
   friend class HistogramPrivateTest;
 
  public:
-  explicit AbstractHistogram(const std::shared_ptr<const Table>& table);
-  AbstractHistogram(const std::shared_ptr<const Table>& table, const std::string& supported_characters);
-  AbstractHistogram(const std::shared_ptr<const Table>& table, const std::string& supported_characters,
-                    const uint64_t string_prefix_length);
+  AbstractHistogram();
+  AbstractHistogram(const std::string& supported_characters, const uint64_t string_prefix_length);
   virtual ~AbstractHistogram() = default;
 
   virtual std::shared_ptr<AbstractHistogram<T>> clone() const = 0;
@@ -30,8 +28,6 @@ class AbstractHistogram : public AbstractFilter {
   std::string bins_to_csv(const bool print_header = true, const std::optional<std::string>& column_name = std::nullopt,
                           const std::optional<uint64_t>& requested_num_bins = std::nullopt) const;
   const std::string& supported_characters() const;
-
-  void generate(const ColumnID column_id, const size_t max_num_bins);
 
   float estimate_selectivity(const PredicateCondition predicate_type, const T value,
                              const std::optional<T>& value2 = std::nullopt) const;
@@ -59,20 +55,11 @@ class AbstractHistogram : public AbstractFilter {
   virtual uint64_t total_count_distinct() const = 0;
 
  protected:
-  const std::shared_ptr<const Table> _get_value_counts(const ColumnID column_id) const;
-
-  static
-      // typename std::enable_if_t<std::is_arithmetic_v<T>, std::vector<std::pair<T, uint64_t>>>
-      std::vector<std::pair<T, uint64_t>>
-      _calculate_value_counts(const std::shared_ptr<const BaseColumn>& column);
-
-  static std::vector<std::pair<std::string, uint64_t>> _calculate_value_counts(
-      const std::shared_ptr<const BaseColumn>& column, const std::string& supported_characters,
-      const uint64_t string_prefix_length);
+  static std::vector<std::pair<T, uint64_t>> _calculate_value_counts(const std::shared_ptr<const BaseColumn>& column);
   static std::vector<std::pair<T, uint64_t>> _sort_value_counts(const std::unordered_map<T, uint64_t>& value_counts);
-
-  virtual void _generate(const std::shared_ptr<const ValueColumn<T>> distinct_column,
-                         const std::shared_ptr<const ValueColumn<int64_t>> count_column, const size_t max_num_bins) = 0;
+  static std::pair<std::string, uint64_t> _get_or_check_prefix_settings(
+      const std::optional<std::string>& supported_characters = std::nullopt,
+      const std::optional<uint64_t>& string_prefix_length = std::nullopt);
 
   /**
    * Calculates the estimated cardinality for predicate types supported by all data types.
@@ -80,14 +67,21 @@ class AbstractHistogram : public AbstractFilter {
   float _estimate_cardinality(const PredicateCondition predicate_type, const T value,
                               const std::optional<T>& value2 = std::nullopt) const;
 
+  /**
+   *
+   * Makes pruning decisions predicate types supported by all data types.
+   */
+  bool _can_prune(const PredicateCondition predicate_type, const AllTypeVariant& variant_value,
+                  const std::optional<AllTypeVariant>& variant_value2 = std::nullopt) const;
+
   uint64_t _convert_string_to_number_representation(const std::string& value) const;
   std::string _convert_number_representation_to_string(const uint64_t value) const;
   float _bin_share(const BinID bin_id, const T value) const;
 
   virtual T _bin_width(const BinID index) const;
+  uint64_t _string_bin_width(const BinID index) const;
 
   virtual BinID _bin_for_value(const T value) const = 0;
-  virtual BinID _lower_bound_for_value(const T value) const = 0;
   virtual BinID _upper_bound_for_value(const T value) const = 0;
 
   virtual T _bin_min(const BinID index) const = 0;
@@ -95,7 +89,6 @@ class AbstractHistogram : public AbstractFilter {
   virtual uint64_t _bin_count(const BinID index) const = 0;
   virtual uint64_t _bin_count_distinct(const BinID index) const = 0;
 
-  const std::weak_ptr<const Table> _table;
   const std::string _supported_characters;
   uint64_t _string_prefix_length;
 };

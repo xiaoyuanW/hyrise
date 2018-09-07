@@ -25,45 +25,25 @@
 namespace opossum {
 
 template <typename T>
-AbstractHistogram<T>::AbstractHistogram(const std::shared_ptr<const Table>& table)
-    : _table(table), _supported_characters(""), _string_prefix_length(0ul) {}
+AbstractHistogram<T>::AbstractHistogram() : _supported_characters(""), _string_prefix_length(0ul) {}
 
 template <>
-AbstractHistogram<std::string>::AbstractHistogram(const std::shared_ptr<const Table>& table)
-    : _table(table),
-      _supported_characters(
-          " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~") {
-  _string_prefix_length =
-      static_cast<uint64_t>(std::log(ipow(2ul, 63ul)) / std::log(_supported_characters.length() + 1));
-}
+AbstractHistogram<std::string>::AbstractHistogram()
+    : _supported_characters(
+          " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"),
+      _string_prefix_length(9) {}
 
 template <>
-AbstractHistogram<std::string>::AbstractHistogram(const std::shared_ptr<const Table>& table,
-                                                  const std::string& supported_characters)
-    : _table(table), _supported_characters(supported_characters) {
-  Assert(supported_characters.length() > 1, "String range must consist of more than one character.");
-
-  for (auto it = _supported_characters.begin(); it < _supported_characters.end(); it++) {
-    Assert(std::distance(_supported_characters.begin(), it) == *it - _supported_characters.front(),
-           "Non-consecutive or unordered string ranges are not supported.");
-  }
-
-  _string_prefix_length =
-      static_cast<uint64_t>(std::log(ipow(2ul, 63ul)) / std::log(_supported_characters.length() + 1));
-}
-
-template <>
-AbstractHistogram<std::string>::AbstractHistogram(const std::shared_ptr<const Table>& table,
-                                                  const std::string& supported_characters,
+AbstractHistogram<std::string>::AbstractHistogram(const std::string& supported_characters,
                                                   const uint64_t string_prefix_length)
-    : _table(table), _supported_characters(supported_characters), _string_prefix_length(string_prefix_length) {
-  Assert(string_prefix_length > 0, "Invalid prefix length.");
-  Assert(supported_characters.length() > 1, "String range must consist of more than one character.");
-  Assert(ipow(supported_characters.length() + 1, string_prefix_length) < ipow(2ul, 63ul), "Prefix too long.");
+    : _supported_characters(supported_characters), _string_prefix_length(string_prefix_length) {
+  DebugAssert(string_prefix_length > 0, "Invalid prefix length.");
+  DebugAssert(supported_characters.length() > 1, "String range must consist of more than one character.");
+  DebugAssert(ipow(supported_characters.length() + 1, string_prefix_length) < ipow(2ul, 63ul), "Prefix too long.");
 
   for (auto it = _supported_characters.begin(); it < _supported_characters.end(); it++) {
-    Assert(std::distance(_supported_characters.begin(), it) == *it - _supported_characters.front(),
-           "Non-consecutive or unordered string ranges are not supported.");
+    DebugAssert(std::distance(_supported_characters.begin(), it) == *it - _supported_characters.front(),
+                "Non-consecutive or unordered string ranges are not supported.");
   }
 }
 
@@ -105,7 +85,7 @@ std::string AbstractHistogram<T>::bins_to_csv(const bool print_header, const std
       stream << ",requested_num_bins";
     }
 
-    stream << ",bin_id,bin_min,bin_max,bin_min_repr,bin_max_repr,bin_count,bin_count_distinct";
+    stream << ",bin_id,bin_min,bin_max,bin_min_repr,bin_max_repr,bin_width,bin_count,bin_count_distinct";
     stream << std::endl;
   }
 
@@ -138,11 +118,13 @@ std::string AbstractHistogram<T>::bins_to_csv(const bool print_header, const std
       stream << ",\"" << max << "\"";
       stream << "," << _convert_string_to_number_representation(_bin_min(bin));
       stream << "," << _convert_string_to_number_representation(_bin_max(bin));
+      stream << "," << _string_bin_width(bin);
     } else {
       stream << "," << _bin_min(bin);
       stream << "," << _bin_max(bin);
       stream << "," << _bin_min(bin);
       stream << "," << _bin_max(bin);
+      stream << "," << _bin_width(bin);
     }
 
     stream << "," << _bin_count(bin);
@@ -156,51 +138,6 @@ std::string AbstractHistogram<T>::bins_to_csv(const bool print_header, const std
 template <>
 const std::string& AbstractHistogram<std::string>::supported_characters() const {
   return _supported_characters;
-}
-
-template <typename T>
-const std::shared_ptr<const Table> AbstractHistogram<T>::_get_value_counts(const ColumnID column_id) const {
-  auto table = _table.lock();
-  DebugAssert(table != nullptr, "Corresponding table of histogram is deleted.");
-
-  auto table_wrapper = std::make_shared<TableWrapper>(table);
-  table_wrapper->execute();
-
-  const auto aggregate_args = std::vector<AggregateColumnDefinition>{{std::nullopt, AggregateFunction::Count}};
-  auto aggregate = std::make_shared<Aggregate>(table_wrapper, aggregate_args, std::vector<ColumnID>{column_id});
-  aggregate->execute();
-
-  auto sort = std::make_shared<Sort>(aggregate, ColumnID{0});
-  sort->execute();
-
-  return sort->get_output();
-}
-
-template <>
-const std::shared_ptr<const Table> AbstractHistogram<std::string>::_get_value_counts(const ColumnID column_id) const {
-  auto table = _table.lock();
-  DebugAssert(table != nullptr, "Corresponding table of histogram is deleted.");
-
-  auto table_wrapper = std::make_shared<TableWrapper>(table);
-  table_wrapper->execute();
-
-  const auto col_expression =
-      std::make_shared<PQPColumnExpression>(column_id, table->column_data_type(column_id),
-                                            table->column_is_nullable(column_id), table->column_name(column_id));
-  const auto substr_expression =
-      opossum::expression_functional::substr_(col_expression, 1, static_cast<int>(_string_prefix_length));
-  auto projection =
-      std::make_shared<Projection>(table_wrapper, std::vector<std::shared_ptr<AbstractExpression>>{substr_expression});
-  projection->execute();
-
-  const auto aggregate_args = std::vector<AggregateColumnDefinition>{{std::nullopt, AggregateFunction::Count}};
-  auto aggregate = std::make_shared<Aggregate>(projection, aggregate_args, std::vector<ColumnID>{ColumnID{0}});
-  aggregate->execute();
-
-  auto sort = std::make_shared<Sort>(aggregate, ColumnID{0});
-  sort->execute();
-
-  return sort->get_output();
 }
 
 template <typename T>
@@ -237,47 +174,29 @@ std::vector<std::pair<T, uint64_t>> AbstractHistogram<T>::_calculate_value_count
 }
 
 template <>
-std::vector<std::pair<std::string, uint64_t>> AbstractHistogram<std::string>::_calculate_value_counts(
-    const std::shared_ptr<const BaseColumn>& column, const std::string& supported_characters,
-    const uint64_t string_prefix_length) {
-  // TODO(anyone): reserve size based on dictionary, if possible
-  std::unordered_map<std::string, uint64_t> value_counts;
-  // TODO(tim): incorporate null values
-  uint64_t nulls = 0;
+std::pair<std::string, uint64_t> AbstractHistogram<std::string>::_get_or_check_prefix_settings(
+    const std::optional<std::string>& supported_characters, const std::optional<uint64_t>& string_prefix_length) {
+  std::string characters;
+  uint64_t prefix_length;
 
-  resolve_column_type<std::string>(*column, [&](auto& typed_column) {
-    auto iterable = create_iterable_from_column<std::string>(typed_column);
-    iterable.for_each([&](const auto& value) {
-      if (value.is_null()) {
-        nulls++;
-      } else {
-        Assert(value.value().find_first_not_of(supported_characters) == std::string::npos, "Unsupported characters.");
-        value_counts[value.value().substr(0, string_prefix_length)]++;
-      }
-    });
-  });
+  if (supported_characters) {
+    characters = *supported_characters;
 
-  return AbstractHistogram<std::string>::_sort_value_counts(value_counts);
-}
+    if (string_prefix_length) {
+      prefix_length = *string_prefix_length;
+    } else {
+      prefix_length = static_cast<uint64_t>(63 / std::log(characters.length() + 1));
+    }
+  } else {
+    DebugAssert(!static_cast<bool>(string_prefix_length),
+                "Cannot set prefix length without also setting supported characters.");
 
-template <typename T>
-void AbstractHistogram<T>::generate(const ColumnID column_id, const size_t max_num_bins) {
-  DebugAssert(max_num_bins > 0u, "Cannot generate histogram with less than one bin.");
-
-  const auto result = _get_value_counts(column_id);
-  if (result->row_count() == 0u) {
-    return;
+    // Support most of ASCII with maximum prefix length for number of characters.
+    characters = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
+    prefix_length = 9;
   }
 
-  // TODO(tim): fix
-  DebugAssert(result->chunk_count() == 1u, "Multiple chunks are currently not supported.");
-
-  const auto distinct_column =
-      std::static_pointer_cast<const ValueColumn<T>>(result->get_chunk(ChunkID{0})->get_column(ColumnID{0}));
-  const auto count_column =
-      std::static_pointer_cast<const ValueColumn<int64_t>>(result->get_chunk(ChunkID{0})->get_column(ColumnID{1}));
-
-  _generate(distinct_column, count_column, max_num_bins);
+  return {characters, prefix_length};
 }
 
 template <typename T>
@@ -291,8 +210,13 @@ T AbstractHistogram<T>::max() const {
 }
 
 template <>
-std::string AbstractHistogram<std::string>::_bin_width(const BinID /*index*/) const {
-  Fail("Method not supported for string histograms.");
+uint64_t AbstractHistogram<std::string>::_convert_string_to_number_representation(const std::string& value) const {
+  return convert_string_to_number_representation(value, _supported_characters, _string_prefix_length);
+}
+
+template <>
+std::string AbstractHistogram<std::string>::_convert_number_representation_to_string(const uint64_t value) const {
+  return convert_number_representation_to_string(value, _supported_characters, _string_prefix_length);
 }
 
 template <typename T>
@@ -302,33 +226,27 @@ T AbstractHistogram<T>::_bin_width(const BinID index) const {
 }
 
 template <>
-std::string AbstractHistogram<std::string>::get_previous_value(const std::string value) const {
-  return previous_value(value, _supported_characters, _string_prefix_length);
+std::string AbstractHistogram<std::string>::_bin_width(const BinID /*index*/) const {
+  Fail("Not supported for string histograms. Use _string_bin_width instead.");
 }
 
-template <typename T>
-T AbstractHistogram<T>::get_previous_value(const T value) const {
-  return previous_value(value);
+template <>
+uint64_t AbstractHistogram<std::string>::_string_bin_width(const BinID index) const {
+  DebugAssert(index < num_bins(), "Index is not a valid bin.");
+
+  const auto num_min = this->_convert_string_to_number_representation(_bin_min(index));
+  const auto num_max = this->_convert_string_to_number_representation(_bin_max(index));
+  return num_max - num_min + 1u;
 }
 
 template <>
 std::string AbstractHistogram<std::string>::get_next_value(const std::string value) const {
-  return next_value(value, _supported_characters, _string_prefix_length);
+  return next_value(value, _supported_characters);
 }
 
 template <typename T>
 T AbstractHistogram<T>::get_next_value(const T value) const {
   return next_value(value);
-}
-
-template <>
-uint64_t AbstractHistogram<std::string>::_convert_string_to_number_representation(const std::string& value) const {
-  return convert_string_to_number_representation(value, _supported_characters, _string_prefix_length);
-}
-
-template <>
-std::string AbstractHistogram<std::string>::_convert_number_representation_to_string(const uint64_t value) const {
-  return convert_number_representation_to_string(value, _supported_characters, _string_prefix_length);
 }
 
 template <typename T>
@@ -374,13 +292,12 @@ float AbstractHistogram<std::string>::_bin_share(const BinID bin_id, const std::
    */
   const auto value_repr = _convert_string_to_number_representation(value);
   const auto min_repr = _convert_string_to_number_representation(_bin_min(bin_id));
-  const auto max_repr = _convert_string_to_number_representation(_bin_max(bin_id));
-  return static_cast<float>(value_repr - min_repr) / (max_repr - min_repr + 1);
+  return static_cast<float>(value_repr - min_repr) / _string_bin_width(bin_id);
 }
 
 template <typename T>
-bool AbstractHistogram<T>::can_prune(const PredicateCondition predicate_type, const AllTypeVariant& variant_value,
-                                     const std::optional<AllTypeVariant>& variant_value2) const {
+bool AbstractHistogram<T>::_can_prune(const PredicateCondition predicate_type, const AllTypeVariant& variant_value,
+                                      const std::optional<AllTypeVariant>& variant_value2) const {
   const auto value = type_cast<T>(variant_value);
 
   switch (predicate_type) {
@@ -445,113 +362,26 @@ bool AbstractHistogram<T>::can_prune(const PredicateCondition predicate_type, co
   }
 }
 
+template <typename T>
+bool AbstractHistogram<T>::can_prune(const PredicateCondition predicate_type, const AllTypeVariant& variant_value,
+                                     const std::optional<AllTypeVariant>& variant_value2) const {
+  return _can_prune(predicate_type, variant_value, variant_value2);
+}
+
 template <>
 bool AbstractHistogram<std::string>::can_prune(const PredicateCondition predicate_type,
                                                const AllTypeVariant& variant_value,
                                                const std::optional<AllTypeVariant>& variant_value2) const {
   const auto value = type_cast<std::string>(variant_value);
-  const auto trimmed_value = value.substr(0, _string_prefix_length);
+
+  // Only allow supported characters in search value.
+  // If predicate is (NOT) LIKE additionally allow wildcards.
+  const auto allowed_characters =
+      _supported_characters +
+      (predicate_type == PredicateCondition::Like || predicate_type == PredicateCondition::NotLike ? "_%" : "");
+  Assert(value.find_first_not_of(allowed_characters) == std::string::npos, "Unsupported characters.");
 
   switch (predicate_type) {
-    case PredicateCondition::Equals: {
-      const auto bin_id = _bin_for_value(trimmed_value);
-      // It is possible for EqualWidthHistograms to have empty bins.
-      return bin_id == INVALID_BIN_ID || _bin_count(bin_id) == 0;
-    }
-    case PredicateCondition::NotEquals:
-      /**
-       * We never know that we can prune this when using substrings.
-       * Long story short: since one substring value represents an infinite number of possible strings,
-       * we can never decide for sure that there are no other matching values just based on the substring.
-       * Therefore, we can only prune this if the string is shorter than the prefix.
-       *
-       * Example:
-       * prefix_length = 2
-       * There is only one bin, which has as both lower and upper bound the value 'wa'.
-       * The values existing in the column are 'war' and 'wash'.
-       * We cannot prune `col != war` or `col != wash` and certainly not `col != walk`.
-       * However, we cannot decide this based on the substring, which is `wa` in all three cases.
-       *
-       * In contrast, let's assume we have only one bin with both lower and upper bound as the value 'w'.
-       * The prefix length is still 2.
-       *
-       * If we now look for `col != w`, we know for sure that the column only contains the value 'w'.
-       * If there was another value then either the lower or upper boundary of the bin would be different,
-       * or there would be more than one bin.
-       */
-      return value.size() < _string_prefix_length ? min() == value && max() == value : false;
-    case PredicateCondition::LessThan:
-      return value <= min();
-    case PredicateCondition::LessThanEquals:
-      return value < min();
-    case PredicateCondition::GreaterThanEquals:
-      /**
-       * We have to make sure to only consider the substring here.
-       *
-       * Example:
-       * prefix_length = 2
-       * values in last bin: rain, walk, wash
-       * -> last bin: [ra, wa]
-       * `col >= war` must not be pruned because `wash >= war`. However, `war > wa`.
-       * Therefore, we take the substring of the search value: `wa > wa` is false, and the predicate will not be pruned.
-       * Note that `col >= water` will, however, not be pruned either (which it theoretically could).
-       */
-      return trimmed_value > max();
-    case PredicateCondition::GreaterThan:
-      /**
-       * We have to make sure to check the first value after the histogram here.
-       *
-       * Example:
-       * prefix_length = 2
-       * values in last bin: rain, walk, wash
-       * -> last bin: [ra, wa]
-       * `col > war` must not be pruned because `wash > war`. However, `war >= wa`.
-       * Instead, we need to compare the search_value to the first value that is larger than the upper bound of the
-       * histogram: `war >= wb` is false, and the predicate will not be pruned.
-       * Note that `col > water` will, however, not be pruned either (which it theoretically could).
-       */
-      return trimmed_value >= get_next_value(max());
-    case PredicateCondition::Between: {
-      Assert(static_cast<bool>(variant_value2), "Between operator needs two values.");
-
-      if (can_prune(PredicateCondition::GreaterThanEquals, value)) {
-        return true;
-      }
-
-      const auto value2 = type_cast<std::string>(*variant_value2);
-      if (can_prune(PredicateCondition::LessThanEquals, value2)) {
-        return true;
-      }
-
-      if (value2 < value) {
-        return true;
-      }
-
-      const auto trimmed_value2 = value2.substr(0, _string_prefix_length);
-      const auto value_bin = _bin_for_value(trimmed_value);
-      const auto value2_bin = _bin_for_value(trimmed_value2);
-
-      // In an EqualNumElementsHistogram, if both values fall into the same gap, we can prune the predicate.
-      // We need to have at least two bins to rule out pruning if value < min and value2 > max.
-      if (value_bin == INVALID_BIN_ID && value2_bin == INVALID_BIN_ID && num_bins() > 1ul &&
-          _upper_bound_for_value(trimmed_value) == _upper_bound_for_value(trimmed_value2)) {
-        return true;
-      }
-
-      // In an EqualWidthHistogram, if both values fall into a bin that has no elements,
-      // and there are either no bins in between or none of them have any elements, we can also prune the predicate.
-      if (value_bin != INVALID_BIN_ID && value2_bin != INVALID_BIN_ID && _bin_count(value_bin) == 0 &&
-          _bin_count(value2_bin) == 0) {
-        for (auto current_bin = value_bin + 1; current_bin < value2_bin; current_bin++) {
-          if (_bin_count(current_bin) > 0ul) {
-            return false;
-          }
-        }
-        return true;
-      }
-
-      return false;
-    }
     case PredicateCondition::Like: {
       if (!LikeMatcher::contains_wildcard(value)) {
         return can_prune(PredicateCondition::Equals, value);
@@ -624,8 +454,7 @@ bool AbstractHistogram<std::string>::can_prune(const PredicateCondition predicat
       return false;
     }
     default:
-      // Do not prune predicates we cannot (yet) handle.
-      return false;
+      return _can_prune(predicate_type, variant_value, variant_value2);
   }
 }
 
@@ -754,6 +583,7 @@ float AbstractHistogram<std::string>::estimate_cardinality(const PredicateCondit
 
       // Prefix search.
       if (value.back() == '%' && std::count(value.begin(), value.end(), '%') == 1) {
+        // TODO(tim): refactor to BETWEEN and get rid of prefixing/substring
         const auto search_prefix =
             value.substr(0, value.length() - 1 > _string_prefix_length ? _string_prefix_length : value.length() - 1);
         return estimate_cardinality(PredicateCondition::LessThan,
@@ -778,7 +608,7 @@ float AbstractHistogram<std::string>::estimate_cardinality(const PredicateCondit
       return total_count();
     }
     default:
-      return _estimate_cardinality(predicate_type, value.substr(0, _string_prefix_length), value2);
+      return _estimate_cardinality(predicate_type, value, value2);
   }
 }
 

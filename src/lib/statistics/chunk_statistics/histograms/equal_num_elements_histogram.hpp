@@ -29,12 +29,10 @@ class EqualNumElementsHistogram : public AbstractHistogram<T> {
                             const uint64_t num_bins_with_extra_value, const std::string& supported_characters,
                             const uint64_t string_prefix_length);
 
-  static std::shared_ptr<EqualNumElementsHistogram<T>> from_column(const std::shared_ptr<const BaseColumn>& column,
-                                                                   const size_t max_num_bins);
-
-  static std::shared_ptr<EqualNumElementsHistogram<std::string>> from_column(
+  static std::shared_ptr<EqualNumElementsHistogram<T>> from_column(
       const std::shared_ptr<const BaseColumn>& column, const size_t max_num_bins,
-      const std::string& supported_characters, const uint64_t string_prefix_length);
+      const std::optional<std::string>& supported_characters = std::nullopt,
+      const std::optional<uint64_t>& string_prefix_length = std::nullopt);
 
   std::shared_ptr<AbstractHistogram<T>> clone() const override;
 
@@ -44,14 +42,10 @@ class EqualNumElementsHistogram : public AbstractHistogram<T> {
   size_t num_bins() const override;
 
  protected:
-  void _generate(const std::shared_ptr<const ValueColumn<T>> distinct_column,
-                 const std::shared_ptr<const ValueColumn<int64_t>> count_column, const size_t max_num_bins) override;
-
   static EqualNumElementsBinStats<T> _get_bin_stats(const std::vector<std::pair<T, uint64_t>>& value_counts,
                                                     const size_t max_num_bins);
 
   BinID _bin_for_value(const T value) const override;
-  BinID _lower_bound_for_value(const T value) const override;
   BinID _upper_bound_for_value(const T value) const override;
 
   T _bin_min(const BinID index) const override;

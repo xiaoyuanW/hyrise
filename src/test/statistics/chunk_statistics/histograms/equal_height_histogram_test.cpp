@@ -265,6 +265,10 @@ TEST_F(EqualHeightHistogramTest, StringLessThan) {
   auto hist = EqualHeightHistogram<std::string>::from_column(_string3->get_chunk(ChunkID{0})->get_column(ColumnID{0}),
                                                              4u, "abcdefghijklmnopqrstuvwxyz", 4u);
 
+  // The lower bin edges are the next value after the upper edge of the previous bin.
+  // The reason is that in EqualHeightHistograms the upper bin edges are taken as existing in the columns
+  // (without prefix), and the lower bin edge of the next bin is simply the next string, which is the upper bin edge
+  // followed by the first supported character ('a' in this case).
   // "abcd"
   const auto bin_1_lower = 0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                            1 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 2 * (ipow(26, 1) + ipow(26, 0)) + 1 +
@@ -273,19 +277,19 @@ TEST_F(EqualHeightHistogramTest, StringLessThan) {
   const auto bin_1_upper = 4 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                            5 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 6 * (ipow(26, 1) + ipow(26, 0)) + 1 +
                            7 * (ipow(26, 0)) + 1;
-  // "efgi"
+  // "efgha"
   const auto bin_2_lower = bin_1_upper + 1;
   // "kkkk"
   const auto bin_2_upper = 10 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                            10 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 10 * (ipow(26, 1) + ipow(26, 0)) + 1 +
                            10 * (ipow(26, 0)) + 1;
-  // "kkkl"
+  // "kkkka"
   const auto bin_3_lower = bin_2_upper + 1;
   // "qrst"
   const auto bin_3_upper = 16 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
                            17 * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 18 * (ipow(26, 1) + ipow(26, 0)) + 1 +
                            19 * (ipow(26, 0)) + 1;
-  // "qrsu"
+  // "qrsta"
   const auto bin_4_lower = bin_3_upper + 1;
   // "yyzz"
   const auto bin_4_upper = 24 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
@@ -333,6 +337,9 @@ TEST_F(EqualHeightHistogramTest, StringLessThan) {
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "efgh"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "efgh"),
                   (bin_1_width - 1) / bin_1_width * bin_count);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "efgha"));
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "efgha"), bin_count);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "efgi"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "efgi"), bin_count);
@@ -385,6 +392,9 @@ TEST_F(EqualHeightHistogramTest, StringLessThan) {
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "kkkk"),
                   (bin_2_width - 1) / bin_2_width * bin_count + bin_count);
 
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "kkkka"));
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "kkkka"), bin_count * 2);
+
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "kkkl"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "kkkl"), bin_count * 2);
 
@@ -435,6 +445,9 @@ TEST_F(EqualHeightHistogramTest, StringLessThan) {
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "qrst"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qrst"),
                   (bin_3_width - 1) / bin_3_width * bin_count + bin_count * 2);
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "qrsta"));
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qrsta"), bin_count * 3);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "qrsu"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "qrsu"), bin_count * 3);

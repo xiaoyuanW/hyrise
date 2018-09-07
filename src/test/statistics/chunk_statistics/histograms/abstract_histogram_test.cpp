@@ -234,9 +234,8 @@ TYPED_TEST(AbstractHistogramStringTest, NotLikePruningSpecial) {
   EXPECT_TRUE(hist->can_prune(PredicateCondition::NotLike, "da%"));
   EXPECT_TRUE(hist->can_prune(PredicateCondition::NotLike, "dam%"));
   EXPECT_TRUE(hist->can_prune(PredicateCondition::NotLike, "damp%"));
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::NotLike, "dampf%"));
 
-  // Even though "dampf%" is prunable, the histogram cannot decide that because the bin edges are only prefixes.
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::NotLike, "dampf%"));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::NotLike, "dampfs%"));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::NotLike, "dampfschifffahrtsgesellschaft%"));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::NotLike, "db%"));
