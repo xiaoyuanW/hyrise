@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <map>
 #include <memory>
-#include <optional>
+#include <experimental/optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -198,7 +198,7 @@ the AggregateVisitor. It is a separate class because methods cannot be partially
 Therefore, we partially specialize the whole class and define the get_aggregate_function anew every time.
 */
 template <typename ColumnType, typename AggregateType>
-using AggregateFunctor = std::function<std::optional<AggregateType>(ColumnType, std::optional<AggregateType>)>;
+using AggregateFunctor = std::function<std::experimental::optional<AggregateType>(ColumnType, std::experimental::optional<AggregateType>)>;
 
 template <typename ColumnType, typename AggregateType, AggregateFunction function>
 struct AggregateFunctionBuilder {
@@ -208,7 +208,7 @@ struct AggregateFunctionBuilder {
 template <typename ColumnType, typename AggregateType>
 struct AggregateFunctionBuilder<ColumnType, AggregateType, AggregateFunction::Min> {
   AggregateFunctor<ColumnType, AggregateType> get_aggregate_function() {
-    return [](ColumnType new_value, std::optional<AggregateType> current_aggregate) {
+    return [](ColumnType new_value, std::experimental::optional<AggregateType> current_aggregate) {
       if (!current_aggregate || value_smaller(new_value, *current_aggregate)) {
         // New minimum found
         return new_value;
@@ -221,7 +221,7 @@ struct AggregateFunctionBuilder<ColumnType, AggregateType, AggregateFunction::Mi
 template <typename ColumnType, typename AggregateType>
 struct AggregateFunctionBuilder<ColumnType, AggregateType, AggregateFunction::Max> {
   AggregateFunctor<ColumnType, AggregateType> get_aggregate_function() {
-    return [](ColumnType new_value, std::optional<AggregateType> current_aggregate) {
+    return [](ColumnType new_value, std::experimental::optional<AggregateType> current_aggregate) {
       if (!current_aggregate || value_greater(new_value, *current_aggregate)) {
         // New maximum found
         return new_value;
@@ -234,7 +234,7 @@ struct AggregateFunctionBuilder<ColumnType, AggregateType, AggregateFunction::Ma
 template <typename ColumnType, typename AggregateType>
 struct AggregateFunctionBuilder<ColumnType, AggregateType, AggregateFunction::Sum> {
   AggregateFunctor<ColumnType, AggregateType> get_aggregate_function() {
-    return [](ColumnType new_value, std::optional<AggregateType> current_aggregate) {
+    return [](ColumnType new_value, std::experimental::optional<AggregateType> current_aggregate) {
       // add new value to sum
       return new_value + (!current_aggregate ? 0 : *current_aggregate);
     };
@@ -244,7 +244,7 @@ struct AggregateFunctionBuilder<ColumnType, AggregateType, AggregateFunction::Su
 template <typename ColumnType, typename AggregateType>
 struct AggregateFunctionBuilder<ColumnType, AggregateType, AggregateFunction::Avg> {
   AggregateFunctor<ColumnType, AggregateType> get_aggregate_function() {
-    return [](ColumnType new_value, std::optional<AggregateType> current_aggregate) {
+    return [](ColumnType new_value, std::experimental::optional<AggregateType> current_aggregate) {
       // add new value to sum
       return new_value + (!current_aggregate ? 0 : *current_aggregate);
     };
@@ -254,14 +254,14 @@ struct AggregateFunctionBuilder<ColumnType, AggregateType, AggregateFunction::Av
 template <typename ColumnType, typename AggregateType>
 struct AggregateFunctionBuilder<ColumnType, AggregateType, AggregateFunction::Count> {
   AggregateFunctor<ColumnType, AggregateType> get_aggregate_function() {
-    return [](ColumnType, std::optional<AggregateType> current_aggregate) { return std::nullopt; };
+    return [](ColumnType, std::experimental::optional<AggregateType> current_aggregate) { return std::experimental::nullopt; };
   }
 };
 
 template <typename ColumnType, typename AggregateType>
 struct AggregateFunctionBuilder<ColumnType, AggregateType, AggregateFunction::CountDistinct> {
   AggregateFunctor<ColumnType, AggregateType> get_aggregate_function() {
-    return [](ColumnType, std::optional<AggregateType> current_aggregate) { return std::nullopt; };
+    return [](ColumnType, std::experimental::optional<AggregateType> current_aggregate) { return std::experimental::nullopt; };
   }
 };
 

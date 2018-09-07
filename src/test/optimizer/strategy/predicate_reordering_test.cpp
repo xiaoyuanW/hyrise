@@ -1,5 +1,5 @@
 #include <memory>
-#include <optional>
+#include <experimental/optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -37,7 +37,7 @@ class TableStatisticsMock : public TableStatistics {
   std::shared_ptr<TableStatistics> predicate_statistics(const ColumnID column_id,
                                                         const PredicateCondition predicate_condition,
                                                         const AllParameterVariant& value,
-                                                        const std::optional<AllTypeVariant>& value2) override {
+                                                        const std::experimental::optional<AllTypeVariant>& value2) override {
     if (column_id == ColumnID{0}) {
       return std::make_shared<TableStatisticsMock>(500);
     }

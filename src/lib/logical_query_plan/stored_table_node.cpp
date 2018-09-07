@@ -1,7 +1,7 @@
 #include "stored_table_node.hpp"
 
 #include <memory>
-#include <optional>
+#include <experimental/optional>
 #include <string>
 #include <vector>
 
@@ -12,7 +12,7 @@
 
 namespace opossum {
 
-StoredTableNode::StoredTableNode(const std::string& table_name, const std::optional<std::string>& alias)
+StoredTableNode::StoredTableNode(const std::string& table_name, const std::experimental::optional<std::string>& alias)
     : AbstractLQPNode(LQPNodeType::StoredTable), _table_name(table_name) {
   /**
    * Initialize output information.
@@ -65,7 +65,7 @@ bool StoredTableNode::shallow_equals(const AbstractLQPNode& rhs) const {
 
 void StoredTableNode::_on_child_changed() { Fail("StoredTableNode cannot have children."); }
 
-std::optional<QualifiedColumnName> StoredTableNode::_resolve_local_table_name(
+std::experimental::optional<QualifiedColumnName> StoredTableNode::_resolve_local_table_name(
     const QualifiedColumnName& qualified_column_name) const {
   if (!qualified_column_name.table_name) {
     return qualified_column_name;
@@ -73,16 +73,16 @@ std::optional<QualifiedColumnName> StoredTableNode::_resolve_local_table_name(
 
   if (_table_alias) {
     if (*qualified_column_name.table_name != *_table_alias) {
-      return std::nullopt;
+      return std::experimental::nullopt;
     }
   } else {
     if (_table_name != *qualified_column_name.table_name) {
-      return std::nullopt;
+      return std::experimental::nullopt;
     }
   }
 
   auto reference_without_local_alias = qualified_column_name;
-  reference_without_local_alias.table_name = std::nullopt;
+  reference_without_local_alias.table_name = std::experimental::nullopt;
   return reference_without_local_alias;
 }
 

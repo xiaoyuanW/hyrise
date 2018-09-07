@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-#include <optional>
+#include <experimental/optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -44,7 +44,7 @@ class ValueColumn : public BaseValueColumn {
   pmr_concurrent_vector<T>& values();
 
   // return a generated vector of all values (or nulls)
-  const pmr_concurrent_vector<std::optional<T>> materialize_values() const;
+  const pmr_concurrent_vector<std::experimental::optional<T>> materialize_values() const;
 
   // Return whether column supports null values.
   bool is_nullable() const final;
@@ -73,7 +73,7 @@ class ValueColumn : public BaseValueColumn {
   // While a ValueColumn knows if it is nullable or not by looking at this optional, most other column types
   // (e.g. DictionaryColumn) does not. For this reason, we need to store the nullable information separately
   // in the table's definition.
-  std::optional<pmr_concurrent_vector<bool>> _null_values;
+  std::experimental::optional<pmr_concurrent_vector<bool>> _null_values;
 };
 
 }  // namespace opossum

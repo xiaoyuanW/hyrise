@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-#include <optional>
+#include <experimental/optional>
 #include <ostream>
 #include <string>
 #include <utility>
@@ -79,7 +79,7 @@ class TableStatistics : public std::enable_shared_from_this<TableStatistics> {
    */
   virtual std::shared_ptr<TableStatistics> predicate_statistics(
       const ColumnID column_id, const PredicateCondition predicate_condition, const AllParameterVariant& value,
-      const std::optional<AllTypeVariant>& value2 = std::nullopt);
+      const std::experimental::optional<AllTypeVariant>& value2 = std::experimental::nullopt);
 
   /**
    * Generate table statistics for a cross join.

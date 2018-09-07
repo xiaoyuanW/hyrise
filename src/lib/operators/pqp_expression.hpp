@@ -1,6 +1,6 @@
 #pragma once
 
-#include <optional>
+#include <experimental/optional>
 
 #include "abstract_expression.hpp"
 #include "types.hpp"
@@ -16,7 +16,7 @@ class LQPExpression;
 class PQPExpression : public AbstractExpression<PQPExpression> {
  public:
   static std::shared_ptr<PQPExpression> create_column(const ColumnID column_id,
-                                                      const std::optional<std::string>& alias = std::nullopt);
+                                                      const std::experimental::optional<std::string>& alias = std::experimental::nullopt);
 
   // Necessary for the AbstractExpression<T>::create_*() methods
   using AbstractExpression<PQPExpression>::AbstractExpression;
@@ -28,7 +28,7 @@ class PQPExpression : public AbstractExpression<PQPExpression> {
 
   ColumnID column_id() const;
 
-  std::string to_string(const std::optional<std::vector<std::string>>& input_column_names = std::nullopt,
+  std::string to_string(const std::experimental::optional<std::vector<std::string>>& input_column_names = std::experimental::nullopt,
                         bool is_root = true) const override;
 
   bool operator==(const PQPExpression& other) const;
@@ -37,6 +37,6 @@ class PQPExpression : public AbstractExpression<PQPExpression> {
   void _deep_copy_impl(const std::shared_ptr<PQPExpression>& copy) const override;
 
  private:
-  std::optional<ColumnID> _column_id;
+  std::experimental::optional<ColumnID> _column_id;
 };
 }  // namespace opossum

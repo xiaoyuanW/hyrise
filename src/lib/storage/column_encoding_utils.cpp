@@ -39,10 +39,10 @@ std::unique_ptr<BaseColumnEncoder> create_encoder(EncodingType encoding_type) {
 
 std::shared_ptr<BaseEncodedColumn> encode_column(EncodingType encoding_type, DataType data_type,
                                                  std::shared_ptr<const BaseValueColumn> column,
-                                                 std::optional<VectorCompressionType> zero_suppression_type) {
+                                                 std::experimental::optional<VectorCompressionType> zero_suppression_type) {
   auto encoder = create_encoder(encoding_type);
 
-  if (zero_suppression_type.has_value()) {
+  if (static_cast<bool>(zero_suppression_type)) {
     encoder->set_vector_compression(*zero_suppression_type);
   }
 

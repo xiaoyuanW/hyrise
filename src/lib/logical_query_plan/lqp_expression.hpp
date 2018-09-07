@@ -1,6 +1,6 @@
 #pragma once
 
-#include <optional>
+#include <experimental/optional>
 
 #include "abstract_expression.hpp"
 #include "logical_query_plan/lqp_column_reference.hpp"
@@ -14,11 +14,11 @@ namespace opossum {
 class LQPExpression : public AbstractExpression<LQPExpression> {
  public:
   static std::shared_ptr<LQPExpression> create_column(const LQPColumnReference& column_reference,
-                                                      const std::optional<std::string>& alias = std::nullopt);
+                                                      const std::experimental::optional<std::string>& alias = std::experimental::nullopt);
 
   static std::vector<std::shared_ptr<LQPExpression>> create_columns(
       const std::vector<LQPColumnReference>& column_references,
-      const std::optional<std::vector<std::string>>& aliases = std::nullopt);
+      const std::experimental::optional<std::vector<std::string>>& aliases = std::experimental::nullopt);
 
   // Necessary for the AbstractExpression<T>::create_*() methods
   using AbstractExpression<LQPExpression>::AbstractExpression;
@@ -27,7 +27,7 @@ class LQPExpression : public AbstractExpression<LQPExpression> {
 
   void set_column_reference(const LQPColumnReference& column_reference);
 
-  std::string to_string(const std::optional<std::vector<std::string>>& input_column_names = std::nullopt,
+  std::string to_string(const std::experimental::optional<std::vector<std::string>>& input_column_names = std::experimental::nullopt,
                         bool is_root = true) const override;
 
   bool operator==(const LQPExpression& other) const;
@@ -36,6 +36,6 @@ class LQPExpression : public AbstractExpression<LQPExpression> {
   void _deep_copy_impl(const std::shared_ptr<LQPExpression>& copy) const override;
 
  private:
-  std::optional<LQPColumnReference> _column_reference;
+  std::experimental::optional<LQPColumnReference> _column_reference;
 };
 }  // namespace opossum

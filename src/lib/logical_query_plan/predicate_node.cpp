@@ -1,7 +1,7 @@
 #include "predicate_node.hpp"
 
 #include <memory>
-#include <optional>
+#include <experimental/optional>
 #include <sstream>
 #include <string>
 
@@ -13,7 +13,7 @@
 namespace opossum {
 
 PredicateNode::PredicateNode(const LQPColumnReference& column_reference, const PredicateCondition predicate_condition,
-                             const AllParameterVariant& value, const std::optional<AllTypeVariant>& value2)
+                             const AllParameterVariant& value, const std::experimental::optional<AllTypeVariant>& value2)
     : AbstractLQPNode(LQPNodeType::Predicate),
       _column_reference(column_reference),
       _predicate_condition(predicate_condition),
@@ -77,7 +77,7 @@ PredicateCondition PredicateNode::predicate_condition() const { return _predicat
 
 const AllParameterVariant& PredicateNode::value() const { return _value; }
 
-const std::optional<AllTypeVariant>& PredicateNode::value2() const { return _value2; }
+const std::experimental::optional<AllTypeVariant>& PredicateNode::value2() const { return _value2; }
 
 ScanType PredicateNode::scan_type() const { return _scan_type; }
 
@@ -115,8 +115,8 @@ bool PredicateNode::shallow_equals(const AbstractLQPNode& rhs) const {
     if (!all_parameter_variant_near(_value, predicate_node._value)) return false;
   }
 
-  if (_value2.has_value() != predicate_node._value2.has_value()) return false;
-  if (!_value2.has_value() && !predicate_node._value2.has_value()) return true;
+  if (static_cast<bool>(_value2) != static_cast<bool>(predicate_node._value2)) return false;
+  if (!static_cast<bool>(_value2) && !static_cast<bool>(predicate_node._value2)) return true;
 
   return all_type_variant_near(*_value2, *predicate_node._value2);
 }

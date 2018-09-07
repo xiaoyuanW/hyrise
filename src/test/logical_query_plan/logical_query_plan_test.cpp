@@ -184,7 +184,7 @@ TEST_F(LogicalQueryPlanTest, AliasedSubqueryTest) {
 
   ASSERT_EQ(_predicate_node_a->get_column({"b"}), _t_a_b);
   ASSERT_EQ(_predicate_node_a->get_column({"b", {"foo"}}), _t_a_b);
-  ASSERT_EQ(_predicate_node_a->find_column({"b", "t_a"}), std::nullopt);
+  ASSERT_EQ(_predicate_node_a->find_column({"b", "t_a"}), std::experimental::nullopt);
 }
 
 TEST_F(LogicalQueryPlanTest, ComplexGraphStructure) {
@@ -392,8 +392,8 @@ TEST_F(LogicalQueryPlanTest, ColumnIDByColumnReference) {
   EXPECT_EQ(mock_node_a->get_output_column_id(column_reference_b), ColumnID{1});
   EXPECT_EQ(aggregate_node->get_output_column_id(column_reference_b), ColumnID{0});
   EXPECT_EQ(aggregate_node->get_output_column_id(column_reference_c), ColumnID{1});
-  EXPECT_EQ(aggregate_node->find_output_column_id(column_reference_a), std::nullopt);
-  EXPECT_EQ(mock_node_a->find_output_column_id(LQPColumnReference{mock_node_b, ColumnID{0}}), std::nullopt);
+  EXPECT_EQ(aggregate_node->find_output_column_id(column_reference_a), std::experimental::nullopt);
+  EXPECT_EQ(mock_node_a->find_output_column_id(LQPColumnReference{mock_node_b, ColumnID{0}}), std::experimental::nullopt);
 }
 
 }  // namespace opossum

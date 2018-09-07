@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-#include <optional>
+#include <experimental/optional>
 #include <string>
 #include "boost/variant.hpp"
 
@@ -22,9 +22,9 @@ class MockNode : public EnableMakeForLQPNode<MockNode>, public AbstractLQPNode {
   using ColumnDefinitions = std::vector<std::pair<DataType, std::string>>;
 
   explicit MockNode(const ColumnDefinitions& column_definitions,
-                    const std::optional<std::string>& alias = std::nullopt);
+                    const std::experimental::optional<std::string>& alias = std::experimental::nullopt);
   explicit MockNode(const std::shared_ptr<TableStatistics>& statistics,
-                    const std::optional<std::string>& alias = std::nullopt);
+                    const std::experimental::optional<std::string>& alias = std::experimental::nullopt);
 
   const std::vector<std::string>& output_column_names() const override;
 

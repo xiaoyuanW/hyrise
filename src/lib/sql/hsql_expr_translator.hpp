@@ -22,7 +22,7 @@ class HSQLExprTranslator {
                                                           const std::shared_ptr<AbstractLQPNode>& input_node);
 
   static AllParameterVariant to_all_parameter_variant(
-      const hsql::Expr& expr, const std::optional<std::shared_ptr<AbstractLQPNode>>& input_node = std::nullopt);
+      const hsql::Expr& expr, const std::experimental::optional<std::shared_ptr<AbstractLQPNode>>& input_node = std::experimental::nullopt);
 
   static LQPColumnReference to_column_reference(const hsql::Expr& hsql_expr,
                                                 const std::shared_ptr<AbstractLQPNode>& input_node);

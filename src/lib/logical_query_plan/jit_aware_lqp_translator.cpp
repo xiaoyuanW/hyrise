@@ -187,7 +187,7 @@ std::shared_ptr<const JitExpression> JitAwareLQPTranslator::_translate_to_jit_ex
     /* Between */
     case ExpressionType::Between:
       right = _translate_to_jit_expression(node->value(), jit_source, input_node);
-      between_value2 = _translate_to_jit_expression(node->value2().value(), jit_source, input_node);
+      between_value2 = _translate_to_jit_expression(*node->value2(), jit_source, input_node);
       between_greater_than_equals = std::make_shared<JitExpression>(left, ExpressionType::GreaterThanEquals, right, jit_source.add_temorary_value());
       between_less_than_equals = std::make_shared<JitExpression>(left, ExpressionType::LessThanEquals, between_value2, jit_source.add_temorary_value());
       return std::make_shared<JitExpression>(between_greater_than_equals, ExpressionType::And, between_less_than_equals, jit_source.add_temorary_value());
@@ -253,7 +253,7 @@ std::shared_ptr<const JitExpression> JitAwareLQPTranslator::_translate_to_jit_ex
     const auto table = StorageManager::get().get_table(table_name);
     const auto data_type = table->column_type(lqp_column_reference.original_column_id());
     const auto is_nullable = table->column_is_nullable(lqp_column_reference.original_column_id());
-    const auto tuple_value = jit_source.add_input_column(data_type, is_nullable, column_id.value());
+    const auto tuple_value = jit_source.add_input_column(data_type, is_nullable, *column_id);
     return std::make_shared<JitExpression>(tuple_value);
   } else if (projection_node) {
     // if the LQPColumnReference references a computed column, we need to compute that expression as well

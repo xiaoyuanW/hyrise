@@ -12,7 +12,7 @@ namespace filesystem = std::experimental::filesystem;
 #include "utils/assert.hpp"
 #include "utils/performance_warning.hpp"
 
-void create_test_data_directory(std::optional<std::string>& prefix) {
+void create_test_data_directory(std::experimental::optional<std::string>& prefix) {
   opossum::Assert(!filesystem::exists(opossum::test_data_path),
                   "Cannot create directory for test data: \"" + opossum::test_data_path + "\" already exists.");
 
@@ -38,7 +38,7 @@ int main(int argc, char** argv) {
   opossum::PerformanceWarningDisabler pwd;
   ::testing::InitGoogleTest(&argc, argv);
 
-  std::optional<std::string> prefix;
+  std::experimental::optional<std::string> prefix;
   if (argc > 1) {
     // If argv[1] is set after gtest extracted its commands, we interpret it as directory name prefix for test data
     opossum::test_data_path = "./" + std::string(argv[1]) + "/.hyrise_test_data/";

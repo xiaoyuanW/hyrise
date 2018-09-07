@@ -2,7 +2,7 @@
 
 #include <algorithm>
 #include <memory>
-#include <optional>
+#include <experimental/optional>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -66,7 +66,7 @@ const std::vector<std::shared_ptr<LQPExpression>>& ProjectionNode::column_expres
 void ProjectionNode::_on_child_changed() {
   DebugAssert(!right_child(), "Projection can't have a right child");
 
-  _output_column_names.reset();
+  _output_column_names = std::experimental::nullopt;;
 }
 
 const std::vector<LQPColumnReference>& ProjectionNode::output_column_references() const {

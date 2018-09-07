@@ -3,7 +3,7 @@
 #include <limits>
 #include <memory>
 #include <numeric>
-#include <optional>
+#include <experimental/optional>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -97,11 +97,11 @@ std::shared_ptr<TableStatistics> JoinNode::derive_statistics_from(
   }
 }
 
-const std::optional<LQPColumnReferencePair>& JoinNode::join_column_references() const {
+const std::experimental::optional<LQPColumnReferencePair>& JoinNode::join_column_references() const {
   return _join_column_references;
 }
 
-const std::optional<PredicateCondition>& JoinNode::predicate_condition() const { return _predicate_condition; }
+const std::experimental::optional<PredicateCondition>& JoinNode::predicate_condition() const { return _predicate_condition; }
 
 JoinMode JoinNode::join_mode() const { return _join_mode; }
 
@@ -119,15 +119,15 @@ bool JoinNode::shallow_equals(const AbstractLQPNode& rhs) const {
   const auto& join_node = static_cast<const JoinNode&>(rhs);
 
   if (_join_mode != join_node._join_mode || _predicate_condition != join_node._predicate_condition) return false;
-  if (_join_column_references.has_value() != join_node._join_column_references.has_value()) return false;
+  if (static_cast<bool>(_join_column_references) != static_cast<bool>(join_node._join_column_references)) return false;
 
-  if (!_join_column_references.has_value()) return true;
+  if (!static_cast<bool>(_join_column_references)) return true;
 
   return _equals(*this, _join_column_references->first, join_node, join_node._join_column_references->first) &&
          _equals(*this, _join_column_references->second, join_node, join_node._join_column_references->second);
 }
 
-void JoinNode::_on_child_changed() { _output_column_names.reset(); }
+void JoinNode::_on_child_changed() { _output_column_names = std::experimental::nullopt;; }
 
 void JoinNode::_update_output() const {
   /**

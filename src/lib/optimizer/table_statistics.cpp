@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <iostream>
 #include <memory>
-#include <optional>
+#include <experimental/optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -36,7 +36,7 @@ const std::vector<std::shared_ptr<BaseColumnStatistics>>& TableStatistics::colum
 std::shared_ptr<TableStatistics> TableStatistics::predicate_statistics(const ColumnID column_id,
                                                                        const PredicateCondition predicate_condition,
                                                                        const AllParameterVariant& value,
-                                                                       const std::optional<AllTypeVariant>& value2) {
+                                                                       const std::experimental::optional<AllTypeVariant>& value2) {
   auto _row_count = row_count();
   if (_row_count == 0) {
     return shared_from_this();

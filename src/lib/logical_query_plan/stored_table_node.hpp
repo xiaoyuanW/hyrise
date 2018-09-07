@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-#include <optional>
+#include <experimental/optional>
 #include <string>
 #include <vector>
 
@@ -18,7 +18,7 @@ class TableStatistics;
  */
 class StoredTableNode : public EnableMakeForLQPNode<StoredTableNode>, public AbstractLQPNode {
  public:
-  explicit StoredTableNode(const std::string& table_name, const std::optional<std::string>& alias = std::nullopt);
+  explicit StoredTableNode(const std::string& table_name, const std::experimental::optional<std::string>& alias = std::experimental::nullopt);
 
   const std::string& table_name() const;
 
@@ -39,7 +39,7 @@ class StoredTableNode : public EnableMakeForLQPNode<StoredTableNode>, public Abs
       const std::shared_ptr<AbstractLQPNode>& copied_left_child,
       const std::shared_ptr<AbstractLQPNode>& copied_right_child) const override;
   void _on_child_changed() override;
-  std::optional<QualifiedColumnName> _resolve_local_table_name(
+  std::experimental::optional<QualifiedColumnName> _resolve_local_table_name(
       const QualifiedColumnName& qualified_column_name) const override;
 
  private:

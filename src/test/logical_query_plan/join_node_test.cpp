@@ -74,15 +74,15 @@ TEST_F(JoinNodeTest, VerboseColumnNames) {
 }
 
 TEST_F(JoinNodeTest, ColumnReferenceByNamedColumnReference) {
-  EXPECT_EQ(_join_node->get_column({"a", std::nullopt}), _t_a_a);
+  EXPECT_EQ(_join_node->get_column({"a", std::experimental::nullopt}), _t_a_a);
   EXPECT_EQ(_join_node->get_column({"a", "t_a"}), _t_a_a);
-  EXPECT_EQ(_join_node->get_column({"b", std::nullopt}), _t_a_b);
+  EXPECT_EQ(_join_node->get_column({"b", std::experimental::nullopt}), _t_a_b);
   EXPECT_EQ(_join_node->get_column({"b", "t_a"}), _t_a_b);
-  EXPECT_EQ(_join_node->get_column({"c", std::nullopt}), _t_a_c);
+  EXPECT_EQ(_join_node->get_column({"c", std::experimental::nullopt}), _t_a_c);
   EXPECT_EQ(_join_node->get_column({"c", "t_a"}), _t_a_c);
-  EXPECT_EQ(_join_node->get_column({"x", std::nullopt}), _t_b_x);
+  EXPECT_EQ(_join_node->get_column({"x", std::experimental::nullopt}), _t_b_x);
   EXPECT_EQ(_join_node->get_column({"x", "t_b"}), _t_b_x);
-  EXPECT_EQ(_join_node->get_column({"y", std::nullopt}), _t_b_y);
+  EXPECT_EQ(_join_node->get_column({"y", std::experimental::nullopt}), _t_b_y);
   EXPECT_EQ(_join_node->get_column({"y", "t_b"}), _t_b_y);
 }
 

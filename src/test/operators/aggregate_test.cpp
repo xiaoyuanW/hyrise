@@ -1,7 +1,7 @@
 #include <iostream>
 #include <map>
 #include <memory>
-#include <optional>
+#include <experimental/optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -278,7 +278,7 @@ TEST_F(OperatorsAggregateTest, TwoAggregateSumAvg) {
 }
 
 TEST_F(OperatorsAggregateTest, TwoAggregateSumAvgAlias) {
-  this->test_output(_table_wrapper_1_2, {{ColumnID{1}, AggregateFunction::Sum, std::optional<std::string>("sum_b")},
+  this->test_output(_table_wrapper_1_2, {{ColumnID{1}, AggregateFunction::Sum, std::experimental::optional<std::string>("sum_b")},
                                          {ColumnID{2}, AggregateFunction::Avg}},
                     {ColumnID{0}}, "src/test/tables/aggregateoperator/groupby_int_1gb_2agg/sum_avg_alias.tbl", 1);
 }
@@ -435,12 +435,12 @@ TEST_F(OperatorsAggregateTest, OneGroupbyAndNoAggregateWithNull) {
 }
 
 TEST_F(OperatorsAggregateTest, OneGroupbyCountStar) {
-  this->test_output(_table_wrapper_1_1_null, {{std::nullopt, AggregateFunction::Count}}, {ColumnID{0}},
+  this->test_output(_table_wrapper_1_1_null, {{std::experimental::nullopt, AggregateFunction::Count}}, {ColumnID{0}},
                     "src/test/tables/aggregateoperator/groupby_int_1gb_0agg/count_star.tbl", 1, false);
 }
 
 TEST_F(OperatorsAggregateTest, TwoGroupbyCountStar) {
-  this->test_output(_table_wrapper_2_0_null, {{std::nullopt, AggregateFunction::Count}}, {ColumnID{0}, ColumnID{2}},
+  this->test_output(_table_wrapper_2_0_null, {{std::experimental::nullopt, AggregateFunction::Count}}, {ColumnID{0}, ColumnID{2}},
                     "src/test/tables/aggregateoperator/groupby_int_2gb_0agg/count_star.tbl", 1, false);
 }
 

@@ -35,11 +35,11 @@ bool ConstantCalculationRule::apply_to(const std::shared_ptr<AbstractLQPNode>& n
     // If the expression contains operands with different types, or one of the operands is a column reference,
     // it can't be resolved in this rule, and will be handled by the Projection later.
     const auto expression_type = _get_type_of_expression(expression);
-    if (expression_type == std::nullopt) {
+    if (expression_type == std::experimental::nullopt) {
       continue;
     }
 
-    auto value = std::optional<AllTypeVariant>{};
+    auto value = std::experimental::optional<AllTypeVariant>{};
 
     if (*expression_type == DataType::Null) {
       value = NULL_VALUE;
@@ -47,9 +47,9 @@ bool ConstantCalculationRule::apply_to(const std::shared_ptr<AbstractLQPNode>& n
       resolve_data_type(*expression_type, [&](auto type) { value = _calculate_expression(type, expression); });
     }
 
-    // If the value is std::nullopt, then the expression could not be resolved at this point,
+    // If the value is std::experimental::nullopt, then the expression could not be resolved at this point,
     // e.g. because it is not an arithmetic operator.
-    if (value != std::nullopt &&
+    if (value != std::experimental::nullopt &&
         _replace_expression_in_parents(node, node->output_column_references()[column_id], *value)) {
       // If we successfully replaced the occurrences of the expression in the parent tree,
       // we can remove the column here.
@@ -97,14 +97,14 @@ void ConstantCalculationRule::_remove_column_from_projection(const std::shared_p
   node->replace_with(projection_node);
 }
 
-std::optional<DataType> ConstantCalculationRule::_get_type_of_expression(
+std::experimental::optional<DataType> ConstantCalculationRule::_get_type_of_expression(
     const std::shared_ptr<LQPExpression>& expression) const {
   if (expression->type() == ExpressionType::Literal) {
     return data_type_from_all_type_variant(expression->value());
   }
 
   if (!expression->is_arithmetic_operator()) {
-    return std::nullopt;
+    return std::experimental::nullopt;
   }
 
   const auto type_left = _get_type_of_expression(expression->left_child());
@@ -112,20 +112,20 @@ std::optional<DataType> ConstantCalculationRule::_get_type_of_expression(
 
   if (type_left == DataType::Null) return type_right;
   if (type_right == DataType::Null) return type_left;
-  if (type_left != type_right) return std::nullopt;
+  if (type_left != type_right) return std::experimental::nullopt;
 
   return type_left;
 }
 
 template <typename T>
-std::optional<AllTypeVariant> ConstantCalculationRule::_calculate_expression(
+std::experimental::optional<AllTypeVariant> ConstantCalculationRule::_calculate_expression(
     boost::hana::basic_type<T> type, const std::shared_ptr<LQPExpression>& expression) const {
   if (expression->type() == ExpressionType::Literal) {
     return expression->value();
   }
 
   if (!expression->is_arithmetic_operator()) {
-    return std::nullopt;
+    return std::experimental::nullopt;
   }
 
   const auto& arithmetic_operator_function = function_for_arithmetic_expression<T>(expression->type());

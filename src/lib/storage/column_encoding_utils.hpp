@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-#include <optional>
+#include <experimental/optional>
 
 #include "all_type_variant.hpp"
 #include "storage/encoding_type.hpp"
@@ -25,6 +25,6 @@ std::unique_ptr<BaseColumnEncoder> create_encoder(EncodingType encoding_type);
  */
 std::shared_ptr<BaseEncodedColumn> encode_column(EncodingType encoding_type, DataType data_type,
                                                  std::shared_ptr<const BaseValueColumn> column,
-                                                 std::optional<VectorCompressionType> zero_suppression_type = {});
+                                                 std::experimental::optional<VectorCompressionType> zero_suppression_type = {});
 
 }  // namespace opossum

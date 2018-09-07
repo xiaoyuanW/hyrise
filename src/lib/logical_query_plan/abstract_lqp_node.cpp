@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <memory>
 #include <numeric>
-#include <optional>
+#include <experimental/optional>
 #include <sstream>
 #include <string>
 #include <unordered_map>
@@ -18,7 +18,7 @@ namespace opossum {
 
 class TableStatistics;
 
-QualifiedColumnName::QualifiedColumnName(const std::string& column_name, const std::optional<std::string>& table_name)
+QualifiedColumnName::QualifiedColumnName(const std::string& column_name, const std::experimental::optional<std::string>& table_name)
     : column_name(column_name), table_name(table_name) {}
 
 std::string QualifiedColumnName::as_string() const {
@@ -220,14 +220,14 @@ const std::vector<LQPColumnReference>& AbstractLQPNode::output_column_references
   return *_output_column_references;
 }
 
-std::optional<LQPColumnReference> AbstractLQPNode::find_column(const QualifiedColumnName& qualified_column_name) const {
+std::experimental::optional<LQPColumnReference> AbstractLQPNode::find_column(const QualifiedColumnName& qualified_column_name) const {
   /**
    * If this node carries an alias that is different from that of the NamedColumnReference, we can't resolve the column
    * in this node. E.g. in `SELECT t1.a FROM t1 AS something_else;` "t1.a" can't be resolved since it carries an alias.
    */
   const auto qualified_column_name_without_local_table_name = _resolve_local_table_name(qualified_column_name);
   if (!qualified_column_name_without_local_table_name) {
-    return std::nullopt;
+    return std::experimental::nullopt;
   }
 
   /**
@@ -240,14 +240,14 @@ std::optional<LQPColumnReference> AbstractLQPNode::find_column(const QualifiedCo
         return output_column_references()[column_id];
       }
     }
-    return std::nullopt;
+    return std::experimental::nullopt;
   }
 
   /**
    * Look for the Column in child nodes
    */
   const auto resolve_qualified_column_name = [&](
-      const auto& node, const auto& qualified_column_name) -> std::optional<LQPColumnReference> {
+      const auto& node, const auto& qualified_column_name) -> std::experimental::optional<LQPColumnReference> {
     if (node) {
       const auto column_reference = node->find_column(qualified_column_name);
       if (column_reference) {
@@ -256,7 +256,7 @@ std::optional<LQPColumnReference> AbstractLQPNode::find_column(const QualifiedCo
         }
       }
     }
-    return std::nullopt;
+    return std::experimental::nullopt;
   };
 
   const auto column_reference_from_left =
@@ -311,12 +311,12 @@ std::shared_ptr<const AbstractLQPNode> AbstractLQPNode::find_table_name_origin(c
   return table_name_origin_in_left_child;
 }
 
-std::optional<ColumnID> AbstractLQPNode::find_output_column_id(const LQPColumnReference& column_reference) const {
+std::experimental::optional<ColumnID> AbstractLQPNode::find_output_column_id(const LQPColumnReference& column_reference) const {
   const auto& output_column_references = this->output_column_references();
   const auto iter = std::find(output_column_references.begin(), output_column_references.end(), column_reference);
 
   if (iter == output_column_references.end()) {
-    return std::nullopt;
+    return std::experimental::nullopt;
   }
 
   return static_cast<ColumnID>(std::distance(output_column_references.begin(), iter));
@@ -382,7 +382,7 @@ void AbstractLQPNode::replace_with(const std::shared_ptr<AbstractLQPNode>& repla
   set_right_child(nullptr);
 }
 
-void AbstractLQPNode::set_alias(const std::optional<std::string>& table_alias) { _table_alias = table_alias; }
+void AbstractLQPNode::set_alias(const std::experimental::optional<std::string>& table_alias) { _table_alias = table_alias; }
 
 void AbstractLQPNode::print(std::ostream& out) const {
   const auto get_children_fn = [](const auto& node) {
@@ -435,13 +435,13 @@ std::vector<std::string> AbstractLQPNode::get_verbose_column_names() const {
   return verbose_names;
 }
 
-std::optional<QualifiedColumnName> AbstractLQPNode::_resolve_local_table_name(
+std::experimental::optional<QualifiedColumnName> AbstractLQPNode::_resolve_local_table_name(
     const QualifiedColumnName& qualified_column_name) const {
   if (qualified_column_name.table_name && _table_alias) {
     if (*qualified_column_name.table_name == *_table_alias) {
       // The used table name is the alias of this table. Remove id from the QualifiedColumnName for further search
       auto reference_without_local_alias = qualified_column_name;
-      reference_without_local_alias.table_name = std::nullopt;
+      reference_without_local_alias.table_name = std::experimental::nullopt;
       return reference_without_local_alias;
     } else {
       return {};
@@ -452,7 +452,7 @@ std::optional<QualifiedColumnName> AbstractLQPNode::_resolve_local_table_name(
 
 void AbstractLQPNode::_child_changed() {
   _statistics.reset();
-  _output_column_references.reset();
+  _output_column_references = std::experimental::nullopt;
 
   _on_child_changed();
   for (auto& parent : parents()) {
@@ -497,15 +497,15 @@ std::shared_ptr<LQPExpression> AbstractLQPNode::adapt_expression_to_different_lq
   return expression;
 }
 
-std::optional<std::pair<std::shared_ptr<const AbstractLQPNode>, std::shared_ptr<const AbstractLQPNode>>>
+std::experimental::optional<std::pair<std::shared_ptr<const AbstractLQPNode>, std::shared_ptr<const AbstractLQPNode>>>
 AbstractLQPNode::find_first_subplan_mismatch(const std::shared_ptr<const AbstractLQPNode>& rhs) const {
   return _find_first_subplan_mismatch_impl(shared_from_this(), rhs);
 }
 
-std::optional<std::pair<std::shared_ptr<const AbstractLQPNode>, std::shared_ptr<const AbstractLQPNode>>>
+std::experimental::optional<std::pair<std::shared_ptr<const AbstractLQPNode>, std::shared_ptr<const AbstractLQPNode>>>
 AbstractLQPNode::_find_first_subplan_mismatch_impl(const std::shared_ptr<const AbstractLQPNode>& lhs,
                                                    const std::shared_ptr<const AbstractLQPNode>& rhs) {
-  if (lhs == rhs) return std::nullopt;
+  if (lhs == rhs) return std::experimental::nullopt;
   if (static_cast<bool>(lhs) != static_cast<bool>(rhs)) return std::make_pair(lhs, rhs);
   if (lhs->type() != rhs->type()) return std::make_pair(lhs, rhs);
 
@@ -517,7 +517,7 @@ AbstractLQPNode::_find_first_subplan_mismatch_impl(const std::shared_ptr<const A
   const auto right_child_mismatch = _find_first_subplan_mismatch_impl(lhs->right_child(), rhs->right_child());
   if (right_child_mismatch) return right_child_mismatch;
 
-  return std::nullopt;
+  return std::experimental::nullopt;
 }
 
 bool AbstractLQPNode::_equals(const AbstractLQPNode& lqp_left,

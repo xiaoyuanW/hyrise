@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-#include <optional>
+#include <experimental/optional>
 #include <string>
 #include <vector>
 
@@ -52,7 +52,7 @@ class JoinDetectionRule : public AbstractRule {
     LQPColumnReference right_column_reference;
   };
 
-  std::optional<JoinCondition> _find_predicate_for_cross_join(const std::shared_ptr<JoinNode>& cross_join);
+  std::experimental::optional<JoinCondition> _find_predicate_for_cross_join(const std::shared_ptr<JoinNode>& cross_join);
 
   /**
    * Used to check whether a Predicate working on the ColumnIDs left and right could be used as a JoinCondition

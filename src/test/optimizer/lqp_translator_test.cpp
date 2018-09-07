@@ -1,5 +1,5 @@
 #include <memory>
-#include <optional>
+#include <experimental/optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -340,7 +340,7 @@ TEST_F(LQPTranslatorTest, AggregateNodeNoArithmetics) {
   const auto aggregate_definition = aggregate_op->aggregates()[0];
   EXPECT_EQ(aggregate_definition.column, ColumnID{0});
   EXPECT_EQ(aggregate_definition.function, AggregateFunction::Sum);
-  EXPECT_EQ(aggregate_definition.alias, std::optional<std::string>("sum_of_a"));
+  EXPECT_EQ(aggregate_definition.alias, std::experimental::optional<std::string>("sum_of_a"));
 }
 
 TEST_F(LQPTranslatorTest, AggregateNodeWithArithmetics) {
@@ -382,7 +382,7 @@ TEST_F(LQPTranslatorTest, AggregateNodeWithArithmetics) {
   const auto aggregate_definition = aggregate_op->aggregates()[0];
   EXPECT_EQ(aggregate_definition.column, ColumnID{1});
   EXPECT_EQ(aggregate_definition.function, AggregateFunction::Sum);
-  EXPECT_EQ(aggregate_definition.alias, std::optional<std::string>("sum_of_b_times_two"));
+  EXPECT_EQ(aggregate_definition.alias, std::experimental::optional<std::string>("sum_of_b_times_two"));
 
   // Check projection operator.
   // The projection operator is required because we need the arithmetic operation to be calculated first.
@@ -401,7 +401,7 @@ TEST_F(LQPTranslatorTest, AggregateNodeWithArithmetics) {
 
   const auto column_expression1 = column_expressions[1];
   EXPECT_EQ(column_expression1->to_string(), "ColumnID #1 * 2");
-  EXPECT_EQ(column_expression1->alias(), std::nullopt);
+  EXPECT_EQ(column_expression1->alias(), std::experimental::nullopt);
 }
 
 TEST_F(LQPTranslatorTest, MultipleNodesHierarchy) {

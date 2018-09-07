@@ -2,7 +2,7 @@
 
 #include <cstdint>
 #include <memory>
-#include <optional>
+#include <experimental/optional>
 
 #include "base_compressed_vector.hpp"
 
@@ -25,7 +25,7 @@ enum class VectorCompressionType : uint8_t { Invalid, FixedSizeByteAligned, Simd
  * about the vector which is to be compressed.
  */
 struct UncompressedVectorInfo final {
-  std::optional<uint32_t> max_value = std::nullopt;
+  std::experimental::optional<uint32_t> max_value = std::experimental::nullopt;
 };
 
 /**

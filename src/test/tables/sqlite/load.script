@@ -1,0 +1,2 @@
+load src/test/tables/sqlite/id_int_int_int_100.tbl one
+load src/test/tables/sqlite/mixed_types_100.tbl mixed

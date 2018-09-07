@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-#include <optional>
+#include <experimental/optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -28,8 +28,8 @@ class JoinNode : public EnableMakeForLQPNode<JoinNode>, public AbstractLQPNode {
   JoinNode(const JoinMode join_mode, const LQPColumnReferencePair& join_column_references,
            const PredicateCondition predicate_condition);
 
-  const std::optional<LQPColumnReferencePair>& join_column_references() const;
-  const std::optional<PredicateCondition>& predicate_condition() const;
+  const std::experimental::optional<LQPColumnReferencePair>& join_column_references() const;
+  const std::experimental::optional<PredicateCondition>& predicate_condition() const;
   JoinMode join_mode() const;
 
   std::string description() const override;
@@ -52,10 +52,10 @@ class JoinNode : public EnableMakeForLQPNode<JoinNode>, public AbstractLQPNode {
 
  private:
   JoinMode _join_mode;
-  std::optional<LQPColumnReferencePair> _join_column_references;
-  std::optional<PredicateCondition> _predicate_condition;
+  std::experimental::optional<LQPColumnReferencePair> _join_column_references;
+  std::experimental::optional<PredicateCondition> _predicate_condition;
 
-  mutable std::optional<std::vector<std::string>> _output_column_names;
+  mutable std::experimental::optional<std::vector<std::string>> _output_column_names;
 
   void _update_output() const;
 };

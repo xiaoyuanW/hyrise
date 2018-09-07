@@ -4,7 +4,7 @@
 #include <functional>
 #include <list>
 #include <memory>
-#include <optional>
+#include <experimental/optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -22,9 +22,9 @@
 
 namespace opossum {
 
-std::shared_ptr<Table> CsvParser::parse(const std::string& filename, const std::optional<CsvMeta>& csv_meta) {
+std::shared_ptr<Table> CsvParser::parse(const std::string& filename, const std::experimental::optional<CsvMeta>& csv_meta) {
   // If no meta info is given as a parameter, look for a json file
-  if (csv_meta == std::nullopt) {
+  if (csv_meta == std::experimental::nullopt) {
     _meta = process_csv_meta_file(filename + CsvMeta::META_FILE_EXTENSION);
   } else {
     _meta = *csv_meta;

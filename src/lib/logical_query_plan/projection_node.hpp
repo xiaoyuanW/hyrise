@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-#include <optional>
+#include <experimental/optional>
 #include <string>
 #include <vector>
 
@@ -42,7 +42,7 @@ class ProjectionNode : public EnableMakeForLQPNode<ProjectionNode>, public Abstr
  private:
   std::vector<std::shared_ptr<LQPExpression>> _column_expressions;
 
-  mutable std::optional<std::vector<std::string>> _output_column_names;
+  mutable std::experimental::optional<std::vector<std::string>> _output_column_names;
 
   void _update_output() const;
 };

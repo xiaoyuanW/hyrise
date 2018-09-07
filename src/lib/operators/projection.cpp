@@ -71,7 +71,7 @@ void Projection::_create_column(boost::hana::basic_type<T> type, const std::shar
 
     for (const auto value : values) {
       non_null_values.push_back(value ? *value : T{});
-      null_values.push_back(value == std::nullopt);
+      null_values.push_back(value == std::experimental::nullopt);
     }
 
     column = std::make_shared<ValueColumn<T>>(std::move(non_null_values), std::move(null_values));
@@ -157,7 +157,7 @@ DataType Projection::_get_type_of_expression(const std::shared_ptr<PQPExpression
 }
 
 template <typename T>
-const pmr_concurrent_vector<std::optional<T>> Projection::_evaluate_expression(
+const pmr_concurrent_vector<std::experimental::optional<T>> Projection::_evaluate_expression(
     const std::shared_ptr<PQPExpression>& expression, const std::shared_ptr<const Table> table,
     const ChunkID chunk_id) {
   /**
@@ -166,7 +166,7 @@ const pmr_concurrent_vector<std::optional<T>> Projection::_evaluate_expression(
    * On the other hand this is not used for nested arithmetic Expressions, such as 'SELECT a + 5 FROM table_a'.
    */
   if (expression->type() == ExpressionType::Literal) {
-    return pmr_concurrent_vector<std::optional<T>>(table->get_chunk(chunk_id)->size(),
+    return pmr_concurrent_vector<std::experimental::optional<T>>(table->get_chunk(chunk_id)->size(),
                                                    boost::get<T>(expression->value()));
   }
 
@@ -197,7 +197,7 @@ const pmr_concurrent_vector<std::optional<T>> Projection::_evaluate_expression(
 
   const auto& arithmetic_operator_function = function_for_arithmetic_expression<T>(expression->type());
 
-  pmr_concurrent_vector<std::optional<T>> values;
+  pmr_concurrent_vector<std::experimental::optional<T>> values;
   values.resize(table->get_chunk(chunk_id)->size());
 
   const auto& left = expression->left_child();
@@ -207,7 +207,7 @@ const pmr_concurrent_vector<std::optional<T>> Projection::_evaluate_expression(
 
   if ((left_is_literal && variant_is_null(left->value())) || (right_is_literal && variant_is_null(right->value()))) {
     // one of the operands is a literal null - early out.
-    std::fill(values.begin(), values.end(), std::nullopt);
+    std::fill(values.begin(), values.end(), std::experimental::nullopt);
   } else if (left_is_literal && right_is_literal) {
     std::fill(values.begin(), values.end(),
               arithmetic_operator_function(boost::get<T>(left->value()), boost::get<T>(right->value())));
@@ -215,8 +215,8 @@ const pmr_concurrent_vector<std::optional<T>> Projection::_evaluate_expression(
     auto left_values = _evaluate_expression<T>(left, table, chunk_id);
     auto right_value = boost::get<T>(right->value());
     // apply operator function to both vectors
-    auto func = [&](std::optional<T> left_value) -> std::optional<T> {
-      if (!left_value) return std::nullopt;
+    auto func = [&](std::experimental::optional<T> left_value) -> std::experimental::optional<T> {
+      if (!left_value) return std::experimental::nullopt;
       return arithmetic_operator_function(*left_value, right_value);
     };
     std::transform(left_values.begin(), left_values.end(), values.begin(), func);
@@ -225,8 +225,8 @@ const pmr_concurrent_vector<std::optional<T>> Projection::_evaluate_expression(
     auto right_values = _evaluate_expression<T>(right, table, chunk_id);
     auto left_value = boost::get<T>(left->value());
     // apply operator function to both vectors
-    auto func = [&](std::optional<T> right_value) -> std::optional<T> {
-      if (!right_value) return std::nullopt;
+    auto func = [&](std::experimental::optional<T> right_value) -> std::experimental::optional<T> {
+      if (!right_value) return std::experimental::nullopt;
       return arithmetic_operator_function(left_value, *right_value);
     };
     std::transform(right_values.begin(), right_values.end(), values.begin(), func);
@@ -236,8 +236,8 @@ const pmr_concurrent_vector<std::optional<T>> Projection::_evaluate_expression(
     auto right_values = _evaluate_expression<T>(right, table, chunk_id);
 
     // apply operator function to both vectors
-    auto func = [&](std::optional<T> left, std::optional<T> right) -> std::optional<T> {
-      if (!left || !right) return std::nullopt;
+    auto func = [&](std::experimental::optional<T> left, std::experimental::optional<T> right) -> std::experimental::optional<T> {
+      if (!left || !right) return std::experimental::nullopt;
       return arithmetic_operator_function(*left, *right);
     };
     std::transform(left_values.begin(), left_values.end(), right_values.begin(), values.begin(), func);

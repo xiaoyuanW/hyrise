@@ -66,8 +66,8 @@ std::shared_ptr<const BaseAttributeVector> DeprecatedDictionaryColumn<T>::attrib
 }
 
 template <typename T>
-const pmr_concurrent_vector<std::optional<T>> DeprecatedDictionaryColumn<T>::materialize_values() const {
-  pmr_concurrent_vector<std::optional<T>> values(_attribute_vector->size(), std::nullopt, _dictionary->get_allocator());
+const pmr_concurrent_vector<std::experimental::optional<T>> DeprecatedDictionaryColumn<T>::materialize_values() const {
+  pmr_concurrent_vector<std::experimental::optional<T>> values(_attribute_vector->size(), std::experimental::nullopt, _dictionary->get_allocator());
 
   for (ChunkOffset chunk_offset = 0; chunk_offset < _attribute_vector->size(); ++chunk_offset) {
     if (is_null(chunk_offset)) continue;

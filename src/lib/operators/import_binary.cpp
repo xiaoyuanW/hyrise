@@ -6,7 +6,7 @@
 #include <fstream>
 #include <memory>
 #include <numeric>
-#include <optional>
+#include <experimental/optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -21,7 +21,7 @@
 
 namespace opossum {
 
-ImportBinary::ImportBinary(const std::string& filename, const std::optional<std::string> tablename)
+ImportBinary::ImportBinary(const std::string& filename, const std::experimental::optional<std::string> tablename)
     : _filename(filename), _tablename(tablename) {}
 
 const std::string ImportBinary::name() const { return "ImportBinary"; }

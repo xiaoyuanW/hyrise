@@ -3,7 +3,7 @@
 #include <array>
 #include <iostream>
 #include <memory>
-#include <optional>
+#include <experimental/optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -48,13 +48,13 @@ struct LQPParentRelation {
 };
 
 struct QualifiedColumnName {
-  QualifiedColumnName(const std::string& column_name, const std::optional<std::string>& table_name =
-                                                          std::nullopt);  // NOLINT - Implicit conversion is intended
+  QualifiedColumnName(const std::string& column_name, const std::experimental::optional<std::string>& table_name =
+                                                          std::experimental::nullopt);  // NOLINT - Implicit conversion is intended
 
   std::string as_string() const;
 
   std::string column_name;
-  std::optional<std::string> table_name = std::nullopt;
+  std::experimental::optional<std::string> table_name = std::experimental::nullopt;
 };
 
 /**
@@ -185,9 +185,9 @@ class AbstractLQPNode : public std::enable_shared_from_this<AbstractLQPNode>, pr
   /**
    * @param qualified_column_name Must not be ambiguous in this subtree
    * @return The ColumnReference of the qualified_column_name if it can be resolved in this subtree,
-   *         std::nullopt otherwise.
+   *         std::experimental::nullopt otherwise.
    */
-  std::optional<LQPColumnReference> find_column(const QualifiedColumnName& qualified_column_name) const;
+  std::experimental::optional<LQPColumnReference> find_column(const QualifiedColumnName& qualified_column_name) const;
 
   /**
    * Convenience method for (*find_column()), DebugAssert()s that the
@@ -203,9 +203,9 @@ class AbstractLQPNode : public std::enable_shared_from_this<AbstractLQPNode>, pr
   // @}
 
   /**
-   * @return The leftmost output ColumnID that stems from column_reference, or std::nullopt if none does
+   * @return The leftmost output ColumnID that stems from column_reference, or std::experimental::nullopt if none does
    */
-  std::optional<ColumnID> find_output_column_id(const LQPColumnReference& column_reference) const;
+  std::experimental::optional<ColumnID> find_output_column_id(const LQPColumnReference& column_reference) const;
 
   /**
    * Convenience for *find_output_column_id(), DebugAssert()s that the column_reference could be resolved
@@ -230,7 +230,7 @@ class AbstractLQPNode : public std::enable_shared_from_this<AbstractLQPNode>, pr
    * Sets the table alias for this subtree, see _table_alias for details.
    * This is not part of the constructor because it is only used in SQLTranslator::_translate_table_ref.
    */
-  void set_alias(const std::optional<std::string>& table_alias);
+  void set_alias(const std::experimental::optional<std::string>& table_alias);
 
   // @{
   /**
@@ -294,10 +294,10 @@ class AbstractLQPNode : public std::enable_shared_from_this<AbstractLQPNode>, pr
   /**
    * Perform a deep equality check of this LQP with another. Floating point numbers will be compared allowing a small
    * absolute offset.
-   * @return std::nullopt if the LQPs were equal. A pair of a node in this LQP and a node in the rhs LQP that were first
+   * @return std::experimental::nullopt if the LQPs were equal. A pair of a node in this LQP and a node in the rhs LQP that were first
    *         discovered to differ.
    */
-  std::optional<std::pair<std::shared_ptr<const AbstractLQPNode>, std::shared_ptr<const AbstractLQPNode>>>
+  std::experimental::optional<std::pair<std::shared_ptr<const AbstractLQPNode>, std::shared_ptr<const AbstractLQPNode>>>
   find_first_subplan_mismatch(const std::shared_ptr<const AbstractLQPNode>& rhs) const;
   // @}
 
@@ -330,17 +330,17 @@ class AbstractLQPNode : public std::enable_shared_from_this<AbstractLQPNode>, pr
    * SELECT y.* FROM (SELECT * FROM x) AS y
    * The alias applies to all nodes above the node where it is set until a new alias is set
    */
-  std::optional<std::string> _table_alias;
+  std::experimental::optional<std::string> _table_alias;
 
   // mutable, so it can be lazily initialized in output_column_references() overrides
-  mutable std::optional<std::vector<LQPColumnReference>> _output_column_references;
+  mutable std::experimental::optional<std::vector<LQPColumnReference>> _output_column_references;
 
   /**
    * If qualified_column_name.table_name is the alias set for this subtree, remove the table_name so that we
    * only operate on the column name. If an alias for this subtree is set, but qualified_column_name.table_name does not
-   * match it, the reference cannot be resolved (see knows_table) and std::nullopt is returned.
+   * match it, the reference cannot be resolved (see knows_table) and std::experimental::nullopt is returned.
    */
-  virtual std::optional<QualifiedColumnName> _resolve_local_table_name(
+  virtual std::experimental::optional<QualifiedColumnName> _resolve_local_table_name(
       const QualifiedColumnName& qualified_column_name) const;
 
   /** Utility to compare vectors of Expressions from different LQPs */
@@ -371,7 +371,7 @@ class AbstractLQPNode : public std::enable_shared_from_this<AbstractLQPNode>, pr
    */
   void _child_changed();
 
-  static std::optional<std::pair<std::shared_ptr<const AbstractLQPNode>, std::shared_ptr<const AbstractLQPNode>>>
+  static std::experimental::optional<std::pair<std::shared_ptr<const AbstractLQPNode>, std::shared_ptr<const AbstractLQPNode>>>
   _find_first_subplan_mismatch_impl(const std::shared_ptr<const AbstractLQPNode>& lhs,
                                     const std::shared_ptr<const AbstractLQPNode>& rhs);
 

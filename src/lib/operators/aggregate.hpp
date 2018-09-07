@@ -4,7 +4,7 @@
 #include <limits>
 #include <map>
 #include <memory>
-#include <optional>
+#include <experimental/optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -31,13 +31,13 @@ struct GroupByContext;
  */
 template <typename ColumnReferenceType>
 struct AggregateColumnDefinitionTemplate {
-  AggregateColumnDefinitionTemplate(const std::optional<ColumnReferenceType>& column, const AggregateFunction function,
-                                    const std::optional<std::string>& alias = std::nullopt)
+  AggregateColumnDefinitionTemplate(const std::experimental::optional<ColumnReferenceType>& column, const AggregateFunction function,
+                                    const std::experimental::optional<std::string>& alias = std::experimental::nullopt)
       : column(column), function(function), alias(alias) {}
 
-  std::optional<ColumnReferenceType> column;
+  std::experimental::optional<ColumnReferenceType> column;
   AggregateFunction function;
-  std::optional<std::string> alias;
+  std::experimental::optional<std::string> alias;
 };
 
 /*
@@ -54,7 +54,7 @@ The latter is used for AVG and COUNT.
 */
 template <typename AggregateType, typename ColumnDataType>
 struct AggregateResult {
-  std::optional<AggregateType> current_aggregate;
+  std::experimental::optional<AggregateType> current_aggregate;
   size_t aggregate_count = 0;
   std::set<ColumnDataType> distinct_values;
 };

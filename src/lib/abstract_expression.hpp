@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-#include <optional>
+#include <experimental/optional>
 #include <string>
 #include <vector>
 
@@ -59,23 +59,23 @@ class AbstractExpression : public std::enable_shared_from_this<DerivedExpression
    */
   // A literal can have an alias in order to allow queries like `SELECT 1 as one FROM t`.
   static std::shared_ptr<DerivedExpression> create_literal(const AllTypeVariant& value,
-                                                           const std::optional<std::string>& alias = std::nullopt);
+                                                           const std::experimental::optional<std::string>& alias = std::experimental::nullopt);
 
   static std::shared_ptr<DerivedExpression> create_value_placeholder(ValuePlaceholder value_placeholder);
 
   static std::shared_ptr<DerivedExpression> create_aggregate_function(
       AggregateFunction aggregate_function, const std::vector<std::shared_ptr<DerivedExpression>>& function_arguments,
-      const std::optional<std::string>& alias = std::nullopt);
+      const std::experimental::optional<std::string>& alias = std::experimental::nullopt);
 
   static std::shared_ptr<DerivedExpression> create_binary_operator(
       ExpressionType type, const std::shared_ptr<DerivedExpression>& left,
-      const std::shared_ptr<DerivedExpression>& right, const std::optional<std::string>& alias = std::nullopt);
+      const std::shared_ptr<DerivedExpression>& right, const std::experimental::optional<std::string>& alias = std::experimental::nullopt);
 
   static std::shared_ptr<DerivedExpression> create_unary_operator(
       ExpressionType type, const std::shared_ptr<DerivedExpression>& input,
-      const std::optional<std::string>& alias = std::nullopt);
+      const std::experimental::optional<std::string>& alias = std::experimental::nullopt);
 
-  static std::shared_ptr<DerivedExpression> create_select_star(const std::optional<std::string>& table_name = {});
+  static std::shared_ptr<DerivedExpression> create_select_star(const std::experimental::optional<std::string>& table_name = {});
 
   // @}
 
@@ -139,8 +139,8 @@ class AbstractExpression : public std::enable_shared_from_this<DerivedExpression
   /**
    * Getters that can be called to check whether a member is set.
    */
-  const std::optional<std::string>& table_name() const;
-  const std::optional<std::string>& alias() const;
+  const std::experimental::optional<std::string>& table_name() const;
+  const std::experimental::optional<std::string>& alias() const;
 
   void set_aggregate_function_arguments(
       const std::vector<std::shared_ptr<DerivedExpression>>& aggregate_function_arguments);
@@ -152,7 +152,7 @@ class AbstractExpression : public std::enable_shared_from_this<DerivedExpression
    * for SELECT lists with expressions: `SELECT a > 5 FROM ...`, here, the column name "a > 5" is generated using this
    * method. ColumnIDs need to be resolved to names and therefore need @param input_column_names.
    */
-  virtual std::string to_string(const std::optional<std::vector<std::string>>& input_column_names = std::nullopt,
+  virtual std::string to_string(const std::experimental::optional<std::vector<std::string>>& input_column_names = std::experimental::nullopt,
                                 bool is_root = true) const;
 
  protected:
@@ -164,9 +164,9 @@ class AbstractExpression : public std::enable_shared_from_this<DerivedExpression
   // the type of the expression
   const ExpressionType _type;
   // the value of an expression, e.g. of a Literal
-  std::optional<AllTypeVariant> _value;
+  std::experimental::optional<AllTypeVariant> _value;
 
-  std::optional<AggregateFunction> _aggregate_function;
+  std::experimental::optional<AggregateFunction> _aggregate_function;
 
   /*
    * A list of Expressions used in FunctionIdentifiers and CASE Expressions.
@@ -178,10 +178,10 @@ class AbstractExpression : public std::enable_shared_from_this<DerivedExpression
    */
   std::vector<std::shared_ptr<DerivedExpression>> _aggregate_function_arguments;
 
-  std::optional<std::string> _table_name;
-  std::optional<std::string> _alias;
+  std::experimental::optional<std::string> _table_name;
+  std::experimental::optional<std::string> _alias;
 
-  std::optional<ValuePlaceholder> _value_placeholder;
+  std::experimental::optional<ValuePlaceholder> _value_placeholder;
 
   // @{
   // Members for the tree structure

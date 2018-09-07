@@ -2,7 +2,7 @@
 
 #include <map>
 #include <memory>
-#include <optional>
+#include <experimental/optional>
 #include <utility>
 #include <vector>
 
@@ -24,7 +24,7 @@ struct ColumnEncodingSpec {
       : encoding_type{encoding_type_}, vector_compression_type{vector_compression_type_} {}
 
   EncodingType encoding_type;
-  std::optional<VectorCompressionType> vector_compression_type;
+  std::experimental::optional<VectorCompressionType> vector_compression_type;
 };
 
 using ChunkEncodingSpec = std::vector<ColumnEncodingSpec>;

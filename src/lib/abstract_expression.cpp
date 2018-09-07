@@ -2,7 +2,7 @@
 
 #include <iomanip>
 #include <memory>
-#include <optional>
+#include <experimental/optional>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -203,38 +203,38 @@ const std::string AbstractExpression<DerivedExpression>::description() const {
 }
 
 template <typename DerivedExpression>
-const std::optional<std::string>& AbstractExpression<DerivedExpression>::table_name() const {
+const std::experimental::optional<std::string>& AbstractExpression<DerivedExpression>::table_name() const {
   return _table_name;
 }
 
 template <typename DerivedExpression>
 AggregateFunction AbstractExpression<DerivedExpression>::aggregate_function() const {
-  DebugAssert(_aggregate_function != std::nullopt,
+  DebugAssert(_aggregate_function != std::experimental::nullopt,
               "Expression " + expression_type_to_string.at(_type) + " does not have an aggregate function");
   return *_aggregate_function;
 }
 
 template <typename DerivedExpression>
-const std::optional<std::string>& AbstractExpression<DerivedExpression>::alias() const {
+const std::experimental::optional<std::string>& AbstractExpression<DerivedExpression>::alias() const {
   return _alias;
 }
 
 template <typename DerivedExpression>
 const AllTypeVariant AbstractExpression<DerivedExpression>::value() const {
-  DebugAssert(_value != std::nullopt, "Expression " + expression_type_to_string.at(_type) + " does not have a value");
+  DebugAssert(_value != std::experimental::nullopt, "Expression " + expression_type_to_string.at(_type) + " does not have a value");
   return *_value;
 }
 
 template <typename DerivedExpression>
 ValuePlaceholder AbstractExpression<DerivedExpression>::value_placeholder() const {
-  DebugAssert(_value_placeholder != std::nullopt,
+  DebugAssert(_value_placeholder != std::experimental::nullopt,
               "Expression " + expression_type_to_string.at(_type) + " does not have a value placeholder");
   return *_value_placeholder;
 }
 
 template <typename DerivedExpression>
 std::string AbstractExpression<DerivedExpression>::to_string(
-    const std::optional<std::vector<std::string>>& input_column_names, bool is_root) const {
+    const std::experimental::optional<std::vector<std::string>>& input_column_names, bool is_root) const {
   switch (_type) {
     case ExpressionType::Literal:
       if (is_null_literal()) {
@@ -332,7 +332,7 @@ void AbstractExpression<DerivedExpression>::set_alias(const std::string& alias) 
 
 template <typename DerivedExpression>
 std::shared_ptr<DerivedExpression> AbstractExpression<DerivedExpression>::create_literal(
-    const AllTypeVariant& value, const std::optional<std::string>& alias) {
+    const AllTypeVariant& value, const std::experimental::optional<std::string>& alias) {
   auto expression = std::make_shared<DerivedExpression>(ExpressionType::Literal);
   expression->_alias = alias;
   expression->_value = value;
@@ -351,7 +351,7 @@ std::shared_ptr<DerivedExpression> AbstractExpression<DerivedExpression>::create
 template <typename DerivedExpression>
 std::shared_ptr<DerivedExpression> AbstractExpression<DerivedExpression>::create_aggregate_function(
     AggregateFunction aggregate_function, const std::vector<std::shared_ptr<DerivedExpression>>& function_arguments,
-    const std::optional<std::string>& alias) {
+    const std::experimental::optional<std::string>& alias) {
   auto expression = std::make_shared<DerivedExpression>(ExpressionType::Function);
   expression->_aggregate_function = aggregate_function;
   expression->_aggregate_function_arguments = function_arguments;
@@ -362,7 +362,7 @@ std::shared_ptr<DerivedExpression> AbstractExpression<DerivedExpression>::create
 template <typename DerivedExpression>
 std::shared_ptr<DerivedExpression> AbstractExpression<DerivedExpression>::create_binary_operator(
     ExpressionType type, const std::shared_ptr<DerivedExpression>& left,
-    const std::shared_ptr<DerivedExpression>& right, const std::optional<std::string>& alias) {
+    const std::shared_ptr<DerivedExpression>& right, const std::experimental::optional<std::string>& alias) {
   auto expression = std::make_shared<DerivedExpression>(type);
   Assert(expression->is_binary_operator(),
          "Type is not a binary operator type, such as Equals, LessThan, Like, And, etc.");
@@ -376,7 +376,7 @@ std::shared_ptr<DerivedExpression> AbstractExpression<DerivedExpression>::create
 
 template <typename DerivedExpression>
 std::shared_ptr<DerivedExpression> AbstractExpression<DerivedExpression>::create_unary_operator(
-    ExpressionType type, const std::shared_ptr<DerivedExpression>& input, const std::optional<std::string>& alias) {
+    ExpressionType type, const std::shared_ptr<DerivedExpression>& input, const std::experimental::optional<std::string>& alias) {
   auto expression = std::make_shared<DerivedExpression>(type);
   Assert(expression->is_unary_operator(), "Type is not a unary operator such as Not, Exists");
   expression->_alias = alias;
@@ -388,7 +388,7 @@ std::shared_ptr<DerivedExpression> AbstractExpression<DerivedExpression>::create
 
 template <typename DerivedExpression>
 std::shared_ptr<DerivedExpression> AbstractExpression<DerivedExpression>::create_select_star(
-    const std::optional<std::string>& table_name) {
+    const std::experimental::optional<std::string>& table_name) {
   auto expression = std::make_shared<DerivedExpression>(ExpressionType::Star);
   expression->_table_name = table_name;
   return expression;

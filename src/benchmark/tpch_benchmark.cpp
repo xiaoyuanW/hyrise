@@ -126,7 +126,7 @@ class TpchBenchmark final {
  public:
   TpchBenchmark(const BenchmarkMode benchmark_mode, std::vector<QueryID> query_ids,
                 const opossum::ChunkOffset chunk_size, const float scale_factor, const size_t max_num_query_runs,
-                const Duration max_duration, const std::optional<std::string>& output_file_path, const UseMvcc use_mvcc)
+                const Duration max_duration, const std::experimental::optional<std::string>& output_file_path, const UseMvcc use_mvcc)
       : _benchmark_mode(benchmark_mode),
         _query_ids(std::move(query_ids)),
         _chunk_size(chunk_size),
@@ -175,7 +175,7 @@ class TpchBenchmark final {
   const float _scale_factor;
   const size_t _max_num_query_runs;
   const Duration _max_duration;
-  const std::optional<std::string> _output_file_path;
+  const std::experimental::optional<std::string> _output_file_path;
   const UseMvcc _use_mvcc;
 
   BenchmarkResults _query_results_by_query_id;
@@ -317,13 +317,13 @@ int main(int argc, char* argv[]) {
   }
 
   // In non-verbose mode, disable performance warnings
-  std::optional<opossum::PerformanceWarningDisabler> performance_warning_disabler;
+  std::experimental::optional<opossum::PerformanceWarningDisabler> performance_warning_disabler;
   if (!opossum::verbose_benchmark) {
     performance_warning_disabler.emplace();
   }
 
   // Display info about output destination
-  std::optional<std::string> output_file_path;
+  std::experimental::optional<std::string> output_file_path;
   if (cli_parse_result.count("output") > 0) {
     output_file_path = cli_parse_result["output"].as<std::string>();
     opossum::out() << "- Writing benchmark results to '" << *output_file_path << "'" << std::endl;

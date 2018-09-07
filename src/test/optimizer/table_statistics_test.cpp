@@ -1,5 +1,5 @@
 #include <memory>
-#include <optional>
+#include <experimental/optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -36,7 +36,7 @@ class TableStatisticsTest : public BaseTest {
                                                       const ColumnID column_id,
                                                       const PredicateCondition predicate_condition,
                                                       const AllParameterVariant value,
-                                                      const std::optional<AllTypeVariant> value2 = std::nullopt) {
+                                                      const std::experimental::optional<AllTypeVariant> value2 = std::experimental::nullopt) {
     auto table_wrapper = std::make_shared<TableWrapper>(table_with_statistics.table);
     table_wrapper->execute();
 

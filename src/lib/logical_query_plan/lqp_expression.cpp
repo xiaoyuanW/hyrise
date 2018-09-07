@@ -8,7 +8,7 @@
 namespace opossum {
 
 std::shared_ptr<LQPExpression> LQPExpression::create_column(const LQPColumnReference& column_reference,
-                                                            const std::optional<std::string>& alias) {
+                                                            const std::experimental::optional<std::string>& alias) {
   auto expression = std::make_shared<LQPExpression>(ExpressionType::Column);
   expression->_column_reference = column_reference;
   expression->_alias = alias;
@@ -17,7 +17,7 @@ std::shared_ptr<LQPExpression> LQPExpression::create_column(const LQPColumnRefer
 }
 
 std::vector<std::shared_ptr<LQPExpression>> LQPExpression::create_columns(
-    const std::vector<LQPColumnReference>& column_references, const std::optional<std::vector<std::string>>& aliases) {
+    const std::vector<LQPColumnReference>& column_references, const std::experimental::optional<std::vector<std::string>>& aliases) {
   std::vector<std::shared_ptr<LQPExpression>> column_expressions;
   column_expressions.reserve(column_references.size());
 
@@ -47,7 +47,7 @@ void LQPExpression::set_column_reference(const LQPColumnReference& column_refere
   _column_reference = column_reference;
 }
 
-std::string LQPExpression::to_string(const std::optional<std::vector<std::string>>& input_column_names,
+std::string LQPExpression::to_string(const std::experimental::optional<std::vector<std::string>>& input_column_names,
                                      bool is_root) const {
   if (type() == ExpressionType::Column) {
     return column_reference().description() + (_alias ? " AS " + *_alias : std::string{});

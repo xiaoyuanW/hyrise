@@ -2,7 +2,7 @@
 
 #include <fstream>
 #include <memory>
-#include <optional>
+#include <experimental/optional>
 #include <string>
 
 #include "import_export/csv_parser.hpp"
@@ -11,12 +11,12 @@
 
 namespace opossum {
 
-ImportCsv::ImportCsv(const std::string& filename, const std::optional<std::string> tablename,
-                     const std::optional<CsvMeta> csv_meta)
+ImportCsv::ImportCsv(const std::string& filename, const std::experimental::optional<std::string> tablename,
+                     const std::experimental::optional<CsvMeta> csv_meta)
     : _filename(filename), _tablename(tablename), _csv_meta(csv_meta) {}
 
-ImportCsv::ImportCsv(const std::string& filename, const std::optional<CsvMeta> csv_meta,
-                     const std::optional<std::string> tablename)
+ImportCsv::ImportCsv(const std::string& filename, const std::experimental::optional<CsvMeta> csv_meta,
+                     const std::experimental::optional<std::string> tablename)
     : ImportCsv(filename, tablename, csv_meta) {}
 
 const std::string ImportCsv::name() const { return "ImportCSV"; }

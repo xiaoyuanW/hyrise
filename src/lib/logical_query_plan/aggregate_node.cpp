@@ -2,7 +2,7 @@
 
 #include <algorithm>
 #include <memory>
-#include <optional>
+#include <experimental/optional>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -122,7 +122,7 @@ std::string AggregateNode::get_verbose_column_name(ColumnID column_id) const {
 void AggregateNode::_on_child_changed() {
   DebugAssert(!right_child(), "AggregateNode can't have a right child.");
 
-  _output_column_names.reset();
+  _output_column_names = std::experimental::nullopt;;
 }
 
 const std::vector<std::string>& AggregateNode::output_column_names() const {
@@ -146,7 +146,7 @@ LQPColumnReference AggregateNode::get_column_by_expression(const std::shared_ptr
   return *column_id;
 }
 
-std::optional<LQPColumnReference> AggregateNode::find_column_by_expression(
+std::experimental::optional<LQPColumnReference> AggregateNode::find_column_by_expression(
     const std::shared_ptr<LQPExpression>& expression) const {
   /**
    * This function does NOT need to check whether an expression is ambiguous.
@@ -179,7 +179,7 @@ std::optional<LQPColumnReference> AggregateNode::find_column_by_expression(
     }
   }
 
-  return std::nullopt;
+  return std::experimental::nullopt;
 }
 
 bool AggregateNode::shallow_equals(const AbstractLQPNode& rhs) const {

@@ -29,10 +29,10 @@ class ConstantCalculationRule : public AbstractRule {
                                       const LQPColumnReference& expression_column, const AllTypeVariant& value);
   void _remove_column_from_projection(const std::shared_ptr<ProjectionNode>& node, ColumnID column_id);
 
-  std::optional<DataType> _get_type_of_expression(const std::shared_ptr<LQPExpression>& expression) const;
+  std::experimental::optional<DataType> _get_type_of_expression(const std::shared_ptr<LQPExpression>& expression) const;
 
   template <typename T>
-  std::optional<AllTypeVariant> _calculate_expression(boost::hana::basic_type<T> type,
+  std::experimental::optional<AllTypeVariant> _calculate_expression(boost::hana::basic_type<T> type,
                                                       const std::shared_ptr<LQPExpression>& expression) const;
 };
 

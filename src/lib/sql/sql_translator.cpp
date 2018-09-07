@@ -2,7 +2,7 @@
 
 #include <algorithm>
 #include <memory>
-#include <optional>
+#include <experimental/optional>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -273,7 +273,7 @@ std::shared_ptr<AbstractLQPNode> SQLTranslator::_translate_update(const hsql::Up
 
   // now update with new values
   for (auto& sql_expr : *update.updates) {
-    const auto named_column_ref = QualifiedColumnName{sql_expr->column, std::nullopt};
+    const auto named_column_ref = QualifiedColumnName{sql_expr->column, std::experimental::nullopt};
     const auto column_reference = current_values_node->get_column(named_column_ref);
     const auto column_id = current_values_node->get_output_column_id(column_reference);
 
@@ -510,7 +510,7 @@ std::shared_ptr<AbstractLQPNode> SQLTranslator::_translate_table_ref_alias(const
 }
 
 std::shared_ptr<AbstractLQPNode> SQLTranslator::_translate_table_ref(const hsql::TableRef& table) {
-  auto alias = table.alias ? std::optional<std::string>(table.alias->name) : std::nullopt;
+  auto alias = table.alias ? std::experimental::optional<std::string>(table.alias->name) : std::experimental::nullopt;
   std::shared_ptr<AbstractLQPNode> node;
   switch (table.type) {
     case hsql::kTableName:
@@ -654,7 +654,7 @@ std::shared_ptr<AbstractLQPNode> SQLTranslator::_translate_aggregate(
    * Output columns of the aggregate_node actually to be output, excluding those that are just used for HAVING
    * and their optional ALIAS
    */
-  std::vector<std::pair<ColumnID, std::optional<std::string>>> output_columns;
+  std::vector<std::pair<ColumnID, std::experimental::optional<std::string>>> output_columns;
 
   /**
    * Build the groupby_aliasing_node
@@ -714,7 +714,7 @@ std::shared_ptr<AbstractLQPNode> SQLTranslator::_translate_aggregate(
   aggregate_expressions.reserve(select_list.size());
 
   for (const auto* select_column_hsql_expr : select_list) {
-    std::optional<std::string> alias;
+    std::experimental::optional<std::string> alias;
     if (select_column_hsql_expr->alias) {
       alias = std::string(select_column_hsql_expr->alias);
     }
@@ -978,7 +978,7 @@ std::shared_ptr<AbstractLQPNode> SQLTranslator::_translate_predicate(
    */
   const hsql::Expr* value_ref_hsql_expr = nullptr;
 
-  std::optional<AllTypeVariant> value2;  // Left uninitialized for predicates that are not BETWEEN
+  std::experimental::optional<AllTypeVariant> value2;  // Left uninitialized for predicates that are not BETWEEN
 
   if (predicate_condition == PredicateCondition::Between) {
     /**
@@ -1105,7 +1105,7 @@ std::shared_ptr<AbstractLQPNode> SQLTranslator::_translate_create(const hsql::Cr
         for (const auto& alias : *create_statement.viewColumns) {
           const auto column_reference = view->output_column_references()[column_id];
           // rename columns so they match the view definition
-          projections.push_back(LQPExpression::create_column(column_reference, alias));
+          projections.push_back(LQPExpression::create_column(column_reference, std::experimental::optional<std::string>(alias)));
           ++column_id;
         }
 

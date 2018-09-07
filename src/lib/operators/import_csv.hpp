@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-#include <optional>
+#include <experimental/optional>
 #include <string>
 #include <vector>
 
@@ -27,11 +27,11 @@ class ImportCsv : public AbstractReadOnlyOperator {
    * @param tablename     Optional. Name of the table to store/look up in the StorageManager.
    * @param meta          Optional. A specific meta config, to override the given .json file.
    */
-  explicit ImportCsv(const std::string& filename, const std::optional<std::string> tablename = std::nullopt,
-                     const std::optional<CsvMeta> csv_meta = std::nullopt);
+  explicit ImportCsv(const std::string& filename, const std::experimental::optional<std::string> tablename = std::experimental::nullopt,
+                     const std::experimental::optional<CsvMeta> csv_meta = std::experimental::nullopt);
 
-  explicit ImportCsv(const std::string& filename, const std::optional<CsvMeta> csv_meta,
-                     const std::optional<std::string> tablename = std::nullopt);
+  explicit ImportCsv(const std::string& filename, const std::experimental::optional<CsvMeta> csv_meta,
+                     const std::experimental::optional<std::string> tablename = std::experimental::nullopt);
 
   // cannot move-assign because of const members
   ImportCsv& operator=(ImportCsv&&) = delete;
@@ -46,8 +46,8 @@ class ImportCsv : public AbstractReadOnlyOperator {
   // Path to the input file
   const std::string _filename;
   // Name for adding the table to the StorageManager
-  const std::optional<std::string> _tablename;
+  const std::experimental::optional<std::string> _tablename;
   // CSV meta information
-  const std::optional<CsvMeta> _csv_meta;
+  const std::experimental::optional<CsvMeta> _csv_meta;
 };
 }  // namespace opossum

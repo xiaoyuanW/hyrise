@@ -8,7 +8,7 @@
 namespace opossum {
 
 std::shared_ptr<PQPExpression> PQPExpression::create_column(const ColumnID column_id,
-                                                            const std::optional<std::string>& alias) {
+                                                            const std::experimental::optional<std::string>& alias) {
   auto expression = std::make_shared<PQPExpression>(ExpressionType::Column);
   expression->_column_id = column_id;
   expression->_alias = alias;
@@ -52,7 +52,7 @@ ColumnID PQPExpression::column_id() const {
   return *_column_id;
 }
 
-std::string PQPExpression::to_string(const std::optional<std::vector<std::string>>& input_column_names,
+std::string PQPExpression::to_string(const std::experimental::optional<std::vector<std::string>>& input_column_names,
                                      bool is_root) const {
   if (type() == ExpressionType::Column) {
     if (input_column_names) {

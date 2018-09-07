@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cctype>
 #include <memory>
-#include <optional>
+#include <experimental/optional>
 #include <string>
 #include <vector>
 
@@ -18,7 +18,7 @@ namespace opossum {
 std::shared_ptr<LQPExpression> HSQLExprTranslator::to_lqp_expression(
     const hsql::Expr& expr, const std::shared_ptr<AbstractLQPNode>& input_node) {
   auto name = expr.name != nullptr ? std::string(expr.name) : "";
-  auto alias = expr.alias != nullptr ? std::optional<std::string>(expr.alias) : std::nullopt;
+  auto alias = expr.alias != nullptr ? std::experimental::optional<std::string>(expr.alias) : std::experimental::nullopt;
 
   std::shared_ptr<LQPExpression> node;
   std::shared_ptr<LQPExpression> left;
@@ -42,7 +42,7 @@ std::shared_ptr<LQPExpression> HSQLExprTranslator::to_lqp_expression(
       DebugAssert(input_node != nullptr, "Input node needs to be set");
       DebugAssert(expr.name != nullptr, "hsql::Expr::name needs to be set");
 
-      auto table_name = expr.table != nullptr ? std::optional<std::string>(std::string(expr.table)) : std::nullopt;
+      auto table_name = expr.table != nullptr ? std::experimental::optional<std::string>(std::string(expr.table)) : std::experimental::nullopt;
       QualifiedColumnName qualified_column_name{name, table_name};
       auto column_reference = input_node->get_column(qualified_column_name);
       node = LQPExpression::create_column(column_reference, alias);
@@ -96,7 +96,7 @@ std::shared_ptr<LQPExpression> HSQLExprTranslator::to_lqp_expression(
       node = LQPExpression::create_value_placeholder(ValuePlaceholder{static_cast<uint16_t>(expr.ival)});
       break;
     case hsql::kExprStar: {
-      const auto table_name = expr.table != nullptr ? std::optional<std::string>(expr.table) : std::nullopt;
+      const auto table_name = expr.table != nullptr ? std::experimental::optional<std::string>(expr.table) : std::experimental::nullopt;
       node = LQPExpression::create_select_star(table_name);
       break;
     }
@@ -124,7 +124,7 @@ std::shared_ptr<LQPExpression> HSQLExprTranslator::to_lqp_expression(
 }
 
 AllParameterVariant HSQLExprTranslator::to_all_parameter_variant(
-    const hsql::Expr& expr, const std::optional<std::shared_ptr<AbstractLQPNode>>& input_node) {
+    const hsql::Expr& expr, const std::experimental::optional<std::shared_ptr<AbstractLQPNode>>& input_node) {
   switch (expr.type) {
     case hsql::kExprLiteralInt:
       return AllTypeVariant(expr.ival);
@@ -160,6 +160,6 @@ QualifiedColumnName HSQLExprTranslator::to_qualified_column_name(const hsql::Exp
   DebugAssert(hsql_expr.name != nullptr, "hsql::Expr::name needs to be set");
 
   return QualifiedColumnName{hsql_expr.name,
-                             hsql_expr.table == nullptr ? std::nullopt : std::optional<std::string>(hsql_expr.table)};
+                             hsql_expr.table == nullptr ? std::experimental::nullopt : std::experimental::optional<std::string>(hsql_expr.table)};
 }
 }  // namespace opossum

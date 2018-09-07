@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-#include <optional>
+#include <experimental/optional>
 #include <string>
 #include <vector>
 
@@ -39,7 +39,7 @@ class AggregateNode : public EnableMakeForLQPNode<AggregateNode>, public Abstrac
   /**
    * AggregateNode::find_column_by_expression() looks for the @param expression in the columns this
    * node outputs, checking by semantic and NOT by Expression object's address. If it can find it, it will be returned,
-   * otherwise std::nullopt is returned.
+   * otherwise std::experimental::nullopt is returned.
    * AggregateNode::get_column_by_expression() is more strict and will fail, if the
    * @param expression cannot be found
    *
@@ -50,7 +50,7 @@ class AggregateNode : public EnableMakeForLQPNode<AggregateNode>, public Abstrac
    *
    * NOTE: These functions will possibly result in a full recursive traversal of the ancestors of this node.
    */
-  std::optional<LQPColumnReference> find_column_by_expression(const std::shared_ptr<LQPExpression>& expression) const;
+  std::experimental::optional<LQPColumnReference> find_column_by_expression(const std::shared_ptr<LQPExpression>& expression) const;
   LQPColumnReference get_column_by_expression(const std::shared_ptr<LQPExpression>& expression) const;
   // @}
 
@@ -68,7 +68,7 @@ class AggregateNode : public EnableMakeForLQPNode<AggregateNode>, public Abstrac
   std::vector<std::shared_ptr<LQPExpression>> _aggregate_expressions;
   std::vector<LQPColumnReference> _groupby_column_references;
 
-  mutable std::optional<std::vector<std::string>> _output_column_names;
+  mutable std::experimental::optional<std::vector<std::string>> _output_column_names;
 
   void _update_output() const;
 };

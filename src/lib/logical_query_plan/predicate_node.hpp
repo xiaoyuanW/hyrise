@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-#include <optional>
+#include <experimental/optional>
 #include <string>
 #include <vector>
 
@@ -26,14 +26,14 @@ enum class ScanType : uint8_t { TableScan, IndexScan };
 class PredicateNode : public EnableMakeForLQPNode<PredicateNode>, public AbstractLQPNode {
  public:
   PredicateNode(const LQPColumnReference& column_reference, const PredicateCondition predicate_condition,
-                const AllParameterVariant& value, const std::optional<AllTypeVariant>& value2 = std::nullopt);
+                const AllParameterVariant& value, const std::experimental::optional<AllTypeVariant>& value2 = std::experimental::nullopt);
 
   std::string description() const override;
 
   const LQPColumnReference& column_reference() const;
   PredicateCondition predicate_condition() const;
   const AllParameterVariant& value() const;
-  const std::optional<AllTypeVariant>& value2() const;
+  const std::experimental::optional<AllTypeVariant>& value2() const;
 
   ScanType scan_type() const;
   void set_scan_type(ScanType scan_type);
@@ -53,7 +53,7 @@ class PredicateNode : public EnableMakeForLQPNode<PredicateNode>, public Abstrac
   const LQPColumnReference _column_reference;
   const PredicateCondition _predicate_condition;
   const AllParameterVariant _value;
-  const std::optional<AllTypeVariant> _value2;
+  const std::experimental::optional<AllTypeVariant> _value2;
 
   ScanType _scan_type = ScanType::TableScan;
 };

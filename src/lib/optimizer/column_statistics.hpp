@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-#include <optional>
+#include <experimental/optional>
 #include <ostream>
 #include <string>
 
@@ -41,16 +41,16 @@ class ColumnStatistics : public BaseColumnStatistics {
 
   ColumnSelectivityResult estimate_selectivity_for_predicate(
       const PredicateCondition predicate_condition, const AllTypeVariant& value,
-      const std::optional<AllTypeVariant>& value2 = std::nullopt) override;
+      const std::experimental::optional<AllTypeVariant>& value2 = std::experimental::nullopt) override;
 
   ColumnSelectivityResult estimate_selectivity_for_predicate(
       const PredicateCondition predicate_condition, const ValuePlaceholder& value,
-      const std::optional<AllTypeVariant>& value2 = std::nullopt) override;
+      const std::experimental::optional<AllTypeVariant>& value2 = std::experimental::nullopt) override;
 
   TwoColumnSelectivityResult estimate_selectivity_for_two_column_predicate(
       const PredicateCondition predicate_condition,
       const std::shared_ptr<BaseColumnStatistics>& right_base_column_statistics,
-      const std::optional<AllTypeVariant>& value2 = std::nullopt) override;
+      const std::experimental::optional<AllTypeVariant>& value2 = std::experimental::nullopt) override;
 
   /**
    * Accessors for class variable optionals. Compute values, if not available.
@@ -116,14 +116,14 @@ class ColumnStatistics : public BaseColumnStatistics {
   // distinct count is not an integer as it can be a predicted value
   // it is multiplied with selectivity of a corresponding operator to predict the operator's output distinct count
   // precision is lost, if row count is rounded
-  mutable std::optional<float> _distinct_count;
+  mutable std::experimental::optional<float> _distinct_count;
 
-  mutable std::optional<ColumnType> _min;
-  mutable std::optional<ColumnType> _max;
+  mutable std::experimental::optional<ColumnType> _min;
+  mutable std::experimental::optional<ColumnType> _max;
 };
 
 template <typename ColumnType>
-inline std::ostream& operator<<(std::ostream& os, const std::optional<ColumnType>& obj) {
+inline std::ostream& operator<<(std::ostream& os, const std::experimental::optional<ColumnType>& obj) {
   if (obj) {
     return os << *obj;
   } else {

@@ -132,7 +132,7 @@ std::shared_ptr<const Table> AbstractOperator::_input_table_left() const { retur
 
 std::shared_ptr<const Table> AbstractOperator::_input_table_right() const { return _input_right->get_output(); }
 
-bool AbstractOperator::transaction_context_is_set() const { return _transaction_context.has_value(); }
+bool AbstractOperator::transaction_context_is_set() const { return static_cast<bool>(_transaction_context); }
 
 std::shared_ptr<TransactionContext> AbstractOperator::transaction_context() const {
   DebugAssert(!transaction_context_is_set() || !_transaction_context->expired(),

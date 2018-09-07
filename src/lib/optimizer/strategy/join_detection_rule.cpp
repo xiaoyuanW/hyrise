@@ -2,7 +2,7 @@
 
 #include <iostream>
 #include <memory>
-#include <optional>
+#include <experimental/optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -50,7 +50,7 @@ bool JoinDetectionRule::apply_to(const std::shared_ptr<AbstractLQPNode>& node) {
   return _apply_to_children(node);
 }
 
-std::optional<JoinDetectionRule::JoinCondition> JoinDetectionRule::_find_predicate_for_cross_join(
+std::experimental::optional<JoinDetectionRule::JoinCondition> JoinDetectionRule::_find_predicate_for_cross_join(
     const std::shared_ptr<JoinNode>& cross_join) {
   Assert(cross_join->left_child() && cross_join->right_child(), "Cross Join must have two children");
 
@@ -85,7 +85,7 @@ std::optional<JoinDetectionRule::JoinCondition> JoinDetectionRule::_find_predica
      * Detecting Join Conditions across other node types may be possible by applying 'Predicate Pushdown' first.
      */
     if (node->type() != LQPNodeType::Join && node->type() != LQPNodeType::Predicate) {
-      return std::nullopt;
+      return std::experimental::nullopt;
     }
 
     if (node->type() == LQPNodeType::Predicate) {
@@ -120,7 +120,7 @@ std::optional<JoinDetectionRule::JoinCondition> JoinDetectionRule::_find_predica
     }
   }
 
-  return std::nullopt;
+  return std::experimental::nullopt;
 }
 
 }  // namespace opossum

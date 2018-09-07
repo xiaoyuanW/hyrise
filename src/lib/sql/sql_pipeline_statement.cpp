@@ -155,7 +155,7 @@ const std::shared_ptr<AbstractLQPNode>& SQLPipelineStatement::get_unoptimized_lo
     auto aggregates = std::vector<std::shared_ptr<LQPExpression>>({
                                                                           LQPExpression::create_aggregate_function(
                                                                                   AggregateFunction::Sum, params,
-                                                                                  "revenue")
+                                                                                  std::experimental::optional<std::string>("revenue"))
                                                                   });
     auto groupby_columns = std::vector<LQPColumnReference>({
                                                                    LQPColumnReference{customer_table, ColumnID{0}},

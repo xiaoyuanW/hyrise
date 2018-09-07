@@ -28,12 +28,12 @@ class StoredTableNodeTest : public BaseTest {
 TEST_F(StoredTableNodeTest, Description) { EXPECT_EQ(_stored_table_node->description(), "[StoredTable] Name: 't_a'"); }
 
 TEST_F(StoredTableNodeTest, ColumnReferenceByNamedColumnReference) {
-  EXPECT_EQ(_stored_table_node->get_column({"a", std::nullopt}), _a);
+  EXPECT_EQ(_stored_table_node->get_column({"a", std::experimental::nullopt}), _a);
   EXPECT_EQ(_stored_table_node->get_column({"a", {"t_a"}}), _a);
   EXPECT_EQ(_stored_table_node->get_column({"b", {"t_a"}}), _b);
-  EXPECT_EQ(_stored_table_node->find_column({"c", {"t_a"}}), std::nullopt);
-  EXPECT_EQ(_stored_table_node->find_column({"c", {"garbage"}}), std::nullopt);
-  EXPECT_EQ(_stored_table_node->find_column({"b", {"garbage"}}), std::nullopt);
+  EXPECT_EQ(_stored_table_node->find_column({"c", {"t_a"}}), std::experimental::nullopt);
+  EXPECT_EQ(_stored_table_node->find_column({"c", {"garbage"}}), std::experimental::nullopt);
+  EXPECT_EQ(_stored_table_node->find_column({"b", {"garbage"}}), std::experimental::nullopt);
 }
 
 TEST_F(StoredTableNodeTest, ColumnReferenceByOutputColumnID) {
