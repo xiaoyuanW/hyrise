@@ -26,7 +26,7 @@ struct SpecializationContext {
 // Inlines a function call
 // This method extends the corresponding function in the LLVM framework
 bool InlineFunction(llvm::CallSite CS, llvm::InlineFunctionInfo& IFI, llvm::AAResults* CalleeAAR,  // NOLINT
-                    bool InsertLifetime, llvm::Function* ForwardVarArgsTo, SpecializationContext& Context);
+                    bool InsertLifetime, SpecializationContext& Context);
 
 // Clones a function body into a new empty function while pruning switch and branch instructions
 // This method extends the corresponding function in the LLVM framework
