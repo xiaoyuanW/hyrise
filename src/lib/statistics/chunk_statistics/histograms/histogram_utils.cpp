@@ -94,4 +94,16 @@ std::string convert_number_representation_to_string(const uint64_t value, const 
          convert_number_representation_to_string((value - 1) % base, supported_characters, string_prefix_length - 1);
 }
 
+uint64_t common_prefix_length(const std::string& string1, const std::string& string2) {
+  const auto string_length = std::min(string1.length(), string2.length());
+  auto common_prefix_length = 0u;
+  for (; common_prefix_length < string_length; common_prefix_length++) {
+    if (string1[common_prefix_length] != string2[common_prefix_length]) {
+      break;
+    }
+  }
+
+  return common_prefix_length;
+}
+
 }  // namespace opossum

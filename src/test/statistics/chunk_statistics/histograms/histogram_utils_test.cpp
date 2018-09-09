@@ -146,6 +146,14 @@ TEST_F(HistogramUtilsTest, NumberToString) {
   EXPECT_EQ(_convert_number_representation_to_string(475'254ul), "zzzz");
 }
 
+TEST_F(HistogramUtilsTest, CommonPrefixLength) {
+  EXPECT_EQ(common_prefix_length("", ""), 0ul);
+  EXPECT_EQ(common_prefix_length("a", ""), 0ul);
+  EXPECT_EQ(common_prefix_length("a", "b"), 0ul);
+  EXPECT_EQ(common_prefix_length("aa", "a"), 1ul);
+  EXPECT_EQ(common_prefix_length("abcd", "abce"), 3ul);
+}
+
 TEST_F(HistogramUtilsTest, NumberToStringBruteForce) {
   constexpr auto max = 475'254ul;
 

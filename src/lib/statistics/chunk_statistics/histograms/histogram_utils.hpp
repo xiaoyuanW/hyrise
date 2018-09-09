@@ -41,4 +41,6 @@ uint64_t convert_string_to_number_representation(const std::string& value, const
 std::string convert_number_representation_to_string(const uint64_t value, const std::string& supported_characters,
                                                     const uint64_t string_prefix_length);
 
+uint64_t common_prefix_length(const std::string& string1, const std::string& string2);
+
 }  // namespace opossum

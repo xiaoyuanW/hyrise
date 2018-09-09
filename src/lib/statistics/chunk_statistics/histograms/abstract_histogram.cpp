@@ -290,9 +290,17 @@ float AbstractHistogram<std::string>::_bin_share(const BinID bin_id, const std::
    *  because the missing characters will be treated as 'a'.
    *  Since we are dealing with approximations this is acceptable.
    */
-  const auto value_repr = _convert_string_to_number_representation(value);
-  const auto min_repr = _convert_string_to_number_representation(_bin_min(bin_id));
-  return static_cast<float>(value_repr - min_repr) / _string_bin_width(bin_id);
+  const auto bin_min = _bin_min(bin_id);
+  const auto bin_max = _bin_max(bin_id);
+  const auto common_prefix_len = common_prefix_length(bin_min, bin_max);
+
+  DebugAssert(value.substr(0, common_prefix_len) == bin_min.substr(0, common_prefix_len),
+              "Value does not belong to bin");
+
+  const auto value_repr = _convert_string_to_number_representation(value.substr(common_prefix_len));
+  const auto min_repr = _convert_string_to_number_representation(bin_min.substr(common_prefix_len));
+  const auto max_repr = _convert_string_to_number_representation(bin_max.substr(common_prefix_len));
+  return static_cast<float>(value_repr - min_repr) / (max_repr - min_repr + 1);
 }
 
 template <typename T>
@@ -304,7 +312,7 @@ bool AbstractHistogram<T>::_can_prune(const PredicateCondition predicate_type, c
     case PredicateCondition::Equals: {
       const auto bin_id = _bin_for_value(value);
       // It is possible for EqualWidthHistograms to have empty bins.
-      return bin_id == INVALID_BIN_ID || _bin_count(bin_id) == 0;
+      return bin_id == INVALID_BIN_ID || _bin_count(bin_id) == 0ul;
     }
     case PredicateCondition::NotEquals:
       return min() == value && max() == value;
