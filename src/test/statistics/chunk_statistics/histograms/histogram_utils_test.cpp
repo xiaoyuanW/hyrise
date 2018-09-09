@@ -6,11 +6,6 @@
 namespace opossum {
 
 class HistogramUtilsTest : public BaseTest {
-  void SetUp() override {
-    _supported_characters = "abcdefghijklmnopqrstuvwxyz";
-    _prefix_length = 4u;
-  }
-
  protected:
   uint64_t _convert_string_to_number_representation(const std::string& value) {
     return convert_string_to_number_representation(value, _supported_characters, _prefix_length);
@@ -23,8 +18,8 @@ class HistogramUtilsTest : public BaseTest {
   std::string _next_value(const std::string& value) { return next_value(value, _supported_characters, _prefix_length); }
 
  protected:
-  std::string _supported_characters;
-  uint64_t _prefix_length;
+  const std::string _supported_characters{"abcdefghijklmnopqrstuvwxyz"};
+  const uint64_t _prefix_length{4u};
 };
 
 TEST_F(HistogramUtilsTest, NextValueString) {

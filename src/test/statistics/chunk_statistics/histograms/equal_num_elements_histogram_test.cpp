@@ -627,7 +627,7 @@ TEST_F(EqualNumElementsHistogramTest, IntBetweenPruningSpecial) {
   const auto hist = EqualNumElementsHistogram<int32_t>::from_column(
       this->_int_float4->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 1u);
 
-  // Make sure that pruning does not do anything stuped with one bucket.
+  // Make sure that pruning does not do anything stupid with one bucket.
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Between, AllTypeVariant{0}, AllTypeVariant{1'000'000}));
 }
 

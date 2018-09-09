@@ -625,35 +625,30 @@ float AbstractHistogram<T>::estimate_distinct_count(const PredicateCondition pre
     return 0.f;
   }
 
-  T cleaned_value = value;
-  if constexpr (std::is_same_v<T, std::string>) {
-    cleaned_value = value.substr(0, _string_prefix_length);
-  }
-
   switch (predicate_type) {
     case PredicateCondition::Equals: {
       return 1.f;
     }
     case PredicateCondition::NotEquals: {
-      if (_bin_for_value(cleaned_value) == INVALID_BIN_ID) {
+      if (_bin_for_value(value) == INVALID_BIN_ID) {
         return total_count_distinct();
       }
 
       return total_count_distinct() - 1.f;
     }
     case PredicateCondition::LessThan: {
-      if (cleaned_value > max()) {
+      if (value > max()) {
         return total_count_distinct();
       }
 
       auto distinct_count = 0.f;
-      auto bin_id = _bin_for_value(cleaned_value);
+      auto bin_id = _bin_for_value(value);
       if (bin_id == INVALID_BIN_ID) {
         // The value is within the range of the histogram, but does not belong to a bin.
         // Therefore, we need to sum up the distinct counts of all bins with a max < value.
-        bin_id = _upper_bound_for_value(cleaned_value);
+        bin_id = _upper_bound_for_value(value);
       } else {
-        distinct_count += _bin_share(bin_id, cleaned_value) * _bin_count_distinct(bin_id);
+        distinct_count += _bin_share(bin_id, value) * _bin_count_distinct(bin_id);
       }
 
       // Sum up all bins before the bin (or gap) containing the value.
@@ -664,11 +659,11 @@ float AbstractHistogram<T>::estimate_distinct_count(const PredicateCondition pre
       return distinct_count;
     }
     case PredicateCondition::LessThanEquals:
-      return estimate_distinct_count(PredicateCondition::LessThan, get_next_value(cleaned_value));
+      return estimate_distinct_count(PredicateCondition::LessThan, get_next_value(value));
     case PredicateCondition::GreaterThanEquals:
-      return total_count_distinct() - estimate_distinct_count(PredicateCondition::LessThan, cleaned_value);
+      return total_count_distinct() - estimate_distinct_count(PredicateCondition::LessThan, value);
     case PredicateCondition::GreaterThan:
-      return total_count_distinct() - estimate_distinct_count(PredicateCondition::LessThanEquals, cleaned_value);
+      return total_count_distinct() - estimate_distinct_count(PredicateCondition::LessThanEquals, value);
     case PredicateCondition::Between: {
       Assert(static_cast<bool>(value2), "Between operator needs two values.");
 
@@ -677,7 +672,7 @@ float AbstractHistogram<T>::estimate_distinct_count(const PredicateCondition pre
       }
 
       return estimate_distinct_count(PredicateCondition::LessThanEquals, *value2) -
-             estimate_distinct_count(PredicateCondition::LessThan, cleaned_value);
+             estimate_distinct_count(PredicateCondition::LessThan, value);
     }
     // TODO(tim): implement like
     // case PredicateCondition::Like:

@@ -197,6 +197,36 @@ TYPED_TEST(AbstractHistogramStringTest, EstimateCardinalityUnsupportedCharacters
   EXPECT_THROW(hist->estimate_cardinality(PredicateCondition::Equals, "@abc"), std::exception);
 }
 
+TYPED_TEST(AbstractHistogramStringTest, BinEdgePruning) {
+  auto hist = TypeParam::from_column(this->_string3->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 4u,
+                                     "abcdefghijklmnopqrstuvwxyz", 4u);
+
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "abc"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "abcd"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "yyzz"));
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "yyzza"));
+
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::LessThan, "abcd"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "abcda"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "yyzz"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, "yyzza"));
+
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::LessThanEquals, "abc"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThanEquals, "abcd"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThanEquals, "yyzz"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThanEquals, "yyzza"));
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::GreaterThanEquals, "abc"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::GreaterThanEquals, "abcd"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::GreaterThanEquals, "yyzz"));
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::GreaterThanEquals, "yyzza"));
+
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::GreaterThan, "abc"));
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::GreaterThan, "abcd"));
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::GreaterThan, "yyzz"));
+  EXPECT_TRUE(hist->can_prune(PredicateCondition::GreaterThan, "yyzza"));
+}
+
 TYPED_TEST(AbstractHistogramStringTest, LikePruning) {
   auto hist = TypeParam::from_column(this->_string3->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 4u,
                                      "abcdefghijklmnopqrstuvwxyz", 4u);
@@ -240,6 +270,22 @@ TYPED_TEST(AbstractHistogramStringTest, NotLikePruningSpecial) {
   EXPECT_FALSE(hist->can_prune(PredicateCondition::NotLike, "dampfschifffahrtsgesellschaft%"));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::NotLike, "db%"));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::NotLike, "e%"));
+}
+
+TYPED_TEST(AbstractHistogramStringTest, EstimatingCardinalitiesForStringsLongerThanPrefix) {
+  auto hist = TypeParam::from_column(this->_string3->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 4u,
+                                     "abcdefghijklmnopqrstuvwxyz", 4u);
+
+  // The estimated cardinality depends on the type of the histogram.
+  // What we want to test here is only that estimating cardinalities for strings longer than the prefix length works
+  // and returns the same cardinality as the prefix-length substring of it.
+  EXPECT_GT(hist->estimate_cardinality(PredicateCondition::GreaterThan, "bbbb"), 0.f);
+  EXPECT_EQ(hist->estimate_cardinality(PredicateCondition::GreaterThan, "bbbb"),
+            hist->estimate_cardinality(PredicateCondition::GreaterThan, "bbbba"));
+  EXPECT_EQ(hist->estimate_cardinality(PredicateCondition::GreaterThan, "bbbb"),
+            hist->estimate_cardinality(PredicateCondition::GreaterThan, "bbbbz"));
+  EXPECT_EQ(hist->estimate_cardinality(PredicateCondition::GreaterThan, "bbbb"),
+            hist->estimate_cardinality(PredicateCondition::GreaterThan, "bbbbzzzzzzzzz"));
 }
 
 }  // namespace opossum
