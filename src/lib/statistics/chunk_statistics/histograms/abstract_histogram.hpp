@@ -10,12 +10,8 @@
 
 namespace opossum {
 
-class Table;
-
 template <typename T>
 class AbstractHistogram : public AbstractFilter {
-  friend class HistogramPrivateTest;
-
  public:
   AbstractHistogram();
   AbstractHistogram(const std::string& supported_characters, const uint64_t string_prefix_length);
@@ -29,25 +25,24 @@ class AbstractHistogram : public AbstractFilter {
                           const std::optional<uint64_t>& requested_num_bins = std::nullopt) const;
   const std::string& supported_characters() const;
 
-  float estimate_selectivity(const PredicateCondition predicate_type, const T value,
-                             const std::optional<T>& value2 = std::nullopt) const;
+  float estimate_selectivity(const PredicateCondition predicate_type, const AllTypeVariant& variant_value,
+                             const std::optional<AllTypeVariant>& variant_value2 = std::nullopt) const;
 
   /**
    * Calculates the estimated cardinality given a predicate type and its parameter(s).
    *
    * This method is specialized for strings to handle predicates uniquely applicable to string columns.
    */
-  float estimate_cardinality(const PredicateCondition predicate_type, const T value,
-                             const std::optional<T>& value2 = std::nullopt) const;
-  float estimate_distinct_count(const PredicateCondition predicate_type, const T value,
-                                const std::optional<T>& value2 = std::nullopt) const;
+  float estimate_cardinality(const PredicateCondition predicate_type, const AllTypeVariant& variant_value,
+                             const std::optional<AllTypeVariant>& variant_value2 = std::nullopt) const;
+  float estimate_distinct_count(const PredicateCondition predicate_type, const AllTypeVariant& variant_value,
+                                const std::optional<AllTypeVariant>& variant_value2 = std::nullopt) const;
   bool can_prune(const PredicateCondition predicate_type, const AllTypeVariant& variant_value,
                  const std::optional<AllTypeVariant>& variant_value2 = std::nullopt) const override;
 
   T min() const;
   T max() const;
 
-  T get_previous_value(const T value) const;
   T get_next_value(const T value) const;
 
   virtual size_t num_bins() const = 0;
@@ -64,8 +59,8 @@ class AbstractHistogram : public AbstractFilter {
   /**
    * Calculates the estimated cardinality for predicate types supported by all data types.
    */
-  float _estimate_cardinality(const PredicateCondition predicate_type, const T value,
-                              const std::optional<T>& value2 = std::nullopt) const;
+  float _estimate_cardinality(const PredicateCondition predicate_type, const AllTypeVariant& variant_value,
+                              const std::optional<AllTypeVariant>& variant_value2 = std::nullopt) const;
 
   /**
    *

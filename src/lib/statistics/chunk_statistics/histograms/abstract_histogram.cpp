@@ -463,11 +463,14 @@ bool AbstractHistogram<std::string>::can_prune(const PredicateCondition predicat
 }
 
 template <typename T>
-float AbstractHistogram<T>::_estimate_cardinality(const PredicateCondition predicate_type, const T value,
-                                                  const std::optional<T>& value2) const {
-  if (can_prune(predicate_type, AllTypeVariant{value}, std::optional<AllTypeVariant>(*value2))) {
+float AbstractHistogram<T>::_estimate_cardinality(const PredicateCondition predicate_type,
+                                                  const AllTypeVariant& variant_value,
+                                                  const std::optional<AllTypeVariant>& variant_value2) const {
+  if (can_prune(predicate_type, variant_value, variant_value2)) {
     return 0.f;
   }
+
+  const auto value = type_cast<T>(variant_value);
 
   switch (predicate_type) {
     case PredicateCondition::Equals: {
@@ -527,13 +530,14 @@ float AbstractHistogram<T>::_estimate_cardinality(const PredicateCondition predi
     case PredicateCondition::GreaterThan:
       return total_count() - estimate_cardinality(PredicateCondition::LessThanEquals, value);
     case PredicateCondition::Between: {
-      Assert(static_cast<bool>(value2), "Between operator needs two values.");
+      Assert(static_cast<bool>(variant_value2), "Between operator needs two values.");
+      const auto value2 = type_cast<T>(*variant_value2);
 
-      if (*value2 < value) {
+      if (value2 < value) {
         return 0.f;
       }
 
-      return estimate_cardinality(PredicateCondition::LessThanEquals, *value2) -
+      return estimate_cardinality(PredicateCondition::LessThanEquals, value2) -
              estimate_cardinality(PredicateCondition::LessThan, value);
     }
     case PredicateCondition::Like:
@@ -547,16 +551,19 @@ float AbstractHistogram<T>::_estimate_cardinality(const PredicateCondition predi
 
 // Specialization for numbers.
 template <typename T>
-float AbstractHistogram<T>::estimate_cardinality(const PredicateCondition predicate_type, const T value,
-                                                 const std::optional<T>& value2) const {
-  return _estimate_cardinality(predicate_type, value, value2);
+float AbstractHistogram<T>::estimate_cardinality(const PredicateCondition predicate_type,
+                                                 const AllTypeVariant& variant_value,
+                                                 const std::optional<AllTypeVariant>& variant_value2) const {
+  return _estimate_cardinality(predicate_type, variant_value, variant_value2);
 }
 
 // Specialization for strings.
 template <>
 float AbstractHistogram<std::string>::estimate_cardinality(const PredicateCondition predicate_type,
-                                                           const std::string value,
-                                                           const std::optional<std::string>& value2) const {
+                                                           const AllTypeVariant& variant_value,
+                                                           const std::optional<AllTypeVariant>& variant_value2) const {
+  const auto value = type_cast<std::string>(variant_value);
+
   // Only allow supported characters in search value.
   // If predicate is (NOT) LIKE additionally allow wildcards.
   const auto allowed_characters =
@@ -564,7 +571,7 @@ float AbstractHistogram<std::string>::estimate_cardinality(const PredicateCondit
       (predicate_type == PredicateCondition::Like || predicate_type == PredicateCondition::NotLike ? "_%" : "");
   Assert(value.find_first_not_of(allowed_characters) == std::string::npos, "Unsupported characters.");
 
-  if (can_prune(predicate_type, AllTypeVariant{value}, std::optional<AllTypeVariant>(*value2))) {
+  if (can_prune(predicate_type, variant_value, variant_value2)) {
     return 0.f;
   }
 
@@ -659,22 +666,26 @@ float AbstractHistogram<std::string>::estimate_cardinality(const PredicateCondit
       return total_count() - estimate_cardinality(PredicateCondition::Like, value);
     }
     default:
-      return _estimate_cardinality(predicate_type, value, value2);
+      return _estimate_cardinality(predicate_type, variant_value, variant_value2);
   }
 }
 
 template <typename T>
-float AbstractHistogram<T>::estimate_selectivity(const PredicateCondition predicate_type, const T value,
-                                                 const std::optional<T>& value2) const {
-  return estimate_cardinality(predicate_type, value, value2) / total_count();
+float AbstractHistogram<T>::estimate_selectivity(const PredicateCondition predicate_type,
+                                                 const AllTypeVariant& variant_value,
+                                                 const std::optional<AllTypeVariant>& variant_value2) const {
+  return estimate_cardinality(predicate_type, variant_value, variant_value2) / total_count();
 }
 
 template <typename T>
-float AbstractHistogram<T>::estimate_distinct_count(const PredicateCondition predicate_type, const T value,
-                                                    const std::optional<T>& value2) const {
-  if (can_prune(predicate_type, value, value2)) {
+float AbstractHistogram<T>::estimate_distinct_count(const PredicateCondition predicate_type,
+                                                    const AllTypeVariant& variant_value,
+                                                    const std::optional<AllTypeVariant>& variant_value2) const {
+  if (can_prune(predicate_type, variant_value, variant_value2)) {
     return 0.f;
   }
+
+  const auto value = type_cast<T>(variant_value);
 
   switch (predicate_type) {
     case PredicateCondition::Equals: {
@@ -716,13 +727,14 @@ float AbstractHistogram<T>::estimate_distinct_count(const PredicateCondition pre
     case PredicateCondition::GreaterThan:
       return total_count_distinct() - estimate_distinct_count(PredicateCondition::LessThanEquals, value);
     case PredicateCondition::Between: {
-      Assert(static_cast<bool>(value2), "Between operator needs two values.");
+      Assert(static_cast<bool>(variant_value2), "Between operator needs two values.");
+      const auto value2 = type_cast<T>(*variant_value2);
 
-      if (*value2 < value) {
+      if (value2 < value) {
         return 0.f;
       }
 
-      return estimate_distinct_count(PredicateCondition::LessThanEquals, *value2) -
+      return estimate_distinct_count(PredicateCondition::LessThanEquals, value2) -
              estimate_distinct_count(PredicateCondition::LessThan, value);
     }
     // TODO(tim): implement like
