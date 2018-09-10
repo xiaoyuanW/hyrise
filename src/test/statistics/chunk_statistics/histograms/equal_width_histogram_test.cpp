@@ -13,6 +13,7 @@ class EqualWidthHistogramTest : public BaseTest {
     _float2 = load_table("src/test/tables/float2.tbl");
     _int_int4 = load_table("src/test/tables/int_int4.tbl");
     _string3 = load_table("src/test/tables/string3.tbl");
+    _string_with_prefix = load_table("src/test/tables/string_with_prefix.tbl");
   }
 
  protected:
@@ -20,6 +21,7 @@ class EqualWidthHistogramTest : public BaseTest {
   std::shared_ptr<Table> _float2;
   std::shared_ptr<Table> _int_int4;
   std::shared_ptr<Table> _string3;
+  std::shared_ptr<Table> _string_with_prefix;
 };
 
 TEST_F(EqualWidthHistogramTest, Basic) {
@@ -782,6 +784,54 @@ TEST_F(EqualWidthHistogramTest, IntBetweenPruning) {
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Between, AllTypeVariant{1}, AllTypeVariant{6}));
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Between, AllTypeVariant{10}, AllTypeVariant{12}));
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Between, AllTypeVariant{14}, AllTypeVariant{17}));
+}
+
+TEST_F(EqualWidthHistogramTest, StringCommonPrefix) {
+  /**
+   * The strings in this table are all eight characters long, but we limit the histogram to a prefix length of four.
+   * However, all of the strings in one bin start with a common prefix.
+   * In this test, we make sure that the calculation strips the common prefix within buckets and works as expected.
+   */
+  auto hist = EqualWidthHistogram<std::string>::from_column(
+      _string_with_prefix->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 3u, "abcdefghijklmnopqrstuvwxyz", 4u);
+
+  // We can only calculate bin edges for width-balanced histograms based on the prefix length.
+  // In this case, the common prefix of all values is the prefix length, so there is only one bin.
+  EXPECT_EQ(hist->num_bins(), 1u);
+
+  const auto hist_min = 0.f * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                        0.f * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 0.f * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                        0.f * ipow(26, 0) + 1;
+  // (repr(zzal) - repr(aaaa) + 1)
+  const auto hist_width = 25.f * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                          25.f * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 0.f * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                          11.f * ipow(26, 0) + 1 - hist_min + 1;
+  constexpr auto bin_count = 11.f;
+
+  // Even though we cannot have multiple bins, within the single bin, we can use common prefix elimination to calculate
+  // cardinalities based on bin shares.
+  // Bin edges: [aaaaaaaa, aaaazzal]
+  // Common prefix: 'aaaa'
+  // (repr(aaam) - hist_min) / hist_width * bin_count
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "aaaaaaam"),
+                  (0.f * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                   0.f * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 0.f * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                   12.f * ipow(26, 0) + 1 - hist_min) /
+                      hist_width * bin_count);
+
+  // (repr(ffpr) - hist_min) / hist_width * bin_count
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "aaaaffpr"),
+                  (5.f * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                   5.f * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 15.f * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                   17.f * ipow(26, 0) + 1 - hist_min) /
+                      hist_width * bin_count);
+
+  // (repr(tttt) - hist_min) / hist_width * bin_count
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "aaaatttt"),
+                  (19.f * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                   19.f * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 19.f * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                   19.f * ipow(26, 0) + 1 - hist_min) /
+                      hist_width * bin_count);
 }
 
 }  // namespace opossum

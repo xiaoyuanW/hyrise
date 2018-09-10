@@ -13,6 +13,7 @@ class EqualHeightHistogramTest : public BaseTest {
     _float2 = load_table("src/test/tables/float2.tbl");
     _expected_join_result_1 = load_table("src/test/tables/joinoperators/expected_join_result_1.tbl");
     _string3 = load_table("src/test/tables/string3.tbl");
+    _string_with_prefix = load_table("src/test/tables/string_with_prefix.tbl");
   }
 
  protected:
@@ -20,6 +21,7 @@ class EqualHeightHistogramTest : public BaseTest {
   std::shared_ptr<Table> _float2;
   std::shared_ptr<Table> _expected_join_result_1;
   std::shared_ptr<Table> _string3;
+  std::shared_ptr<Table> _string_with_prefix;
 };
 
 TEST_F(EqualHeightHistogramTest, Basic) {
@@ -565,6 +567,68 @@ TEST_F(EqualHeightHistogramTest, StringLikePrefix) {
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Like, "z%"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Like, "z%"), 0.f);
+}
+
+TEST_F(EqualHeightHistogramTest, StringCommonPrefix) {
+  /**
+   * The strings in this table are all eight characters long, but we limit the histogram to a prefix length of four.
+   * However, all of the strings start with a common prefix ('aaaa').
+   * In this test, we make sure that the calculation strips the common prefix within buckets and works as expected.
+   */
+  auto hist = EqualHeightHistogram<std::string>::from_column(
+      _string_with_prefix->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 3u, "abcdefghijklmnopqrstuvwxyz", 4u);
+
+  constexpr auto bin_count = 4.f;
+
+  // First bin: [aaaaaaaa, aaaaaaaz].
+  // Common prefix: 'aaaaaaa'
+  // (repr(m) - repr(a)) / (repr(z) - repr(a) + 1) * bin_count
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "aaaaaaam"),
+                  (12.f * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 -
+                   (0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1)) /
+                      (25 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 -
+                       (0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1) + 1) *
+                      bin_count);
+
+  // Second bin: [aaaaaaaza, aaaaffsd].
+  // Common prefix: 'aaaa'
+  // (repr(ffpr) - repr(aaaza)) / (repr(ffsd) - repr(aaaza) + 1) * bin_count + bin_count
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "aaaaffpr"),
+                  (5.f * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                   5.f * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 15.f * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                   17.f * ipow(26, 0) + 1 -
+                   (0.f * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                    0.f * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 0.f * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                    25.f * ipow(26, 0) + 1 + 1)) /
+                          (5.f * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                           5.f * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 18.f * (ipow(26, 1) + ipow(26, 0)) +
+                           1 + 3.f * ipow(26, 0) + 1 -
+                           (0.f * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                            0.f * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 0.f * (ipow(26, 1) + ipow(26, 0)) +
+                            1 + 25.f * ipow(26, 0) + 1 + 1) +
+                           1) *
+                          bin_count +
+                      bin_count);
+
+  // Second bin: [aaaaffsda, aaaazzal].
+  // Common prefix: 'aaaa'
+  // (repr(tttt) - repr(ffsda)) / (repr(zzal) - repr(ffsda) + 1) * bin_count + bin_count + bin_count
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, "aaaatttt"),
+                  (19.f * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                   19.f * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 19.f * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                   19.f * ipow(26, 0) + 1 -
+                   (5.f * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                    5.f * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 18.f * (ipow(26, 1) + ipow(26, 0)) + 1 +
+                    3.f * ipow(26, 0) + 1 + 1)) /
+                          (25.f * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                           25.f * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 0.f * (ipow(26, 1) + ipow(26, 0)) +
+                           1 + 11.f * ipow(26, 0) + 1 -
+                           (5.f * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
+                            5.f * (ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 + 18.f * (ipow(26, 1) + ipow(26, 0)) +
+                            1 + 3.f * ipow(26, 0) + 1 + 1) +
+                           1) *
+                          bin_count +
+                      bin_count + bin_count);
 }
 
 }  // namespace opossum
