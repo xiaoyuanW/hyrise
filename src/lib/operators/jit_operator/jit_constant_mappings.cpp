@@ -41,6 +41,7 @@ const boost::bimap<JitOperatorType, std::string> jit_operator_type_to_string =
                                                   {JitOperatorType::Compute, "JitCompute"},
                                                   {JitOperatorType::Validate, "JitValidate"},
                                                   {JitOperatorType::Limit, "JitLimit"},
+                                                  {JitOperatorType::WriteOffset, "WriteOffset"},
                                                   {JitOperatorType::ReadValue, "JitReadValue"}});
 
 }  // namespace opossum

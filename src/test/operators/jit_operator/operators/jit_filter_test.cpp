@@ -1,4 +1,4 @@
-#include "../../../base_test.hpp"
+#include "base_test.hpp"
 #include "operators/jit_operator/operators/jit_filter.hpp"
 
 namespace opossum {
@@ -8,6 +8,8 @@ namespace {
 // Mock JitOperator that records whether tuples are passed to it
 class MockSink : public AbstractJittable {
  public:
+  MockSink() : AbstractJittable(JitOperatorType::Write) {}
+
   std::string description() const final { return "MockSink"; }
 
   void reset() const { _consume_was_called = false; }
@@ -26,6 +28,8 @@ bool MockSink::_consume_was_called = false;
 // Mock JitOperator that passes on individual tuples
 class MockSource : public AbstractJittable {
  public:
+  MockSource() : AbstractJittable(JitOperatorType::Read) {}
+
   std::string description() const final { return "MockSource"; }
 
   void emit(JitRuntimeContext& context) { _emit(context); }

@@ -39,17 +39,17 @@ void remove_table_from_cache(opossum::Table& table) {
   for (opossum::ChunkID chunk_id{0}; chunk_id < table.chunk_count(); ++chunk_id) {
     auto chunk = table.get_chunk(chunk_id);
     for (opossum::ColumnID column_id{0}; column_id < table.column_count(); ++column_id) {
-      auto column = chunk->get_column(column_id);
+      auto segment = chunk->get_segment(column_id);
       const auto data_type = table.column_data_type(column_id);
       opossum::resolve_data_type(data_type, [&](auto type) {
         using ColumnDataType = typename decltype(type)::type;
 
-        if (auto value_column = std::dynamic_pointer_cast<const opossum::ValueColumn<ColumnDataType>>(column)) {
+        if (auto value_column = std::dynamic_pointer_cast<const opossum::ValueSegment<ColumnDataType>>(segment)) {
           remove_vector_from_cache(value_column->values());
           if (table.column_is_nullable(column_id)) {
             remove_vector_from_cache(value_column->null_values());
           }
-        } else if (auto dict_column = std::dynamic_pointer_cast<const opossum::DictionaryColumn<ColumnDataType>>(column)) {
+        } else if (auto dict_column = std::dynamic_pointer_cast<const opossum::DictionarySegment<ColumnDataType>>(segment)) {
           remove_vector_from_cache(*dict_column->dictionary());
           auto base_attribute_vector = dict_column->attribute_vector();
 

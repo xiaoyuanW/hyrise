@@ -12,7 +12,7 @@ std::map<std::string, std::shared_ptr<opossum::Table>> JitTableGenerator::genera
           std::make_shared<std::vector<size_t>>(std::initializer_list<size_t>{static_cast<size_t>(_scale_factor * 1000000)});
 
   {
-    std::vector<ChunkColumns> columns_by_chunk;
+    std::vector<Segments> columns_by_chunk;
     TableColumnDefinitions column_definitions;
 
     add_column<int32_t>(columns_by_chunk, column_definitions, "ID", cardinalities,
@@ -87,7 +87,7 @@ std::map<std::string, std::shared_ptr<opossum::Table>> JitTableGenerator::genera
   }
 
   {
-    std::vector<ChunkColumns> columns_by_chunk;
+    std::vector<Segments> columns_by_chunk;
     TableColumnDefinitions column_definitions;
 
     add_column<int32_t>(columns_by_chunk, column_definitions, "ID", cardinalities, [&](std::vector<size_t> indices) { return indices[0]; });
@@ -122,7 +122,7 @@ std::map<std::string, std::shared_ptr<opossum::Table>> JitTableGenerator::genera
   }
 
   {
-    std::vector<ChunkColumns> columns_by_chunk;
+    std::vector<Segments> columns_by_chunk;
     TableColumnDefinitions column_definitions;
 
     add_column<int32_t>(columns_by_chunk, column_definitions, "I1", cardinalities,

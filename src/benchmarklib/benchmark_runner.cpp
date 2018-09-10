@@ -5,6 +5,7 @@
 #include "benchmark_runner.hpp"
 #include "constant_mappings.hpp"
 #include "import_export/csv_parser.hpp"
+#include "operators/abstract_operator.hpp"
 #include "planviz/lqp_visualizer.hpp"
 #include "planviz/sql_query_plan_visualizer.hpp"
 #include "scheduler/current_scheduler.hpp"
@@ -138,8 +139,21 @@ void BenchmarkRunner::_benchmark_individual_queries() {
     result.num_iterations = state.num_iterations;
     result.duration = state.benchmark_end - state.benchmark_begin;
     result.iteration_durations = state.iteration_durations;
+    result.times = Global::get().times;
+    Global::get().times.clear();
+    //    for (auto pair : Global::get().times) {
+    //      pair.second.preparation_time = std::chrono::microseconds{0};
+    //      pair.second.execution_time = std::chrono::microseconds{0};
+    //    }
 
     _query_results_by_query_name.emplace(name, result);
+
+    const auto duration_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(result.duration).count();
+    const auto duration_seconds = static_cast<float>(duration_ns) / 1'000'000'000;
+    const auto items_per_second = static_cast<float>(result.num_iterations) / duration_seconds;
+
+    _config.out << "  -> Executed " << result.num_iterations << " times in " << duration_seconds << " seconds ("
+                << items_per_second << " iter/s)" << std::endl;
   }
 }
 
@@ -185,14 +199,24 @@ void BenchmarkRunner::_create_report(std::ostream& stream) const {
                      return static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count());
                    });
 
-    nlohmann::json benchmark{
-        {"name", name},
-        {"iterations", query_result.num_iterations},
-        {"iteration_durations", iteration_durations},
-        {"avg_real_time_per_iteration", time_per_query},
-        {"items_per_second", items_per_second},
-        {"time_unit", "ns"},
-    };
+    // Add operator preparation and execution times
+    nlohmann::json operators;
+    for (const auto& pair : query_result.times) {
+      operators.push_back({
+          {"name", operator_type_to_string.at(pair.first)},
+          {"preparation_time", static_cast<size_t>(pair.second.preparation_time.count() / query_result.num_iterations)},
+          {"execution_time", static_cast<size_t>(pair.second.execution_time.count() / query_result.num_iterations)},
+          {"time_unit", "micro s"},
+      });
+    }
+
+    nlohmann::json benchmark{{"name", name},
+                             {"iterations", query_result.num_iterations},
+                             {"iteration_durations", iteration_durations},
+                             {"avg_real_time_per_iteration", time_per_query},
+                             {"items_per_second", items_per_second},
+                             {"time_unit", "ns"},
+                             {"operators", operators}};
 
     benchmarks.push_back(benchmark);
   }
@@ -335,10 +359,10 @@ cxxopts::Options BenchmarkRunner::get_basic_cli_options(const std::string& bench
     ("help", "print this help message")
     ("v,verbose", "Print log messages", cxxopts::value<bool>()->default_value("false"))
     ("min_runs", "Minimum number of runs of a single query(set)", cxxopts::value<size_t>()->default_value("1")) // NOLINT
-    ("r,runs", "Maximum number of runs of a single query(set)", cxxopts::value<size_t>()->default_value("1000")) // NOLINT
+    ("r,runs", "Maximum number of runs of a single query (set)", cxxopts::value<size_t>()->default_value("10000")) // NOLINT
     ("c,chunk_size", "ChunkSize, default is 2^32-1", cxxopts::value<ChunkOffset>()->default_value(std::to_string(Chunk::MAX_SIZE))) // NOLINT
     ("min_time", "Minimum seconds that a query(set) is run", cxxopts::value<size_t>()->default_value("0")) // NOLINT
-    ("t,time", "Maximum seconds that a query(set) is run", cxxopts::value<size_t>()->default_value("5")) // NOLINT
+    ("t,time", "Maximum seconds that a query (set) is run", cxxopts::value<size_t>()->default_value("60")) // NOLINT
     ("o,output", "File to output results to, don't specify for stdout", cxxopts::value<std::string>()->default_value("")) // NOLINT
     ("m,mode", "IndividualQueries or PermutedQuerySets, default is IndividualQueries", cxxopts::value<std::string>()->default_value("IndividualQueries")) // NOLINT
     ("e,encoding", "Specify Chunk encoding as a string or as a JSON config file (for more detailed configuration, see below). String options: " + encoding_strings_option, cxxopts::value<std::string>()->default_value("Dictionary"))  // NOLINT

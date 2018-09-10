@@ -1,6 +1,6 @@
 #include <gmock/gmock.h>
 
-#include "../base_test.hpp"
+#include "base_test.hpp"
 #include "operators/jit_operator/operators/jit_compute.hpp"
 #include "operators/jit_operator/operators/jit_expression.hpp"
 #include "operators/jit_operator/operators/jit_filter.hpp"
@@ -31,18 +31,18 @@ class JitOperatorWrapperTest : public BaseTest {
 class MockJitSource : public JitReadTuples {
  public:
   MOCK_CONST_METHOD2(before_query, void(const Table&, JitRuntimeContext&));
-  MOCK_CONST_METHOD3(before_chunk, void(const Table&, const Chunk&, JitRuntimeContext&));
+  MOCK_CONST_METHOD3(before_chunk, void(const Table&, const ChunkID, JitRuntimeContext&));
 
-  void forward_before_chunk(const Table& in_table, const Chunk& in_chunk, JitRuntimeContext& context) const {
-    JitReadTuples::before_chunk(in_table, in_chunk, context);
+  void forward_before_chunk(const Table& in_table, const ChunkID chunk_id, JitRuntimeContext& context) const {
+    JitReadTuples::before_chunk(in_table, chunk_id, context);
   }
 };
 
 class MockJitSink : public JitWriteTuples {
  public:
-  MOCK_CONST_METHOD2(before_query, void(Table&, JitRuntimeContext&));
+  MOCK_CONST_METHOD3(before_query, void(const Table&, Table&, JitRuntimeContext&));
   MOCK_CONST_METHOD2(after_query, void(Table&, JitRuntimeContext&));
-  MOCK_CONST_METHOD2(after_chunk, void(Table&, JitRuntimeContext&));
+  MOCK_CONST_METHOD3(after_chunk, void(const std::shared_ptr<const Table>&, Table&, JitRuntimeContext&));
 };
 
 TEST_F(JitOperatorWrapperTest, JitOperatorsAreAdded) {
@@ -106,11 +106,11 @@ TEST_F(JitOperatorWrapperTest, CallsJitOperatorHooks) {
   {
     testing::InSequence dummy;
     EXPECT_CALL(*source, before_query(testing::Ref(*_int_table), testing::_));
-    EXPECT_CALL(*sink, before_query(testing::_, testing::_));
-    EXPECT_CALL(*source, before_chunk(testing::Ref(*_int_table), testing::Ref(*_int_table->chunks()[0]), testing::_));
-    EXPECT_CALL(*sink, after_chunk(testing::_, testing::_));
-    EXPECT_CALL(*source, before_chunk(testing::Ref(*_int_table), testing::Ref(*_int_table->chunks()[1]), testing::_));
-    EXPECT_CALL(*sink, after_chunk(testing::_, testing::_));
+    EXPECT_CALL(*sink, before_query(testing::Ref(*_int_table), testing::_, testing::_));
+    EXPECT_CALL(*source, before_chunk(testing::Ref(*_int_table), testing::Eq(ChunkID(0)), testing::_));
+    EXPECT_CALL(*sink, after_chunk(testing::Eq(_int_table), testing::_, testing::_));
+    EXPECT_CALL(*source, before_chunk(testing::Ref(*_int_table), testing::Eq(ChunkID(1)), testing::_));
+    EXPECT_CALL(*sink, after_chunk(testing::Eq(_int_table), testing::_, testing::_));
     EXPECT_CALL(*sink, after_query(testing::_, testing::_));
 
     ON_CALL(*source, before_chunk(testing::_, testing::_, testing::_))

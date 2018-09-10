@@ -66,7 +66,7 @@ class JitAggregate : public AbstractJittableSink {
 
   // Is called by the JitOperatorWrapper before any tuple is consumed.
   // This is used to initialize the internal hashmap data structure to the correct size.
-  void before_query(Table& out_table, JitRuntimeContext& context) const final;
+  void before_query(const Table& in_table, Table& out_table, JitRuntimeContext& context) const final;
 
   // Is called by the JitOperatorWrapper after all tuples have been consumed.
   // This is used to perform the post-processing for average aggregates and to build the final output table.

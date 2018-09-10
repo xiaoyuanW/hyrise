@@ -1,6 +1,6 @@
 #include <random>
 
-#include "../../../base_test.hpp"
+#include "base_test.hpp"
 #include "operators/jit_operator/operators/jit_compute.hpp"
 
 namespace opossum {
@@ -9,6 +9,8 @@ namespace opossum {
 // This operator is used as both the tuple source and sink in this test
 class MockOperator : public AbstractJittable {
  public:
+  MockOperator() : AbstractJittable(JitOperatorType::Size) {}
+
   std::string description() const final { return "MockOperator"; }
 
   void emit(JitRuntimeContext& context) { _emit(context); }

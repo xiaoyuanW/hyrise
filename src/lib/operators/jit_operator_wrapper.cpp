@@ -137,8 +137,8 @@ void JitOperatorWrapper::_choose_execute_func() {
 }
 
 std::shared_ptr<const Table> JitOperatorWrapper::_on_execute() {
-  const auto& in_table = *input_left()->get_output();
-  auto out_table = _sink()->create_output_table(in_table.max_chunk_size());
+  const auto& in_table = input_left()->get_output();
+  auto out_table = _sink()->create_output_table(in_table->max_chunk_size());
 
   JitRuntimeContext context;
   if (transaction_context_is_set()) {
@@ -151,18 +151,17 @@ std::shared_ptr<const Table> JitOperatorWrapper::_on_execute() {
   std::chrono::nanoseconds function_time{0};
 
   Timer timer;
-  _source()->before_query(in_table, context);
-  _sink()->before_query(*out_table, context);
+  _source()->before_query(*in_table, context);
+  _sink()->before_query(*in_table, *out_table, context);
   auto before_query_time = timer.lap();
 
 
-  for (opossum::ChunkID chunk_id{0}; chunk_id < in_table.chunk_count(); ++chunk_id) {
-    const auto& in_chunk = *in_table.get_chunk(chunk_id);
-    _source()->before_chunk(in_table, in_chunk, context);
+  for (opossum::ChunkID chunk_id{0}; chunk_id < in_table->chunk_count(); ++chunk_id) {
+    _source()->before_chunk(*in_table, chunk_id, context);
     before_chunk_time += timer.lap();
     _execute_func(_source().get(), context);
     function_time += timer.lap();
-    _sink()->after_chunk(*out_table, context);
+    _sink()->after_chunk(in_table, *out_table, context);
     after_chunk_time += timer.lap();
     // break, if limit is reached
     if (context.chunk_offset == std::numeric_limits<ChunkOffset>::max()) break;

@@ -5,9 +5,9 @@
 #include <boost/preprocessor/seq/for_each.hpp>
 
 #include "all_type_variant.hpp"
-#include "storage/base_value_column.hpp"
+#include "storage/base_value_segment.hpp"
 #include "storage/chunk.hpp"
-#include "storage/column_iterables/base_column_iterators.hpp"
+#include "storage/segment_iterables/base_segment_iterators.hpp"
 #include "storage/table.hpp"
 #include "types.hpp"
 
@@ -116,8 +116,8 @@ class JitVariantVector {
   std::vector<bool> _is_null;
 };
 
-class BaseJitColumnReader;
-class BaseJitColumnWriter;
+class BaseJitSegmentReader;
+class BaseJitSegmentWriter;
 
 // The JitAggregate operator (and possibly future hashing based operators) require an efficient way to hash tuples
 // across multiple columns (i.e., the key-type of the hashmap spans multiple columns).
@@ -130,7 +130,7 @@ struct JitRuntimeHashmap {
   std::vector<JitVariantVector> columns;
 };
 
-enum JitOperatorType{Read = 0, Write = 1, Aggregate = 2, Filter = 3, Compute = 4, Validate = 5, Limit = 6, ReadValue = 7, Size = 8};
+enum JitOperatorType{Read = 0, Write = 1, Aggregate = 2, Filter = 3, Compute = 4, Validate = 5, Limit = 6, ReadValue = 7, WriteOffset = 8, Size = 9};
 
 // The structure encapsulates all data available to the JitOperatorWrapper at runtime,
 // but NOT during code specialization.
@@ -138,16 +138,18 @@ struct JitRuntimeContext {
   uint32_t chunk_size;
   ChunkOffset chunk_offset;
   JitVariantVector tuple;
-  std::vector<std::shared_ptr<BaseJitColumnReader>> inputs;
-  std::vector<std::shared_ptr<BaseJitColumnWriter>> outputs;
+  std::vector<std::shared_ptr<BaseJitSegmentReader>> inputs;
+  std::vector<std::shared_ptr<BaseJitSegmentWriter>> outputs;
   JitRuntimeHashmap hashmap;
-  ChunkColumns out_chunk;
-  const MvccColumns* mvcc_columns;
+  Segments out_chunk;
+  const MvccData* mvcc_data;
   std::shared_ptr<const Table> referenced_table;
   std::shared_ptr<const PosList> pos_list;
   TransactionID transaction_id;
   CommitID snapshot_commit_id;
   int64_t limit_rows;  // signed integer used to allow decrementing below 0
+  ChunkID chunk_id;
+  std::shared_ptr<PosList> output_pos_list;
 #if JIT_MEASURE
   std::chrono::nanoseconds times[JitOperatorType::Size];
   std::chrono::time_point<std::chrono::high_resolution_clock> begin_operator;

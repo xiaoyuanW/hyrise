@@ -6,8 +6,8 @@
 #include <vector>
 
 #include "all_parameter_variant.hpp"
-#include "base_operator_performance_data.hpp"
 #include "expression/parameter_expression.hpp"
+#include "operator_performance_data.hpp"
 #include "types.hpp"
 
 namespace opossum {
@@ -53,6 +53,8 @@ enum class OperatorType {
   Mock  // for Tests that need to Mock operators
 };
 
+extern const std::unordered_map<OperatorType, std::string> operator_type_to_string;
+
 // AbstractOperator is the abstract super class for all operators.
 // All operators have up to two input tables and one output table.
 // Their lifecycle has three phases:
@@ -69,8 +71,10 @@ enum class OperatorType {
 
 class AbstractOperator : public std::enable_shared_from_this<AbstractOperator>, private Noncopyable {
  public:
-  AbstractOperator(const OperatorType type, const std::shared_ptr<const AbstractOperator>& left = nullptr,
-                   const std::shared_ptr<const AbstractOperator>& right = nullptr);
+  AbstractOperator(
+      const OperatorType type, const std::shared_ptr<const AbstractOperator>& left = nullptr,
+      const std::shared_ptr<const AbstractOperator>& right = nullptr,
+      std::unique_ptr<OperatorPerformanceData> performance_data = std::make_unique<OperatorPerformanceData>());
 
   virtual ~AbstractOperator() = default;
 
@@ -118,8 +122,7 @@ class AbstractOperator : public std::enable_shared_from_this<AbstractOperator>, 
   std::shared_ptr<const Table> input_table_right() const;
 
   // Return data about the operators performance (runtime, e.g.) AFTER it has been executed.
-  // Derived operators may produce more finely grained performance data (e.g. JoinHash::join_hash_performance_data())
-  const BaseOperatorPerformanceData& base_performance_data() const;
+  const OperatorPerformanceData& performance_data() const;
 
   void print(std::ostream& stream = std::cout) const;
 
@@ -132,7 +135,7 @@ class AbstractOperator : public std::enable_shared_from_this<AbstractOperator>, 
   // execute and get_output are split into two methods to allow for easier
   // asynchronous execution
   virtual std::shared_ptr<const Table> _on_execute(std::shared_ptr<TransactionContext> context) = 0;
-  virtual void _prepare() {};
+  virtual void _prepare() {}
 
   // method that allows operator-specific cleanups for temporary data.
   // separate from _on_execute for readability and as a reminder to
@@ -168,7 +171,7 @@ class AbstractOperator : public std::enable_shared_from_this<AbstractOperator>, 
   // Weak pointer breaks cyclical dependency between operators and context
   std::optional<std::weak_ptr<TransactionContext>> _transaction_context;
 
-  BaseOperatorPerformanceData _base_performance_data;
+  const std::unique_ptr<OperatorPerformanceData> _performance_data;
 };
 
 }  // namespace opossum
