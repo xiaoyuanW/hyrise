@@ -3,8 +3,8 @@
 #include "../jit_types.hpp"
 #include "constant_mappings.hpp"
 #include "resolve_type.hpp"
-#include "storage/base_value_column.hpp"
-#include "storage/value_column.hpp"
+#include "storage/base_value_segment.hpp"
+#include "storage/value_segment.hpp"
 
 namespace opossum {
 
@@ -38,23 +38,23 @@ void JitWriteOffset::before_query(const Table& in_table, Table& out_table, JitRu
 void JitWriteOffset::after_chunk(const std::shared_ptr<const Table>& in_table, Table& out_table,
                                  JitRuntimeContext& context) const {
   if (context.output_pos_list->size() > 0) {
-    ChunkColumns out_columns;
-    out_columns.reserve(_output_columns.size());
+    Segments out_segments;
+    out_segments.reserve(_output_columns.size());
     if (in_table->type() == TableType::References) {
       const auto chunk_in = in_table->get_chunk(context.chunk_id);
 
       auto filtered_pos_lists = std::map<std::shared_ptr<const PosList>, std::shared_ptr<PosList>>{};
 
       for (const auto& output_colum : _output_columns) {
-        auto column_in = chunk_in->get_column(output_colum.referenced_column_id);
+        auto segment_in = chunk_in->get_segment(output_colum.referenced_column_id);
 
-        auto ref_column_in = std::dynamic_pointer_cast<const ReferenceColumn>(column_in);
-        DebugAssert(ref_column_in != nullptr, "All columns should be of type ReferenceColumn.");
+        auto ref_segment_in = std::dynamic_pointer_cast<const ReferenceSegment>(segment_in);
+        DebugAssert(ref_segment_in != nullptr, "All columns should be of type ReferenceColumn.");
 
-        const auto pos_list_in = ref_column_in->pos_list();
+        const auto pos_list_in = ref_segment_in->pos_list();
 
-        const auto table_out = ref_column_in->referenced_table();
-        const auto column_id_out = ref_column_in->referenced_column_id();
+        const auto table_out = ref_segment_in->referenced_table();
+        const auto column_id_out = ref_segment_in->referenced_column_id();
 
         auto& filtered_pos_list = filtered_pos_lists[pos_list_in];
 
@@ -68,17 +68,17 @@ void JitWriteOffset::after_chunk(const std::shared_ptr<const Table>& in_table, T
           }
         }
 
-        auto ref_column_out = std::make_shared<ReferenceColumn>(table_out, column_id_out, filtered_pos_list);
-        out_columns.push_back(ref_column_out);
+        auto ref_segment_out = std::make_shared<ReferenceSegment>(table_out, column_id_out, filtered_pos_list);
+        out_segments.push_back(ref_segment_out);
       }
     } else {
       for (const auto& output_colum : _output_columns) {
-        auto ref_column_out =
-            std::make_shared<ReferenceColumn>(in_table, output_colum.referenced_column_id, context.output_pos_list);
-        out_columns.push_back(ref_column_out);
+        auto ref_segment_out =
+            std::make_shared<ReferenceSegment>(in_table, output_colum.referenced_column_id, context.output_pos_list);
+        out_segments.push_back(ref_segment_out);
       }
     }
-    out_table.append_chunk(out_columns);
+    out_table.append_chunk(out_segments);
     // check if current chunk is last
     if (context.chunk_id + 1 < in_table->chunk_count()) {
       _create_output_chunk(context, in_table->get_chunk(ChunkID(context.chunk_id + 1))->size());

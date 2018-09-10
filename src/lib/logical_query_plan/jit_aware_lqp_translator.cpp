@@ -260,12 +260,12 @@ std::shared_ptr<JitOperatorWrapper> JitAwareLQPTranslator::_try_translate_sub_pl
 }
 
 std::shared_ptr<const JitExpression> JitAwareLQPTranslator::_try_translate_expression_to_jit_expression(
-    const AbstractExpression& expression, JitReadTuples& jit_source,
-    const std::shared_ptr<AbstractLQPNode>& input_node, const bool can_be_bool_column) const {
+    const AbstractExpression& expression, JitReadTuples& jit_source, const std::shared_ptr<AbstractLQPNode>& input_node,
+    const bool can_be_bool_column) const {
   const auto input_node_column_id = input_node->find_column_id(expression);
   if (input_node_column_id) {
-    const auto tuple_value =  jit_source.add_input_column(can_be_bool_column ?
-        DataType::Bool : expression.data_type(), expression.is_nullable(), *input_node_column_id);
+    const auto tuple_value = jit_source.add_input_column(can_be_bool_column ? DataType::Bool : expression.data_type(),
+                                                         expression.is_nullable(), *input_node_column_id);
     return std::make_shared<JitExpression>(tuple_value);
   }
 

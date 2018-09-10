@@ -9,10 +9,10 @@ namespace opossum {
 namespace {
 
 __attribute__((optnone)) bool jit_is_row_visible(CommitID our_tid, CommitID snapshot_commit_id,
-                                                 ChunkOffset chunk_offset, const MvccColumns& columns) {
-  const auto row_tid = columns.tids[chunk_offset].load();
-  const auto begin_cid = columns.begin_cids[chunk_offset];
-  const auto end_cid = columns.end_cids[chunk_offset];
+                                                 ChunkOffset chunk_offset, const MvccData& mvcc_data) {
+  const auto row_tid = mvcc_data.tids[chunk_offset].load();
+  const auto begin_cid = mvcc_data.begin_cids[chunk_offset];
+  const auto end_cid = mvcc_data.end_cids[chunk_offset];
   return Validate::is_row_visible(our_tid, snapshot_commit_id, row_tid, begin_cid, end_cid);
 }
 
@@ -35,12 +35,12 @@ void JitValidate<input_table_type>::_consume(JitRuntimeContext& context) const {
   if constexpr (input_table_type == TableType::References) {
     const auto row_id = (*context.pos_list)[context.chunk_offset];
     const auto& referenced_chunk = context.referenced_table->get_chunk(row_id.chunk_id);
-    const auto& mvcc_columns = referenced_chunk->mvcc_columns();
+    const auto& mvcc_data = referenced_chunk->mvcc_data();
     row_is_visible =
-        jit_is_row_visible(context.transaction_id, context.snapshot_commit_id, row_id.chunk_offset, *mvcc_columns);
+        jit_is_row_visible(context.transaction_id, context.snapshot_commit_id, row_id.chunk_offset, *mvcc_data);
   } else {
     row_is_visible = jit_is_row_visible(context.transaction_id, context.snapshot_commit_id, context.chunk_offset,
-                                        *context.mvcc_columns);
+                                        *context.mvcc_data);
   }
   if (row_is_visible) _emit(context);
 }

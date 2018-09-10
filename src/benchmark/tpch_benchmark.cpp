@@ -40,11 +40,11 @@ int main(int argc, char* argv[]) {
 
   // clang-format off
   cli_options.add_options()
-    ("s,scale", "Database scale factor (1.0 ~ 1GB)", cxxopts::value<float>()->default_value("0.001"))
-    ("queries", "Specify queries to run, default is all that are supported", cxxopts::value<std::vector<opossum::QueryID>>()) // NOLINT
+    ("s,scale", "Database scale factor (1.0 ~ 1GB)", cxxopts::value<float>()->default_value("0.1"))
+    ("queries", "Specify queries to run, default is all", cxxopts::value<std::vector<opossum::QueryID>>())
     ("jit", "Enable jit", cxxopts::value<bool>()->default_value("false"))
     ("lazy_load", "Enable lazy load in jit", cxxopts::value<bool>()->default_value("false"))
-    ("jit_validate", "Use jit validate", cxxopts::value<bool>()->default_value("false"));
+    ("jit_validate", "Use jit validate", cxxopts::value<bool>()->default_value("false")); // NOLINT
   // clang-format on
 
   std::unique_ptr<opossum::BenchmarkConfig> config;
@@ -57,7 +57,7 @@ int main(int argc, char* argv[]) {
   if (opossum::CLIConfigParser::cli_has_json_config(argc, argv)) {
     // JSON config file was passed in
     const auto json_config = opossum::CLIConfigParser::parse_json_config_file(argv[1]);
-    scale_factor = json_config.value("scale", 0.001f);
+    scale_factor = json_config.value("scale", 0.1f);
     query_ids = json_config.value("queries", std::vector<opossum::QueryID>());
     jit = json_config.value("jit", false);
     lazy_load = json_config.value("lazy_load", false);

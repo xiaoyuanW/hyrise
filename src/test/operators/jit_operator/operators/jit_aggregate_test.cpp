@@ -1,6 +1,6 @@
 #include <random>
 
-#include "../../../base_test.hpp"
+#include "base_test.hpp"
 #include "operators/jit_operator/operators/jit_aggregate.hpp"
 
 namespace opossum {
@@ -32,7 +32,7 @@ class JitAggregateTest : public BaseTest {
   const std::shared_ptr<const Table> _dummy_table;
 };
 
-// Make sure, that groupby columns are properly added to the output table
+// Make sure that groupby columns are properly added to the output table
 TEST_F(JitAggregateTest, AddsGroupByColumnsToOutputTable) {
   const auto column_definitions = TableColumnDefinitions({{"a", DataType::Int, false},
                                                           {"b", DataType::Long, true},
@@ -49,7 +49,7 @@ TEST_F(JitAggregateTest, AddsGroupByColumnsToOutputTable) {
   EXPECT_EQ(output_table->column_definitions(), column_definitions);
 }
 
-// Make sure, that aggregates are added to the output table with correct data type and nullability (e.g., count
+// Make sure that aggregates are added to the output table with correct data type and nullability (e.g., count
 // aggregates should be non-nullable and of type long independent of the type and nullability of the input value).
 TEST_F(JitAggregateTest, AddsAggregateColumnsToOutputTable) {
   _aggregate->add_aggregate_column("count", JitTupleValue(DataType::String, false, 0), AggregateFunction::Count);

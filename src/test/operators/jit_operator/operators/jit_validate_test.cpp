@@ -46,59 +46,59 @@ class JitValidateTest : public BaseTest {
     _transaction_context = std::make_shared<TransactionContext>(5u, 3u);
 
     {
-      auto& mvcc_columns = *_test_table->get_chunk(ChunkID(0))->mvcc_columns();
+      auto& mvcc_data = *_test_table->get_chunk(ChunkID(0))->mvcc_data();
       // deleted -> false
-      mvcc_columns.begin_cids[0] = 1u;
-      mvcc_columns.end_cids[0] = 2u;
-      mvcc_columns.tids[0].exchange(0u);
+      mvcc_data.begin_cids[0] = 1u;
+      mvcc_data.end_cids[0] = 2u;
+      mvcc_data.tids[0].exchange(0u);
       _expected_values.push_back(false);
 
       // visible -> true
-      mvcc_columns.begin_cids[1] = 1u;
-      mvcc_columns.end_cids[1] = MvccColumns::MAX_COMMIT_ID;
-      mvcc_columns.tids[1].exchange(0u);
+      mvcc_data.begin_cids[1] = 1u;
+      mvcc_data.end_cids[1] = MvccData::MAX_COMMIT_ID;
+      mvcc_data.tids[1].exchange(0u);
       _expected_values.push_back(true);
 
       // not visible for this transaction -> false
-      mvcc_columns.begin_cids[2] = 10u;
-      mvcc_columns.end_cids[2] = MvccColumns::MAX_COMMIT_ID;
-      mvcc_columns.tids[2].exchange(0u);
+      mvcc_data.begin_cids[2] = 10u;
+      mvcc_data.end_cids[2] = MvccData::MAX_COMMIT_ID;
+      mvcc_data.tids[2].exchange(0u);
       _expected_values.push_back(false);
     }
 
     {
-      auto& mvcc_columns = *_test_table->get_chunk(ChunkID(1))->mvcc_columns();
+      auto& mvcc_data = *_test_table->get_chunk(ChunkID(1))->mvcc_data();
       // inserted by other not committed transaction -> false
-      mvcc_columns.begin_cids[0] = 4u;
-      mvcc_columns.end_cids[0] = MvccColumns::MAX_COMMIT_ID;
-      mvcc_columns.tids[0].exchange(4u);
+      mvcc_data.begin_cids[0] = 4u;
+      mvcc_data.end_cids[0] = MvccData::MAX_COMMIT_ID;
+      mvcc_data.tids[0].exchange(4u);
       _expected_values.push_back(false);
       // inserted by own transaction -> true
 
-      mvcc_columns.begin_cids[1] = 5u;
-      mvcc_columns.end_cids[1] = MvccColumns::MAX_COMMIT_ID;
-      mvcc_columns.tids[1].exchange(5u);
+      mvcc_data.begin_cids[1] = 5u;
+      mvcc_data.end_cids[1] = MvccData::MAX_COMMIT_ID;
+      mvcc_data.tids[1].exchange(5u);
       _expected_values.push_back(true);
 
       // deleted by own transaction -> false
-      mvcc_columns.begin_cids[2] = 3u;
-      mvcc_columns.end_cids[2] = 5u;
-      mvcc_columns.tids[2].exchange(5u);
+      mvcc_data.begin_cids[2] = 3u;
+      mvcc_data.end_cids[2] = 5u;
+      mvcc_data.tids[2].exchange(5u);
       _expected_values.push_back(false);
     }
 
     {
       // deleted by not commited transaction -> true
-      auto& mvcc_columns = *_test_table->get_chunk(ChunkID(2))->mvcc_columns();
-      mvcc_columns.begin_cids[0] = 1u;
-      mvcc_columns.end_cids[0] = 4u;
-      mvcc_columns.tids[0].exchange(4u);
+      auto& mvcc_data = *_test_table->get_chunk(ChunkID(2))->mvcc_data();
+      mvcc_data.begin_cids[0] = 1u;
+      mvcc_data.end_cids[0] = 4u;
+      mvcc_data.tids[0].exchange(4u);
       _expected_values.push_back(true);
 
       // deleted by commited future transaction -> true
-      mvcc_columns.begin_cids[1] = 1u;
-      mvcc_columns.end_cids[1] = 9u;
-      mvcc_columns.tids[1].exchange(0u);
+      mvcc_data.begin_cids[1] = 1u;
+      mvcc_data.end_cids[1] = 9u;
+      mvcc_data.tids[1].exchange(0u);
       _expected_values.push_back(true);
     }
   }
@@ -106,7 +106,7 @@ class JitValidateTest : public BaseTest {
   void validate_row(const ChunkID chunk_id, const size_t chunk_offset, JitRuntimeContext& context,
                     const bool expected_value, std::shared_ptr<MockSource> source, std::shared_ptr<MockSink> sink,
                     const bool no_mvcc = true) {
-    if (no_mvcc) context.mvcc_columns = &(*_test_table->get_chunk(chunk_id)->mvcc_columns());
+    if (no_mvcc) context.mvcc_data = &(*_test_table->get_chunk(chunk_id)->mvcc_data());
     context.chunk_offset = chunk_offset;
     sink->reset();
     source->emit(context);
