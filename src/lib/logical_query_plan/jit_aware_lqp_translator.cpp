@@ -377,18 +377,22 @@ bool _expressions_are_jittable(const std::vector<std::shared_ptr<AbstractExpress
         return _expressions_are_jittable(expression->arguments);
       case ExpressionType::Value: {
         const auto value_expression = std::static_pointer_cast<const ValueExpression>(expression);
-        return data_type_from_all_type_variant(value_expression->value) != DataType::String;
+        if (data_type_from_all_type_variant(value_expression->value) == DataType::String) return false;
+        break;
       }
       case ExpressionType::Parameter: {
         const auto parameter = std::dynamic_pointer_cast<const ParameterExpression>(expression);
         // ParameterExpressionType::ValuePlaceholder used in prepared statements not supported as it does not provide
         // type information
-        return parameter->parameter_expression_type == ParameterExpressionType::External || parameter->value();
+        if (parameter->parameter_expression_type == ParameterExpressionType::ValuePlaceholder && !parameter->value())
+          return false;
+        break;
       }
       case ExpressionType::LQPColumn: {
         const auto column = std::dynamic_pointer_cast<const LQPColumnExpression>(expression);
         // Filter or computation on string columns is expensive
-        return column->data_type() != DataType::String;
+        if (column->data_type() == DataType::String) return false;
+        break;
       }
       default:
         break;
