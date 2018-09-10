@@ -72,14 +72,7 @@ namespace opossum {
  */
 
 /* Arithmetic operators */
-struct JitAddition {
-  template <typename T1, typename T2,
-            typename = typename std::enable_if_t<std::is_scalar_v<T1> == std::is_scalar_v<T2>>>
-  auto operator()(const T1 a, const T2 b) const {
-    return a + b;
-  }
-};
-const JitAddition jit_addition{};
+const auto jit_addition = [](const auto a, const auto b) -> decltype(a + b) { return a + b; };
 const auto jit_subtraction = [](const auto a, const auto b) -> decltype(a - b) { return a - b; };
 const auto jit_multiplication = [](const auto a, const auto b) -> decltype(a * b) { return a * b; };
 const auto jit_division = [](const auto a, const auto b) -> decltype(a / b) { return a / b; };
@@ -88,72 +81,16 @@ const auto jit_power = [](const auto a, const auto b) -> decltype(std::pow(a, b)
 
 /* Aggregate operations */
 const auto jit_increment = [](const auto a, const auto b) -> decltype(b + 1) { return b + 1; };
-struct JitMaximum {
-  template <typename T1, typename T2,
-            typename = typename std::enable_if_t<std::is_scalar_v<T1> == std::is_scalar_v<T2>>>
-  auto operator()(const T1 a, const T2 b) const {
-    return std::max(a, b);
-  }
-};
-const JitMaximum jit_maximum{};
-struct JitMinimum {
-  template <typename T1, typename T2,
-            typename = typename std::enable_if_t<std::is_scalar_v<T1> == std::is_scalar_v<T2>>>
-  auto operator()(const T1 a, const T2 b) const {
-    return std::min(a, b);
-  }
-};
-const JitMinimum jit_minimum{};
+const auto jit_maximum = [](const auto a, const auto b) { return std::max(a, b); };
+const auto jit_minimum = [](const auto a, const auto b) { return std::min(a, b); };
 
 /* Comparison operators */
-struct JitEquals {
-  template <typename T1, typename T2,
-            typename = typename std::enable_if_t<std::is_scalar_v<T1> == std::is_scalar_v<T2>>>
-  bool operator()(const T1 a, const T2 b) const {
-    return a == b;
-  }
-};
-const JitEquals jit_equals{};
-struct JitNotEquals {
-  template <typename T1, typename T2,
-            typename = typename std::enable_if_t<std::is_scalar_v<T1> == std::is_scalar_v<T2>>>
-  bool operator()(const T1 a, const T2 b) const {
-    return a != b;
-  }
-};
-const JitNotEquals jit_not_equals{};
-struct JitLessThan {
-  template <typename T1, typename T2,
-            typename = typename std::enable_if_t<std::is_scalar_v<T1> == std::is_scalar_v<T2>>>
-  bool operator()(const T1 a, const T2 b) const {
-    return a < b;
-  }
-};
-const JitLessThan jit_less_than{};
-struct JitLessThanEquals {
-  template <typename T1, typename T2,
-            typename = typename std::enable_if_t<std::is_scalar_v<T1> == std::is_scalar_v<T2>>>
-  bool operator()(const T1 a, const T2 b) const {
-    return a <= b;
-  }
-};
-const JitLessThanEquals jit_less_than_equals{};
-struct JitGreaterThan {
-  template <typename T1, typename T2,
-            typename = typename std::enable_if_t<std::is_scalar_v<T1> == std::is_scalar_v<T2>>>
-  bool operator()(const T1 a, const T2 b) const {
-    return a > b;
-  }
-};
-const JitGreaterThan jit_greater_than{};
-struct JitGreaterThanEquals {
-  template <typename T1, typename T2,
-            typename = typename std::enable_if_t<std::is_scalar_v<T1> == std::is_scalar_v<T2>>>
-  bool operator()(const T1 a, const T2 b) const {
-    return a >= b;
-  }
-};
-const JitGreaterThanEquals jit_greater_than_equals{};
+const auto jit_equals = [](const auto a, const auto b) -> decltype(a == b) { return a == b; };
+const auto jit_not_equals = [](const auto a, const auto b) -> decltype(a != b) { return a != b; };
+const auto jit_less_than = [](const auto a, const auto b) -> decltype(a < b) { return a < b; };
+const auto jit_less_than_equals = [](const auto a, const auto b) -> decltype(a <= b) { return a <= b; };
+const auto jit_greater_than = [](const auto a, const auto b) -> decltype(a > b) { return a > b; };
+const auto jit_greater_than_equals = [](const auto a, const auto b) -> decltype(a >= b) { return a >= b; };
 
 bool jit_like(const std::string& a, const std::string& b);
 bool jit_not_like(const std::string& a, const std::string& b);
