@@ -25,8 +25,8 @@ class EqualNumElementsHistogramTest : public BaseTest {
 };
 
 TEST_F(EqualNumElementsHistogramTest, Basic) {
-  const auto hist = EqualNumElementsHistogram<int32_t>::from_column(
-      this->_int_float4->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 2u);
+  const auto hist = EqualNumElementsHistogram<int32_t>::from_segment(
+      this->_int_float4->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 2u);
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{0}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 0), 0.f);
@@ -45,8 +45,8 @@ TEST_F(EqualNumElementsHistogramTest, Basic) {
 }
 
 TEST_F(EqualNumElementsHistogramTest, UnevenBins) {
-  auto hist =
-      EqualNumElementsHistogram<int32_t>::from_column(_int_float4->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 3u);
+  auto hist = EqualNumElementsHistogram<int32_t>::from_segment(
+      _int_float4->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 3u);
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{0}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 0), 0.f);
@@ -66,7 +66,7 @@ TEST_F(EqualNumElementsHistogramTest, UnevenBins) {
 
 TEST_F(EqualNumElementsHistogramTest, Float) {
   auto hist =
-      EqualNumElementsHistogram<float>::from_column(_float2->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 3u);
+      EqualNumElementsHistogram<float>::from_segment(_float2->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 3u);
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{0.4f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 0.4f), 0.f);
@@ -112,8 +112,8 @@ TEST_F(EqualNumElementsHistogramTest, Float) {
 }
 
 TEST_F(EqualNumElementsHistogramTest, String) {
-  auto hist =
-      EqualNumElementsHistogram<std::string>::from_column(_string2->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 4u);
+  auto hist = EqualNumElementsHistogram<std::string>::from_segment(
+      _string2->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 4u);
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "a"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, "a"), 0.f);
@@ -178,8 +178,8 @@ TEST_F(EqualNumElementsHistogramTest, StringPruning) {
    *  [uuu, www, xxx]   -> [uuu, xxx]
    *  [yyy, zzz]        -> [yyy, zzz]
    */
-  auto hist = EqualNumElementsHistogram<std::string>::from_column(
-      _string2->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 4u, "abcdefghijklmnopqrstuvwxyz", 3u);
+  auto hist = EqualNumElementsHistogram<std::string>::from_segment(
+      _string2->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 4u, "abcdefghijklmnopqrstuvwxyz", 3u);
 
   // These values are smaller than values in bin 0.
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, ""));
@@ -252,8 +252,8 @@ TEST_F(EqualNumElementsHistogramTest, StringPruning) {
 }
 
 TEST_F(EqualNumElementsHistogramTest, LessThan) {
-  auto hist =
-      EqualNumElementsHistogram<int32_t>::from_column(_int_float4->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 3u);
+  auto hist = EqualNumElementsHistogram<int32_t>::from_segment(
+      _int_float4->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 3u);
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{12}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 12), 0.f);
@@ -279,7 +279,7 @@ TEST_F(EqualNumElementsHistogramTest, LessThan) {
 
 TEST_F(EqualNumElementsHistogramTest, FloatLessThan) {
   auto hist =
-      EqualNumElementsHistogram<float>::from_column(_float2->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 3u);
+      EqualNumElementsHistogram<float>::from_segment(_float2->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 3u);
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{0.5f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 0.5f), 0.f);
@@ -326,8 +326,8 @@ TEST_F(EqualNumElementsHistogramTest, FloatLessThan) {
 }
 
 TEST_F(EqualNumElementsHistogramTest, StringLessThan) {
-  auto hist = EqualNumElementsHistogram<std::string>::from_column(
-      _string3->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 4u, "abcdefghijklmnopqrstuvwxyz", 4u);
+  auto hist = EqualNumElementsHistogram<std::string>::from_segment(
+      _string3->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 4u, "abcdefghijklmnopqrstuvwxyz", 4u);
 
   // "abcd"
   const auto bin_1_lower = 0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
@@ -555,8 +555,8 @@ TEST_F(EqualNumElementsHistogramTest, StringLessThan) {
 }
 
 TEST_F(EqualNumElementsHistogramTest, StringLikePrefix) {
-  auto hist = EqualNumElementsHistogram<std::string>::from_column(
-      _string3->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 4u, "abcdefghijklmnopqrstuvwxyz", 4u);
+  auto hist = EqualNumElementsHistogram<std::string>::from_segment(
+      _string3->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 4u, "abcdefghijklmnopqrstuvwxyz", 4u);
 
   // First bin: [abcd, efgh], so everything before is prunable.
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Like, "a"));
@@ -621,8 +621,8 @@ TEST_F(EqualNumElementsHistogramTest, StringLikePrefix) {
 }
 
 TEST_F(EqualNumElementsHistogramTest, IntBetweenPruning) {
-  const auto hist = EqualNumElementsHistogram<int32_t>::from_column(
-      this->_int_float4->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 2u);
+  const auto hist = EqualNumElementsHistogram<int32_t>::from_segment(
+      this->_int_float4->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 2u);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Between, AllTypeVariant{50}, AllTypeVariant{60}));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Between, AllTypeVariant{123}, AllTypeVariant{124}));
@@ -632,8 +632,8 @@ TEST_F(EqualNumElementsHistogramTest, IntBetweenPruning) {
 }
 
 TEST_F(EqualNumElementsHistogramTest, IntBetweenPruningSpecial) {
-  const auto hist = EqualNumElementsHistogram<int32_t>::from_column(
-      this->_int_float4->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 1u);
+  const auto hist = EqualNumElementsHistogram<int32_t>::from_segment(
+      this->_int_float4->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 1u);
 
   // Make sure that pruning does not do anything stupid with one bucket.
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Between, AllTypeVariant{0}, AllTypeVariant{1'000'000}));
@@ -645,8 +645,8 @@ TEST_F(EqualNumElementsHistogramTest, StringCommonPrefix) {
    * However, all of the strings start with a common prefix ('aaaa').
    * In this test, we make sure that the calculation strips the common prefix within buckets and works as expected.
    */
-  auto hist = EqualNumElementsHistogram<std::string>::from_column(
-      _string_with_prefix->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 3u, "abcdefghijklmnopqrstuvwxyz", 4u);
+  auto hist = EqualNumElementsHistogram<std::string>::from_segment(
+      _string_with_prefix->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 3u, "abcdefghijklmnopqrstuvwxyz", 4u);
 
   // First bin: [aaaaaaaa, aaaaaaaz].
   // Common prefix: 'aaaaaaa'

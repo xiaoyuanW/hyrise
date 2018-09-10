@@ -4,8 +4,6 @@
 #include <numeric>
 
 #include "histogram_utils.hpp"
-#include "storage/table.hpp"
-#include "storage/value_column.hpp"
 
 namespace opossum {
 
@@ -176,8 +174,8 @@ EqualWidthBinStats<std::string> EqualWidthHistogram<std::string>::_get_bin_stats
 }
 
 template <typename T>
-std::shared_ptr<EqualWidthHistogram<T>> EqualWidthHistogram<T>::from_column(
-    const std::shared_ptr<const BaseColumn>& column, const size_t max_num_bins,
+std::shared_ptr<EqualWidthHistogram<T>> EqualWidthHistogram<T>::from_segment(
+    const std::shared_ptr<const BaseSegment>& segment, const size_t max_num_bins,
     const std::optional<std::string>& supported_characters, const std::optional<uint64_t>& string_prefix_length) {
   std::string characters;
   uint64_t prefix_length;
@@ -187,7 +185,7 @@ std::shared_ptr<EqualWidthHistogram<T>> EqualWidthHistogram<T>::from_column(
     prefix_length = pair.second;
   }
 
-  const auto value_counts = AbstractHistogram<T>::_calculate_value_counts(column);
+  const auto value_counts = AbstractHistogram<T>::_calculate_value_counts(segment);
 
   if (value_counts.empty()) {
     return nullptr;

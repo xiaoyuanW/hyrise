@@ -9,15 +9,8 @@
 #include "boost/algorithm/string/replace.hpp"
 
 #include "expression/evaluation/like_matcher.hpp"
-#include "expression/expression_functional.hpp"
-#include "expression/pqp_column_expression.hpp"
 #include "histogram_utils.hpp"
-#include "operators/aggregate.hpp"
-#include "operators/projection.hpp"
-#include "operators/sort.hpp"
-#include "operators/table_wrapper.hpp"
-#include "storage/create_iterable_from_column.hpp"
-#include "storage/table.hpp"
+#include "storage/create_iterable_from_segment.hpp"
 
 #include "constant_mappings.hpp"
 #include "resolve_type.hpp"
@@ -153,18 +146,13 @@ std::vector<std::pair<T, uint64_t>> AbstractHistogram<T>::_sort_value_counts(
 
 template <typename T>
 std::vector<std::pair<T, uint64_t>> AbstractHistogram<T>::_calculate_value_counts(
-    const std::shared_ptr<const BaseColumn>& column) {
-  // TODO(anyone): reserve size based on dictionary, if possible
+    const std::shared_ptr<const BaseSegment>& segment) {
   std::unordered_map<T, uint64_t> value_counts;
-  // TODO(tim): incorporate null values
-  uint64_t nulls = 0;
 
-  resolve_column_type<T>(*column, [&](auto& typed_column) {
-    auto iterable = create_iterable_from_column<T>(typed_column);
+  resolve_segment_type<T>(*segment, [&](auto& typed_segment) {
+    auto iterable = create_iterable_from_segment<T>(typed_segment);
     iterable.for_each([&](const auto& value) {
-      if (value.is_null()) {
-        nulls++;
-      } else {
+      if (!value.is_null()) {
         value_counts[value.value()]++;
       }
     });

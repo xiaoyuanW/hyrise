@@ -27,8 +27,8 @@ class EqualHeightHistogram : public AbstractHistogram<T> {
                        const std::string& min, const uint64_t total_count, const std::string& supported_characters,
                        const uint64_t string_prefix_length);
 
-  static std::shared_ptr<EqualHeightHistogram<T>> from_column(
-      const std::shared_ptr<const BaseColumn>& column, const size_t max_num_bins,
+  static std::shared_ptr<EqualHeightHistogram<T>> from_segment(
+      const std::shared_ptr<const BaseSegment>& segment, const size_t max_num_bins,
       const std::optional<std::string>& supported_characters = std::nullopt,
       const std::optional<uint64_t>& string_prefix_length = std::nullopt);
 

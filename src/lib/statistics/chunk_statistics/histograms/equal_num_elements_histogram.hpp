@@ -29,8 +29,8 @@ class EqualNumElementsHistogram : public AbstractHistogram<T> {
                             const uint64_t num_bins_with_extra_value, const std::string& supported_characters,
                             const uint64_t string_prefix_length);
 
-  static std::shared_ptr<EqualNumElementsHistogram<T>> from_column(
-      const std::shared_ptr<const BaseColumn>& column, const size_t max_num_bins,
+  static std::shared_ptr<EqualNumElementsHistogram<T>> from_segment(
+      const std::shared_ptr<const BaseSegment>& segment, const size_t max_num_bins,
       const std::optional<std::string>& supported_characters = std::nullopt,
       const std::optional<uint64_t>& string_prefix_length = std::nullopt);
 

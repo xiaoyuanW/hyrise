@@ -25,8 +25,8 @@ class EqualHeightHistogramTest : public BaseTest {
 };
 
 TEST_F(EqualHeightHistogramTest, Basic) {
-  auto hist = EqualHeightHistogram<int32_t>::from_column(
-      _expected_join_result_1->get_chunk(ChunkID{0})->get_column(ColumnID{1}), 4u);
+  auto hist = EqualHeightHistogram<int32_t>::from_segment(
+      _expected_join_result_1->get_chunk(ChunkID{0})->get_segment(ColumnID{1}), 4u);
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, 0));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 0), 0.f);
 
@@ -65,8 +65,8 @@ TEST_F(EqualHeightHistogramTest, Basic) {
 }
 
 TEST_F(EqualHeightHistogramTest, UnevenBins) {
-  auto hist = EqualHeightHistogram<int32_t>::from_column(
-      _expected_join_result_1->get_chunk(ChunkID{0})->get_column(ColumnID{1}), 5u);
+  auto hist = EqualHeightHistogram<int32_t>::from_segment(
+      _expected_join_result_1->get_chunk(ChunkID{0})->get_segment(ColumnID{1}), 5u);
 
   // Even though we requested five bins we will only get four because of the value distribution.
   // This has consequences for the cardinality estimation,
@@ -120,7 +120,7 @@ TEST_F(EqualHeightHistogramTest, UnevenBins) {
 }
 
 TEST_F(EqualHeightHistogramTest, Float) {
-  auto hist = EqualHeightHistogram<float>::from_column(_float2->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 4u);
+  auto hist = EqualHeightHistogram<float>::from_segment(_float2->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 4u);
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, 0.4f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 0.4f), 0.f);
@@ -179,7 +179,7 @@ TEST_F(EqualHeightHistogramTest, Float) {
 
 TEST_F(EqualHeightHistogramTest, LessThan) {
   auto hist =
-      EqualHeightHistogram<int32_t>::from_column(_int_float4->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 3u);
+      EqualHeightHistogram<int32_t>::from_segment(_int_float4->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 3u);
 
   // Even though we requested three bins we will only get two because of the value distribution.
   // This has consequences for the cardinality estimation,
@@ -215,7 +215,7 @@ TEST_F(EqualHeightHistogramTest, LessThan) {
 }
 
 TEST_F(EqualHeightHistogramTest, FloatLessThan) {
-  auto hist = EqualHeightHistogram<float>::from_column(_float2->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 3u);
+  auto hist = EqualHeightHistogram<float>::from_segment(_float2->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 3u);
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{0.5f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 0.5f), 0.f);
@@ -264,8 +264,8 @@ TEST_F(EqualHeightHistogramTest, FloatLessThan) {
 }
 
 TEST_F(EqualHeightHistogramTest, StringLessThan) {
-  auto hist = EqualHeightHistogram<std::string>::from_column(_string3->get_chunk(ChunkID{0})->get_column(ColumnID{0}),
-                                                             4u, "abcdefghijklmnopqrstuvwxyz", 4u);
+  auto hist = EqualHeightHistogram<std::string>::from_segment(_string3->get_chunk(ChunkID{0})->get_segment(ColumnID{0}),
+                                                              4u, "abcdefghijklmnopqrstuvwxyz", 4u);
 
   // The lower bin edges are the next value after the upper edge of the previous bin.
   // The reason is that in EqualHeightHistograms the upper bin edges are taken as existing in the columns
@@ -510,8 +510,8 @@ TEST_F(EqualHeightHistogramTest, StringLessThan) {
 }
 
 TEST_F(EqualHeightHistogramTest, StringLikePrefix) {
-  auto hist = EqualHeightHistogram<std::string>::from_column(_string3->get_chunk(ChunkID{0})->get_column(ColumnID{0}),
-                                                             4u, "abcdefghijklmnopqrstuvwxyz", 4u);
+  auto hist = EqualHeightHistogram<std::string>::from_segment(_string3->get_chunk(ChunkID{0})->get_segment(ColumnID{0}),
+                                                              4u, "abcdefghijklmnopqrstuvwxyz", 4u);
 
   // First bin: [abcd, efgh], so everything before is prunable.
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Like, "a"));
@@ -583,8 +583,8 @@ TEST_F(EqualHeightHistogramTest, StringCommonPrefix) {
    * However, all of the strings start with a common prefix ('aaaa').
    * In this test, we make sure that the calculation strips the common prefix within buckets and works as expected.
    */
-  auto hist = EqualHeightHistogram<std::string>::from_column(
-      _string_with_prefix->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 3u, "abcdefghijklmnopqrstuvwxyz", 4u);
+  auto hist = EqualHeightHistogram<std::string>::from_segment(
+      _string_with_prefix->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 3u, "abcdefghijklmnopqrstuvwxyz", 4u);
 
   constexpr auto bin_count = 4.f;
 

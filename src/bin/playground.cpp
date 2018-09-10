@@ -17,7 +17,7 @@
 #include "statistics/chunk_statistics/histograms/equal_height_histogram.hpp"
 #include "statistics/chunk_statistics/histograms/equal_num_elements_histogram.hpp"
 #include "statistics/chunk_statistics/histograms/equal_width_histogram.hpp"
-#include "storage/create_iterable_from_column.hpp"
+#include "storage/create_iterable_from_segment.hpp"
 #include "storage/table.hpp"
 #include "utils/filesystem.hpp"
 #include "utils/load_table.hpp"
@@ -330,7 +330,7 @@ std::vector<std::pair<T, uint64_t>> calculate_value_counts(const std::shared_ptr
   std::unordered_map<T, uint64_t> value_counts;
 
   resolve_column_type<T>(*column, [&](auto& typed_column) {
-    auto iterable = create_iterable_from_column<T>(typed_column);
+    auto iterable = create_iterable_from_segment<T>(typed_column);
     iterable.for_each([&](const auto& value) {
       if (!value.is_null()) {
         value_counts[value.value()]++;
@@ -356,7 +356,7 @@ get_row_count_for_filters(const std::shared_ptr<Table>& table, const ColumnID co
   resolve_data_type(table->column_data_types()[column_id], [&](auto type) {
     using T = typename decltype(type)::type;
 
-    const auto value_counts = calculate_value_counts<T>(table->get_chunk(ChunkID{0})->get_column(column_id));
+    const auto value_counts = calculate_value_counts<T>(table->get_chunk(ChunkID{0})->get_segment(column_id));
 
     for (const auto& filter : filters) {
       const auto value = std::get<2>(filter);
@@ -398,7 +398,7 @@ std::unordered_set<T> get_distinct_values(const std::shared_ptr<const BaseColumn
   std::unordered_set<T> distinct_values;
 
   resolve_column_type<T>(*column, [&](auto& typed_column) {
-    auto iterable = create_iterable_from_column<T>(typed_column);
+    auto iterable = create_iterable_from_segment<T>(typed_column);
     iterable.for_each([&](const auto& value) {
       if (!value.is_null()) {
         distinct_values.insert(value.value());
@@ -418,7 +418,7 @@ std::vector<std::tuple<ColumnID, PredicateCondition, AllTypeVariant>> generate_f
 
   resolve_data_type(table->column_data_types()[column_id], [&](auto type) {
     using T = typename decltype(type)::type;
-    const auto distinct_values = get_distinct_values<T>(table->get_chunk(ChunkID{0})->get_column(column_id));
+    const auto distinct_values = get_distinct_values<T>(table->get_chunk(ChunkID{0})->get_segment(column_id));
 
     auto i = 0u;
     for (const auto& v : distinct_values) {
@@ -503,7 +503,7 @@ int main() {
         start = std::chrono::high_resolution_clock::now();
 
         const auto equal_height_hist =
-            EqualHeightHistogram<T>::from_column(table->get_chunk(ChunkID{0})->get_column(column_id), num_bins);
+            EqualHeightHistogram<T>::from_segment(table->get_chunk(ChunkID{0})->get_segment(column_id), num_bins);
 
         end = std::chrono::high_resolution_clock::now();
         std::cout << "done (" << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "µs)."
@@ -514,7 +514,7 @@ int main() {
         start = std::chrono::high_resolution_clock::now();
 
         const auto equal_num_elements_hist =
-            EqualNumElementsHistogram<T>::from_column(table->get_chunk(ChunkID{0})->get_column(column_id), num_bins);
+            EqualNumElementsHistogram<T>::from_segment(table->get_chunk(ChunkID{0})->get_segment(column_id), num_bins);
 
         end = std::chrono::high_resolution_clock::now();
         std::cout << "done (" << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "µs)."
@@ -525,7 +525,7 @@ int main() {
         start = std::chrono::high_resolution_clock::now();
 
         const auto equal_width_hist =
-            EqualWidthHistogram<T>::from_column(table->get_chunk(ChunkID{0})->get_column(column_id), num_bins);
+            EqualWidthHistogram<T>::from_segment(table->get_chunk(ChunkID{0})->get_segment(column_id), num_bins);
 
         end = std::chrono::high_resolution_clock::now();
         std::cout << "done (" << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "µs)."

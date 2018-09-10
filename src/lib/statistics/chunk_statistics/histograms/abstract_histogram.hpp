@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "statistics/chunk_statistics/abstract_filter.hpp"
-#include "storage/value_column.hpp"
+#include "storage/base_segment.hpp"
 #include "types.hpp"
 
 namespace opossum {
@@ -50,7 +50,7 @@ class AbstractHistogram : public AbstractFilter {
   virtual uint64_t total_count_distinct() const = 0;
 
  protected:
-  static std::vector<std::pair<T, uint64_t>> _calculate_value_counts(const std::shared_ptr<const BaseColumn>& column);
+  static std::vector<std::pair<T, uint64_t>> _calculate_value_counts(const std::shared_ptr<const BaseSegment>& segment);
   static std::vector<std::pair<T, uint64_t>> _sort_value_counts(const std::unordered_map<T, uint64_t>& value_counts);
   static std::pair<std::string, uint64_t> _get_or_check_prefix_settings(
       const std::optional<std::string>& supported_characters = std::nullopt,

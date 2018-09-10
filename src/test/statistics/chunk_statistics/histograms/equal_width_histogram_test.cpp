@@ -25,7 +25,8 @@ class EqualWidthHistogramTest : public BaseTest {
 };
 
 TEST_F(EqualWidthHistogramTest, Basic) {
-  auto hist = EqualWidthHistogram<int32_t>::from_column(_int_int4->get_chunk(ChunkID{0})->get_column(ColumnID{1}), 6u);
+  auto hist =
+      EqualWidthHistogram<int32_t>::from_segment(_int_int4->get_chunk(ChunkID{0})->get_segment(ColumnID{1}), 6u);
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, -1));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, -1), 0.f);
@@ -74,7 +75,8 @@ TEST_F(EqualWidthHistogramTest, Basic) {
 }
 
 TEST_F(EqualWidthHistogramTest, UnevenBins) {
-  auto hist = EqualWidthHistogram<int32_t>::from_column(_int_int4->get_chunk(ChunkID{0})->get_column(ColumnID{1}), 4u);
+  auto hist =
+      EqualWidthHistogram<int32_t>::from_segment(_int_int4->get_chunk(ChunkID{0})->get_segment(ColumnID{1}), 4u);
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, -1));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, -1), 0.f);
@@ -133,7 +135,7 @@ TEST_F(EqualWidthHistogramTest, UnevenBins) {
 
 TEST_F(EqualWidthHistogramTest, MoreBinsThanDistinctValuesIntEquals) {
   auto hist =
-      EqualWidthHistogram<int32_t>::from_column(_int_float4->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 10u);
+      EqualWidthHistogram<int32_t>::from_segment(_int_float4->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 10u);
   EXPECT_EQ(hist->num_bins(), 10u);
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, 11));
@@ -181,7 +183,7 @@ TEST_F(EqualWidthHistogramTest, MoreBinsThanDistinctValuesIntEquals) {
 
 TEST_F(EqualWidthHistogramTest, MoreBinsThanDistinctValuesIntLessThan) {
   auto hist =
-      EqualWidthHistogram<int32_t>::from_column(_int_float4->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 10u);
+      EqualWidthHistogram<int32_t>::from_segment(_int_float4->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 10u);
   EXPECT_EQ(hist->num_bins(), 10u);
 
   constexpr auto hist_min = 12;
@@ -246,7 +248,8 @@ TEST_F(EqualWidthHistogramTest, MoreBinsThanDistinctValuesIntLessThan) {
 }
 
 TEST_F(EqualWidthHistogramTest, MoreBinsThanRepresentableValues) {
-  auto hist = EqualWidthHistogram<int32_t>::from_column(_int_int4->get_chunk(ChunkID{0})->get_column(ColumnID{1}), 19u);
+  auto hist =
+      EqualWidthHistogram<int32_t>::from_segment(_int_int4->get_chunk(ChunkID{0})->get_segment(ColumnID{1}), 19u);
   // There must not be more bins than representable values in the column domain.
   EXPECT_EQ(hist->num_bins(), 17 - 0 + 1);
 
@@ -336,7 +339,7 @@ TEST_F(EqualWidthHistogramTest, MoreBinsThanRepresentableValues) {
 }
 
 TEST_F(EqualWidthHistogramTest, Float) {
-  auto hist = EqualWidthHistogram<float>::from_column(_float2->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 4u);
+  auto hist = EqualWidthHistogram<float>::from_segment(_float2->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 4u);
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, 0.4f));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 0.4f), 0.f);
@@ -401,7 +404,7 @@ TEST_F(EqualWidthHistogramTest, Float) {
 
 TEST_F(EqualWidthHistogramTest, LessThan) {
   auto hist =
-      EqualWidthHistogram<int32_t>::from_column(_int_float4->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 3u);
+      EqualWidthHistogram<int32_t>::from_segment(_int_float4->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 3u);
 
   // The first bin's range is one value wider (because (123'456 - 12 + 1) % 3 = 1).
   const auto bin_width = (123'456 - 12 + 1) / 3;
@@ -435,7 +438,7 @@ TEST_F(EqualWidthHistogramTest, LessThan) {
 }
 
 TEST_F(EqualWidthHistogramTest, FloatLessThan) {
-  auto hist = EqualWidthHistogram<float>::from_column(_float2->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 3u);
+  auto hist = EqualWidthHistogram<float>::from_segment(_float2->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 3u);
 
   const auto bin_width = std::nextafter(6.1f - 0.5f, 6.1f - 0.5f + 1) / 3;
 
@@ -494,8 +497,8 @@ TEST_F(EqualWidthHistogramTest, FloatLessThan) {
 }
 
 TEST_F(EqualWidthHistogramTest, StringLessThan) {
-  auto hist = EqualWidthHistogram<std::string>::from_column(_string3->get_chunk(ChunkID{0})->get_column(ColumnID{0}),
-                                                            4u, "abcdefghijklmnopqrstuvwxyz", 4u);
+  auto hist = EqualWidthHistogram<std::string>::from_segment(_string3->get_chunk(ChunkID{0})->get_segment(ColumnID{0}),
+                                                             4u, "abcdefghijklmnopqrstuvwxyz", 4u);
 
   // "abcd"
   const auto hist_lower = 0 * (ipow(26, 3) + ipow(26, 2) + ipow(26, 1) + ipow(26, 0)) + 1 +
@@ -714,8 +717,8 @@ TEST_F(EqualWidthHistogramTest, StringLessThan) {
 }
 
 TEST_F(EqualWidthHistogramTest, StringLikePrefix) {
-  auto hist = EqualWidthHistogram<std::string>::from_column(_string3->get_chunk(ChunkID{0})->get_column(ColumnID{0}),
-                                                            4u, "abcdefghijklmnopqrstuvwxyz", 4u);
+  auto hist = EqualWidthHistogram<std::string>::from_segment(_string3->get_chunk(ChunkID{0})->get_segment(ColumnID{0}),
+                                                             4u, "abcdefghijklmnopqrstuvwxyz", 4u);
   // First bin: [abcd, ghbp], so everything before is prunable.
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Like, "a"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Like, "a"), 0.f);
@@ -783,7 +786,7 @@ TEST_F(EqualWidthHistogramTest, StringLikePrefix) {
 TEST_F(EqualWidthHistogramTest, IntBetweenPruning) {
   // One bin for each value between min and max.
   const auto hist =
-      EqualWidthHistogram<int32_t>::from_column(this->_int_int4->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 19u);
+      EqualWidthHistogram<int32_t>::from_segment(this->_int_int4->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 19u);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Between, AllTypeVariant{0}, AllTypeVariant{0}));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Between, AllTypeVariant{0}, AllTypeVariant{1}));
@@ -800,8 +803,8 @@ TEST_F(EqualWidthHistogramTest, StringCommonPrefix) {
    * However, all of the strings in one bin start with a common prefix.
    * In this test, we make sure that the calculation strips the common prefix within buckets and works as expected.
    */
-  auto hist = EqualWidthHistogram<std::string>::from_column(
-      _string_with_prefix->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 3u, "abcdefghijklmnopqrstuvwxyz", 4u);
+  auto hist = EqualWidthHistogram<std::string>::from_segment(
+      _string_with_prefix->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 3u, "abcdefghijklmnopqrstuvwxyz", 4u);
 
   // We can only calculate bin edges for width-balanced histograms based on the prefix length.
   // In this case, the common prefix of all values is the prefix length, so there is only one bin.

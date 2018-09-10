@@ -22,7 +22,7 @@ using HistogramIntTypes =
 TYPED_TEST_CASE(AbstractHistogramIntTest, HistogramIntTypes);
 
 TYPED_TEST(AbstractHistogramIntTest, EqualsPruning) {
-  const auto hist = TypeParam::from_column(this->_int_float4->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 2u);
+  const auto hist = TypeParam::from_segment(this->_int_float4->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 2u);
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{0}));
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, AllTypeVariant{11}));
@@ -35,7 +35,7 @@ TYPED_TEST(AbstractHistogramIntTest, EqualsPruning) {
 }
 
 TYPED_TEST(AbstractHistogramIntTest, LessThanPruning) {
-  const auto hist = TypeParam::from_column(this->_int_float4->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 2u);
+  const auto hist = TypeParam::from_segment(this->_int_float4->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 2u);
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{0}));
   EXPECT_TRUE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{12}));
@@ -45,7 +45,7 @@ TYPED_TEST(AbstractHistogramIntTest, LessThanPruning) {
 }
 
 TYPED_TEST(AbstractHistogramIntTest, LessThanEqualsPruning) {
-  const auto hist = TypeParam::from_column(this->_int_float4->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 2u);
+  const auto hist = TypeParam::from_segment(this->_int_float4->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 2u);
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::LessThanEquals, AllTypeVariant{0}));
   EXPECT_TRUE(hist->can_prune(PredicateCondition::LessThanEquals, AllTypeVariant{11}));
@@ -55,7 +55,7 @@ TYPED_TEST(AbstractHistogramIntTest, LessThanEqualsPruning) {
 }
 
 TYPED_TEST(AbstractHistogramIntTest, GreaterThanEqualsPruning) {
-  const auto hist = TypeParam::from_column(this->_int_float4->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 2u);
+  const auto hist = TypeParam::from_segment(this->_int_float4->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 2u);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::GreaterThanEquals, AllTypeVariant{0}));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::GreaterThanEquals, AllTypeVariant{123'456}));
@@ -65,7 +65,7 @@ TYPED_TEST(AbstractHistogramIntTest, GreaterThanEqualsPruning) {
 }
 
 TYPED_TEST(AbstractHistogramIntTest, GreaterThanPruning) {
-  const auto hist = TypeParam::from_column(this->_int_float4->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 2u);
+  const auto hist = TypeParam::from_segment(this->_int_float4->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 2u);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::GreaterThan, AllTypeVariant{0}));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::GreaterThan, AllTypeVariant{123'455}));
@@ -75,7 +75,7 @@ TYPED_TEST(AbstractHistogramIntTest, GreaterThanPruning) {
 }
 
 TYPED_TEST(AbstractHistogramIntTest, BetweenPruning) {
-  const auto hist = TypeParam::from_column(this->_int_float4->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 2u);
+  const auto hist = TypeParam::from_segment(this->_int_float4->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 2u);
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Between, AllTypeVariant{0}, AllTypeVariant{0}));
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Between, AllTypeVariant{0}, AllTypeVariant{11}));
@@ -107,7 +107,7 @@ TYPED_TEST(AbstractHistogramIntTest, BetweenPruning) {
 }
 
 TYPED_TEST(AbstractHistogramIntTest, CardinalityEstimationOutOfBounds) {
-  const auto hist = TypeParam::from_column(this->_int_float4->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 2u);
+  const auto hist = TypeParam::from_segment(this->_int_float4->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 2u);
   const auto total_count = this->_int_float4->row_count();
 
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Equals, 11), 0.f);
@@ -156,35 +156,35 @@ TYPED_TEST_CASE(AbstractHistogramStringTest, HistogramStringTypes);
 
 TYPED_TEST(AbstractHistogramStringTest, StringConstructorTests) {
   // Histogram checks prefix length for overflow.
-  EXPECT_NO_THROW(TypeParam::from_column(this->_string2->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 4u,
-                                         "abcdefghijklmnopqrstuvwxyz", 13u));
-  EXPECT_THROW(TypeParam::from_column(this->_string2->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 4u,
-                                      "abcdefghijklmnopqrstuvwxyz", 14u),
+  EXPECT_NO_THROW(TypeParam::from_segment(this->_string2->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 4u,
+                                          "abcdefghijklmnopqrstuvwxyz", 13u));
+  EXPECT_THROW(TypeParam::from_segment(this->_string2->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 4u,
+                                       "abcdefghijklmnopqrstuvwxyz", 14u),
                std::exception);
 
   // Histogram rejects unsorted character ranges.
-  EXPECT_THROW(TypeParam::from_column(this->_string2->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 4u,
-                                      "zyxwvutsrqponmlkjihgfedcba", 13u),
+  EXPECT_THROW(TypeParam::from_segment(this->_string2->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 4u,
+                                       "zyxwvutsrqponmlkjihgfedcba", 13u),
                std::exception);
 
   // Histogram does not support non-consecutive supported characters.
-  EXPECT_THROW(TypeParam::from_column(this->_string2->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 4u, "ac", 10u),
+  EXPECT_THROW(TypeParam::from_segment(this->_string2->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 4u, "ac", 10u),
                std::exception);
 }
 
 TYPED_TEST(AbstractHistogramStringTest, GenerateHistogramUnsupportedCharacters) {
   // Generation should fail if we remove 'z' from the list of supported characters,
   // because it appears in the column.
-  EXPECT_NO_THROW(TypeParam::from_column(this->_string3->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 4u,
-                                         "abcdefghijklmnopqrstuvwxyz", 4u));
-  EXPECT_THROW(TypeParam::from_column(this->_string3->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 4u,
-                                      "abcdefghijklmnopqrstuvwxy", 4u),
+  EXPECT_NO_THROW(TypeParam::from_segment(this->_string3->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 4u,
+                                          "abcdefghijklmnopqrstuvwxyz", 4u));
+  EXPECT_THROW(TypeParam::from_segment(this->_string3->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 4u,
+                                       "abcdefghijklmnopqrstuvwxy", 4u),
                std::exception);
 }
 
 TYPED_TEST(AbstractHistogramStringTest, EstimateCardinalityUnsupportedCharacters) {
-  auto hist = TypeParam::from_column(this->_string2->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 4u,
-                                     "abcdefghijklmnopqrstuvwxyz", 4u);
+  auto hist = TypeParam::from_segment(this->_string2->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 4u,
+                                      "abcdefghijklmnopqrstuvwxyz", 4u);
 
   EXPECT_NO_THROW(hist->estimate_cardinality(PredicateCondition::Equals, "abcd"));
 
@@ -199,8 +199,8 @@ TYPED_TEST(AbstractHistogramStringTest, EstimateCardinalityUnsupportedCharacters
 }
 
 TYPED_TEST(AbstractHistogramStringTest, BinEdgePruning) {
-  auto hist = TypeParam::from_column(this->_string3->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 4u,
-                                     "abcdefghijklmnopqrstuvwxyz", 4u);
+  auto hist = TypeParam::from_segment(this->_string3->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 4u,
+                                      "abcdefghijklmnopqrstuvwxyz", 4u);
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Equals, "abc"));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Equals, "abcd"));
@@ -229,8 +229,8 @@ TYPED_TEST(AbstractHistogramStringTest, BinEdgePruning) {
 }
 
 TYPED_TEST(AbstractHistogramStringTest, LikePruning) {
-  auto hist = TypeParam::from_column(this->_string3->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 4u,
-                                     "abcdefghijklmnopqrstuvwxyz", 4u);
+  auto hist = TypeParam::from_segment(this->_string3->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 4u,
+                                      "abcdefghijklmnopqrstuvwxyz", 4u);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Like, "%"));
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Like, "%a"));
@@ -244,8 +244,8 @@ TYPED_TEST(AbstractHistogramStringTest, LikePruning) {
 }
 
 TYPED_TEST(AbstractHistogramStringTest, NotLikePruning) {
-  auto hist = TypeParam::from_column(this->_string3->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 4u,
-                                     "abcdefghijklmnopqrstuvwxyz", 4u);
+  auto hist = TypeParam::from_segment(this->_string3->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 4u,
+                                      "abcdefghijklmnopqrstuvwxyz", 4u);
   EXPECT_TRUE(hist->can_prune(PredicateCondition::NotLike, "%"));
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::NotLike, "%a"));
@@ -259,8 +259,9 @@ TYPED_TEST(AbstractHistogramStringTest, NotLikePruning) {
 }
 
 TYPED_TEST(AbstractHistogramStringTest, NotLikePruningSpecial) {
-  auto hist = TypeParam::from_column(this->_int_string_like_containing2->get_chunk(ChunkID{0})->get_column(ColumnID{1}),
-                                     3u, "abcdefghijklmnopqrstuvwxyz", 4u);
+  auto hist =
+      TypeParam::from_segment(this->_int_string_like_containing2->get_chunk(ChunkID{0})->get_segment(ColumnID{1}), 3u,
+                              "abcdefghijklmnopqrstuvwxyz", 4u);
   EXPECT_TRUE(hist->can_prune(PredicateCondition::NotLike, "d%"));
   EXPECT_TRUE(hist->can_prune(PredicateCondition::NotLike, "da%"));
   EXPECT_TRUE(hist->can_prune(PredicateCondition::NotLike, "dam%"));
@@ -274,8 +275,8 @@ TYPED_TEST(AbstractHistogramStringTest, NotLikePruningSpecial) {
 }
 
 TYPED_TEST(AbstractHistogramStringTest, EstimateCardinalityForStringsLongerThanPrefix) {
-  auto hist = TypeParam::from_column(this->_string3->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 4u,
-                                     "abcdefghijklmnopqrstuvwxyz", 4u);
+  auto hist = TypeParam::from_segment(this->_string3->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 4u,
+                                      "abcdefghijklmnopqrstuvwxyz", 4u);
 
   // The estimated cardinality depends on the type of the histogram.
   // What we want to test here is only that estimating cardinalities for strings longer than the prefix length works
@@ -290,8 +291,8 @@ TYPED_TEST(AbstractHistogramStringTest, EstimateCardinalityForStringsLongerThanP
 }
 
 TYPED_TEST(AbstractHistogramStringTest, EstimateCardinalityLike) {
-  auto hist = TypeParam::from_column(this->_string3->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 4u,
-                                     "abcdefghijklmnopqrstuvwxyz", 4u);
+  auto hist = TypeParam::from_segment(this->_string3->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 4u,
+                                      "abcdefghijklmnopqrstuvwxyz", 4u);
   const float total_count = this->_string3->row_count();
 
   EXPECT_EQ(hist->estimate_cardinality(PredicateCondition::Like, "%"), total_count);
