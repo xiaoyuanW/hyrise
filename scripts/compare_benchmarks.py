@@ -79,7 +79,7 @@ for old, new in zip(old_data['benchmarks'], new_data['benchmarks']):
 		new_spez, new_exec, new_total = combine_operators(new['operators'])
 		diff_spez = format_diff(float(new_spez) / float(old_spez) - 1, True) if old_spez != 0 else ''
 		diff_exec = format_diff(float(new_exec) / float(old_exec) - 1, True) if old_exec != 0 else ''
-		row += [old_spez, new_spez, old_exec, new_exec, "{0:.0%}".format(float(old_spez) / old_total), "{0:.0%}".format(float(new_spez) / new_total), diff_spez, diff_exec]
+		row += ["{:,}".format(old_spez), "{:,}".format(new_spez), "{:,}".format(old_exec), "{:,}".format(new_exec), "{0:.0%}".format(float(old_spez) / old_total), "{0:.0%}".format(float(new_spez) / new_total), diff_spez, diff_exec]
 
 	table_data.append(row)
 

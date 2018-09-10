@@ -21,8 +21,8 @@ with open(sys.argv[1]) as old_file:
 with open(sys.argv[2]) as new_file:
     new_data = json.load(new_file)
 
-table = BeautifulTable(default_alignment = BeautifulTable.ALIGN_LEFT)
-table.column_headers = ["Benchmark", "prev. iter/s", "new iter/s", "change"]
+table = BeautifulTable(default_alignment = BeautifulTable.ALIGN_RIGHT)
+table.column_headers = ["Benchmark", "prev. iter/s", "prev. runt", "new iter/s", "new runt", "change"]
 table.row_separator_char = ''
 table.top_border_char = ''
 table.bottom_border_char = ''
@@ -38,9 +38,9 @@ for old, new in zip(old_data['benchmarks'], new_data['benchmarks']):
 	diff = float(new['items_per_second']) / float(old['items_per_second']) - 1
 	average_diff_sum += diff
 	diff_formatted = format_diff(diff)
-	table.append_row([old['name'], str(old['items_per_second']), str(new['items_per_second']), diff_formatted])
+	table.append_row([old['name'], str(old['items_per_second']), "%.6f" % (1 / float(old['items_per_second'])), str(new['items_per_second']), "%.6f" % (1 / float(new['items_per_second'])), diff_formatted])
 
-table.append_row(['average', '', '', format_diff(average_diff_sum / len(old_data['benchmarks']))])
+table.append_row(['average', '', '', '', '', format_diff(average_diff_sum / len(old_data['benchmarks']))])
 
 print("")
 print(table)
