@@ -4,6 +4,7 @@
 #include "statistics/chunk_statistics/histograms/equal_height_histogram.hpp"
 #include "statistics/chunk_statistics/histograms/equal_num_elements_histogram.hpp"
 #include "statistics/chunk_statistics/histograms/equal_width_histogram.hpp"
+#include "statistics/chunk_statistics/histograms/histogram_utils.hpp"
 #include "utils/load_table.hpp"
 
 namespace opossum {
@@ -272,7 +273,7 @@ TYPED_TEST(AbstractHistogramStringTest, NotLikePruningSpecial) {
   EXPECT_FALSE(hist->can_prune(PredicateCondition::NotLike, "e%"));
 }
 
-TYPED_TEST(AbstractHistogramStringTest, EstimatingCardinalitiesForStringsLongerThanPrefix) {
+TYPED_TEST(AbstractHistogramStringTest, EstimateCardinalityForStringsLongerThanPrefix) {
   auto hist = TypeParam::from_column(this->_string3->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 4u,
                                      "abcdefghijklmnopqrstuvwxyz", 4u);
 
@@ -286,6 +287,23 @@ TYPED_TEST(AbstractHistogramStringTest, EstimatingCardinalitiesForStringsLongerT
             hist->estimate_cardinality(PredicateCondition::GreaterThan, "bbbbz"));
   EXPECT_EQ(hist->estimate_cardinality(PredicateCondition::GreaterThan, "bbbb"),
             hist->estimate_cardinality(PredicateCondition::GreaterThan, "bbbbzzzzzzzzz"));
+}
+
+TYPED_TEST(AbstractHistogramStringTest, EstimateCardinalityLike) {
+  auto hist = TypeParam::from_column(this->_string3->get_chunk(ChunkID{0})->get_column(ColumnID{0}), 4u,
+                                     "abcdefghijklmnopqrstuvwxyz", 4u);
+  const float total_count = this->_string3->row_count();
+
+  EXPECT_EQ(hist->estimate_cardinality(PredicateCondition::Like, "%"), total_count);
+  EXPECT_EQ(hist->estimate_cardinality(PredicateCondition::NotLike, "%"), 0.f);
+
+  EXPECT_EQ(hist->estimate_cardinality(PredicateCondition::Like, "%a"), total_count / ipow(26, 1));
+  EXPECT_EQ(hist->estimate_cardinality(PredicateCondition::Like, "%a%"), total_count / ipow(26, 1));
+  EXPECT_EQ(hist->estimate_cardinality(PredicateCondition::Like, "%a%b"), total_count / ipow(26, 2));
+  EXPECT_EQ(hist->estimate_cardinality(PredicateCondition::Like, "foo%bar"),
+            hist->estimate_cardinality(PredicateCondition::Like, "foo%") / ipow(26, 3));
+  EXPECT_EQ(hist->estimate_cardinality(PredicateCondition::Like, "foo%bar%"),
+            hist->estimate_cardinality(PredicateCondition::Like, "foo%") / ipow(26, 3));
 }
 
 }  // namespace opossum

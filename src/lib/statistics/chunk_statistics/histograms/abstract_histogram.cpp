@@ -395,9 +395,6 @@ bool AbstractHistogram<std::string>::can_prune(const PredicateCondition predicat
         return can_prune(PredicateCondition::Equals, value);
       }
 
-      // TODO(tim): think about ways to deal with things like "foo%bar", possibly ignore everything after first '%'.
-      // Work with the non-trimmed version here to not accidentally strip special characters (e.g. '%').
-
       // If the pattern starts with a MatchAll, we can not prune it.
       if (value.front() == '%') {
         return false;
@@ -412,12 +409,11 @@ bool AbstractHistogram<std::string>::can_prune(const PredicateCondition predicat
        *
        * With the same argument we can also prune predicates in the form of 'c%foo',
        * where foo can be any pattern itself.
-       * We only have to consider the pattern up to the first MatchAll character.
+       * We only have to consider the pattern up to the first AnyChars wildcard.
        */
       const auto match_all_index = value.find('%');
       if (match_all_index != std::string::npos) {
-        const auto search_prefix =
-            value.substr(0, match_all_index > _string_prefix_length ? _string_prefix_length : match_all_index);
+        const auto search_prefix = value.substr(0, match_all_index);
         const auto upper_bound = next_value(search_prefix, _supported_characters, search_prefix.length());
         return can_prune(PredicateCondition::GreaterThanEquals, search_prefix) ||
                can_prune(PredicateCondition::LessThan, upper_bound) ||
@@ -574,46 +570,93 @@ float AbstractHistogram<std::string>::estimate_cardinality(const PredicateCondit
 
   switch (predicate_type) {
     case PredicateCondition::Like: {
-      // TODO(tim): think about ways to deal with single character searches (e.g. "foo_").
-      // TODO(tim): think about ways to deal with things like "foo%bar", possibly ignore everything after first '%'.
-      // This would obviously be rather drastic, but:
-      // - it's likely to perform better than a constant
-      // - will only overestimate the cardinality as compared to true prefix searches
-      // Work with the non-trimmed version here to not accidentally strip special characters (e.g. '%').
       if (!LikeMatcher::contains_wildcard(value)) {
         return estimate_cardinality(PredicateCondition::Equals, value);
       }
+
+      // We don't deal with this for now because it is not worth the effort.
+      // TODO(anyone): think about good way to handle SingleChar wildcard in patterns.
+      const auto single_char_count = std::count(value.cbegin(), value.cend(), '_');
+      if (single_char_count > 0u) {
+        return total_count();
+      }
+
+      const auto any_chars_count = std::count(value.cbegin(), value.cend(), '%');
+      DebugAssert(any_chars_count > 0u,
+                  "contains_wildcard() should not return true if there is neither a '%' nor a '_' in the string.");
 
       // Match everything.
       if (value == "%") {
         return total_count();
       }
 
-      // Prefix search.
-      if (value.back() == '%' && std::count(value.begin(), value.end(), '%') == 1) {
-        // TODO(tim): refactor to BETWEEN and get rid of prefixing/substring
-        const auto search_prefix =
-            value.substr(0, value.length() - 1 > _string_prefix_length ? _string_prefix_length : value.length() - 1);
-        return estimate_cardinality(PredicateCondition::LessThan,
-                                    next_value(search_prefix, _supported_characters, search_prefix.length())) -
-               estimate_cardinality(PredicateCondition::LessThan, search_prefix);
+      if (value.front() != '%') {
+        /**
+         * We know now we have some sort of prefix search, because there is at least one AnyChars wildcard,
+         * and it is not at the start of the pattern.
+         *
+         * We differentiate two cases:
+         *  1. Simple prefix searches, e.g., 'foo%', where there is exactly one AnyChars wildcard in the pattern,
+         *  and it is at the end of the pattern.
+         *  2. All others, e.g., 'foo%bar' or 'foo%bar%'.
+         *
+         *  The way we handle these cases is we only estimate simple prefix patterns and assume uniform distribution
+         *  for additional fixed characters for the second case.
+         *  Note: this is obviously far from great because not only do characters not appear with equal probability,
+         *  they also appear with different probability depending on characters around them.
+         *  The combination 'ing' in English is far more likely than 'qzy'.
+         *  One improvement would be to have a frequency table for characters and take the probability from there,
+         *  but it only gets you so far. It does not help with the second property.
+         *  Nevertheless, it could be helpful especially if the number of actually occuring characters in a column are
+         *  small compared to the supported characters and the frequency table would be not static but built during
+         *  histogram generation.
+         *  TODO(anyone): look into that in more detail.
+         *
+         *  That is, to estimate the first case ('foo%'), we calculate
+         *  estimate_cardinality(LessThan, fop) - estimate_cardinaliy(LessThan, foo).
+         *  That covers all strings starting with foo.
+         *
+         *  In the second case we assume that all characters in _supported_characters are equally likely to appear in
+         *  a string, and therefore divide the above cardinality by the number of supported characters for each
+         *  additional character that is fixed in the string after the prefix.
+         *
+         *  Example for 'foo%bar%baz', if we only supported the 26 lowercase latin characters:
+         *  (estimate_cardinality(LessThan, fop) - estimate_cardinality(LessThan, foo)) / 26^6
+         *  There are six additional fixed characters in the string ('b', 'a', 'r', 'b', 'a', and 'z').
+         */
+        const auto search_prefix = value.substr(0, value.find('%'));
+        const auto additional_characters = value.length() - search_prefix.length() - any_chars_count;
+        return (estimate_cardinality(PredicateCondition::LessThan,
+                                     next_value(search_prefix, _supported_characters, search_prefix.length())) -
+                estimate_cardinality(PredicateCondition::LessThan, search_prefix)) /
+               ipow(_supported_characters.length(), additional_characters);
       }
 
-      // TODO(tim): Think of a possibly more meaningful default.
-      return total_count();
+      /**
+       * If we do not have a prefix search, but a suffix or contains search, the prefix histograms do not help us.
+       * We simply assume uniform distribution for all supported characters and divide the total number of rows
+       * by the number of supported characters for each additional character that is fixed (see comment above).
+       *
+       * Example for '%foo%b%a%', if we only supported the 26 lowercase latin characters:
+       * total_count() / 26^5
+       * There are five fixed characters in the string ('f', 'o', 'o', 'b', and 'a').
+       */
+      const auto fixed_characters = value.length() - any_chars_count;
+      return static_cast<float>(total_count()) / ipow(_supported_characters.length(), fixed_characters);
     }
     case PredicateCondition::NotLike: {
-      // TODO(tim): think about how to consistently use total_count() - estimate_cardinality(Like, value).
-      // Work with the non-trimmed version here to not accidentally strip special characters (e.g. '%').
       if (!LikeMatcher::contains_wildcard(value)) {
         return estimate_cardinality(PredicateCondition::NotEquals, value);
       }
 
-      if (value.back() == '%' && std::count(value.begin(), value.end(), '%') == 1) {
-        return total_count() - estimate_cardinality(PredicateCondition::Like, value);
+      // We don't deal with this for now because it is not worth the effort.
+      // TODO(anyone): think about good way to handle SingleChar wildcard in patterns.
+      const auto single_char_count = std::count(value.cbegin(), value.cend(), '_');
+      if (single_char_count > 0u) {
+        return total_count();
       }
 
-      return total_count();
+      return total_count() - estimate_cardinality(PredicateCondition::Like, value);
     }
     default:
       return _estimate_cardinality(predicate_type, value, value2);

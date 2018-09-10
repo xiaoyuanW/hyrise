@@ -731,9 +731,11 @@ TEST_F(EqualWidthHistogramTest, StringLikePrefix) {
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Like, "a%"));
   // Since there are no values smaller than "abcd", [abcd, azzz] is the range that "a%" covers.
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Like, "a%"),
-                  hist->estimate_cardinality(PredicateCondition::Between, "abcd", "azzz"));
+                  hist->estimate_cardinality(PredicateCondition::LessThan, "b") -
+                      hist->estimate_cardinality(PredicateCondition::LessThan, "a"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Like, "a%"),
-                  hist->estimate_cardinality(PredicateCondition::Between, "a", "azzz"));
+                  hist->estimate_cardinality(PredicateCondition::LessThan, "b") -
+                      hist->estimate_cardinality(PredicateCondition::LessThan, "abcd"));
 
   // No wildcard, no party.
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Like, "abcd"));
@@ -743,30 +745,36 @@ TEST_F(EqualWidthHistogramTest, StringLikePrefix) {
   // Classic cases for prefix search.
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Like, "ab%"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Like, "ab%"),
-                  hist->estimate_cardinality(PredicateCondition::Between, "ab", "abzz"));
+                  hist->estimate_cardinality(PredicateCondition::LessThan, "ac") -
+                      hist->estimate_cardinality(PredicateCondition::LessThan, "ab"));
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Like, "c%"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Like, "c%"),
-                  hist->estimate_cardinality(PredicateCondition::Between, "c", "czzz"));
+                  hist->estimate_cardinality(PredicateCondition::LessThan, "d") -
+                      hist->estimate_cardinality(PredicateCondition::LessThan, "c"));
 
-  // If the search prefix is longer than the prefix_length the search prefix will be trimmed and used as a "range".
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Like, "cfoobar%"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Like, "cfoobar%"),
-                  hist->estimate_cardinality(PredicateCondition::Between, "cfoo", "cfoo"));
+                  hist->estimate_cardinality(PredicateCondition::LessThan, "cfoobas") -
+                      hist->estimate_cardinality(PredicateCondition::LessThan, "cfoobar"));
 
-  // There are values matching "g%" in two bins, make sure both are included.
+  // There are values matching "g%" in two bins ([abcd, ghbp], [ghbpa, mnba]), make sure both are included.
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Like, "g%"));
-  EXPECT_GT(hist->estimate_cardinality(PredicateCondition::Like, "g%"),
-            hist->estimate_cardinality(PredicateCondition::Between, "g", "ghbp"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Like, "g%"),
-                  hist->estimate_cardinality(PredicateCondition::Between, "g", "gzzz"));
+                  hist->estimate_cardinality(PredicateCondition::LessThan, "h") -
+                      hist->estimate_cardinality(PredicateCondition::LessThan, "g"));
+  EXPECT_GT(hist->estimate_cardinality(PredicateCondition::Like, "g%"),
+            hist->estimate_cardinality(PredicateCondition::LessThan, "h") -
+                hist->estimate_cardinality(PredicateCondition::LessThan, "ghbp"));
 
   // Use upper bin boundary as range limit, since there are no other values starting with y in other bins.
   EXPECT_FALSE(hist->can_prune(PredicateCondition::Like, "y%"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Like, "y%"),
-                  hist->estimate_cardinality(PredicateCondition::Between, "y", "yyzz"));
+                  hist->estimate_cardinality(PredicateCondition::LessThan, "z") -
+                      hist->estimate_cardinality(PredicateCondition::LessThan, "y"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Like, "y%"),
-                  hist->estimate_cardinality(PredicateCondition::Between, "y", "yzzz"));
+                  hist->estimate_cardinality(PredicateCondition::LessThanEquals, "yyzz") -
+                      hist->estimate_cardinality(PredicateCondition::LessThan, "y"));
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::Like, "z%"));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::Like, "z%"), 0.f);
