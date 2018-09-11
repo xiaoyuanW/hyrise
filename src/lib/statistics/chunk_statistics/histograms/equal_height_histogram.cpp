@@ -24,7 +24,7 @@ EqualHeightHistogram<std::string>::EqualHeightHistogram(const std::vector<std::s
       _min(min),
       _total_count(total_count) {
   for (const auto& edge : maxs) {
-    Assert(edge.find_first_not_of(supported_characters) == std::string::npos, "Unsupported characters.");
+    DebugAssert(edge.find_first_not_of(supported_characters) == std::string::npos, "Unsupported characters.");
   }
 }
 
@@ -32,43 +32,33 @@ template <typename T>
 EqualHeightBinStats<T> EqualHeightHistogram<T>::_get_bin_stats(const std::vector<std::pair<T, uint64_t>>& value_counts,
                                                                const size_t max_num_bins) {
   const auto min = value_counts.front().first;
+  // If there are fewer distinct values than the number of desired bins use that instead.
   const auto num_bins = max_num_bins <= value_counts.size() ? max_num_bins : value_counts.size();
 
   // Bins shall have (approximately) the same height.
   const auto total_count = std::accumulate(value_counts.cbegin(), value_counts.cend(), uint64_t{0},
                                            [](uint64_t a, const std::pair<T, uint64_t>& b) { return a + b.second; });
-  auto count_per_bin = total_count / num_bins;
 
-  if (total_count % num_bins > 0u) {
-    // Make sure that we never create more bins than requested.
-    count_per_bin++;
-  }
+  // Make sure that we never create more bins than requested.
+  const auto count_per_bin = total_count / num_bins + (total_count % num_bins > 0u ? 1 : 0);
 
   std::vector<T> maxs;
   std::vector<uint64_t> distinct_counts;
   maxs.reserve(num_bins);
   distinct_counts.reserve(num_bins);
 
-  auto current_begin = 0u;
-  auto current_height = 0u;
-  for (auto current_end = 0u; current_end < value_counts.size(); current_end++) {
+  auto current_begin = 0ul;
+  auto current_height = 0ul;
+  for (auto current_end = 0ul; current_end < value_counts.size(); current_end++) {
     current_height += value_counts[current_end].second;
 
-    if (current_height >= count_per_bin) {
-      const auto current_value = value_counts[current_end].first;
-
-      maxs.emplace_back(current_value);
+    // Make sure to create last bin.
+    if (current_height >= count_per_bin || current_end == value_counts.size() - 1) {
+      maxs.emplace_back(value_counts[current_end].first);
       distinct_counts.emplace_back(current_end - current_begin + 1);
-      current_height = 0u;
+      current_height = 0ul;
       current_begin = current_end + 1;
     }
-  }
-
-  if (current_height > 0u) {
-    const auto current_value = value_counts.back().first;
-
-    maxs.emplace_back(current_value);
-    distinct_counts.emplace_back(value_counts.size() - current_begin);
   }
 
   return {maxs, distinct_counts, min, total_count};
@@ -131,13 +121,12 @@ BinID EqualHeightHistogram<T>::_bin_for_value(const T value) const {
 template <typename T>
 BinID EqualHeightHistogram<T>::_upper_bound_for_value(const T value) const {
   const auto it = std::upper_bound(_maxs.begin(), _maxs.end(), value);
-  const auto index = static_cast<BinID>(std::distance(_maxs.begin(), it));
 
   if (it == _maxs.end()) {
     return INVALID_BIN_ID;
   }
 
-  return index;
+  return static_cast<BinID>(std::distance(_maxs.begin(), it));
 }
 
 template <typename T>
@@ -149,6 +138,7 @@ T EqualHeightHistogram<T>::_bin_min(const BinID index) const {
     return _min;
   }
 
+  // Otherwise, return the next representable value of the previous bin's max.
   return this->get_next_value(this->_bin_max(index - 1));
 }
 
@@ -161,7 +151,6 @@ T EqualHeightHistogram<T>::_bin_max(const BinID index) const {
 template <typename T>
 uint64_t EqualHeightHistogram<T>::_bin_count(const BinID index) const {
   DebugAssert(index < this->num_bins(), "Index is not a valid bin.");
-  // Rather estimate more than less.
   return total_count() / num_bins() + (total_count() % num_bins() > 0 ? 1 : 0);
 }
 
@@ -178,7 +167,7 @@ uint64_t EqualHeightHistogram<T>::total_count() const {
 
 template <typename T>
 uint64_t EqualHeightHistogram<T>::total_count_distinct() const {
-  return std::accumulate(_distinct_counts.begin(), _distinct_counts.end(), 0ul);
+  return std::accumulate(_distinct_counts.begin(), _distinct_counts.end(), uint64_t{0});
 }
 
 EXPLICITLY_INSTANTIATE_DATA_TYPES(EqualHeightHistogram);

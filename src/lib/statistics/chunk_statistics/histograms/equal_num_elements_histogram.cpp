@@ -31,8 +31,8 @@ EqualNumElementsHistogram<std::string>::EqualNumElementsHistogram(
       _distinct_count_per_bin(distinct_count_per_bin),
       _num_bins_with_extra_value(num_bins_with_extra_value) {
   for (auto bin_id = 0u; bin_id < mins.size(); bin_id++) {
-    Assert(mins[bin_id].find_first_not_of(supported_characters) == std::string::npos, "Unsupported characters.");
-    Assert(maxs[bin_id].find_first_not_of(supported_characters) == std::string::npos, "Unsupported characters.");
+    DebugAssert(mins[bin_id].find_first_not_of(supported_characters) == std::string::npos, "Unsupported characters.");
+    DebugAssert(maxs[bin_id].find_first_not_of(supported_characters) == std::string::npos, "Unsupported characters.");
   }
 }
 
@@ -40,12 +40,11 @@ template <typename T>
 EqualNumElementsBinStats<T> EqualNumElementsHistogram<T>::_get_bin_stats(
     const std::vector<std::pair<T, uint64_t>>& value_counts, const size_t max_num_bins) {
   // If there are fewer distinct values than the number of desired bins use that instead.
-  const auto distinct_count = value_counts.size();
-  const auto num_bins = distinct_count < max_num_bins ? static_cast<size_t>(distinct_count) : max_num_bins;
+  const auto num_bins = value_counts.size() < max_num_bins ? static_cast<size_t>(value_counts.size()) : max_num_bins;
 
   // Split values evenly among bins.
-  const auto distinct_count_per_bin = distinct_count / num_bins;
-  const auto num_bins_with_extra_value = distinct_count % num_bins;
+  const auto distinct_count_per_bin = value_counts.size() / num_bins;
+  const auto num_bins_with_extra_value = value_counts.size() % num_bins;
 
   std::vector<T> mins;
   std::vector<T> maxs;
@@ -61,11 +60,8 @@ EqualNumElementsBinStats<T> EqualNumElementsHistogram<T>::_get_bin_stats(
       end_index++;
     }
 
-    const auto current_min = value_counts[begin_index].first;
-    const auto current_max = value_counts[end_index].first;
-
-    mins.emplace_back(current_min);
-    maxs.emplace_back(current_max);
+    mins.emplace_back(value_counts[begin_index].first);
+    maxs.emplace_back(value_counts[end_index].first);
     counts.emplace_back(std::accumulate(value_counts.cbegin() + begin_index, value_counts.cbegin() + end_index + 1,
                                         uint64_t{0},
                                         [](uint64_t a, const std::pair<T, uint64_t>& b) { return a + b.second; }));
@@ -132,13 +128,12 @@ BinID EqualNumElementsHistogram<T>::_bin_for_value(const T value) const {
 template <typename T>
 BinID EqualNumElementsHistogram<T>::_upper_bound_for_value(const T value) const {
   const auto it = std::upper_bound(_maxs.begin(), _maxs.end(), value);
-  const auto index = static_cast<BinID>(std::distance(_maxs.begin(), it));
 
   if (it == _maxs.end()) {
     return INVALID_BIN_ID;
   }
 
-  return index;
+  return static_cast<BinID>(std::distance(_maxs.begin(), it));;
 }
 
 template <typename T>
@@ -161,12 +156,13 @@ uint64_t EqualNumElementsHistogram<T>::_bin_count(const BinID index) const {
 
 template <typename T>
 uint64_t EqualNumElementsHistogram<T>::_bin_count_distinct(const BinID index) const {
+  DebugAssert(index < this->num_bins(), "Index is not a valid bin.");
   return _distinct_count_per_bin + (index < _num_bins_with_extra_value ? 1 : 0);
 }
 
 template <typename T>
 uint64_t EqualNumElementsHistogram<T>::total_count() const {
-  return std::accumulate(_counts.begin(), _counts.end(), 0ul);
+  return std::accumulate(_counts.begin(), _counts.end(), uint64_t{0});
 }
 
 template <typename T>

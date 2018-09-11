@@ -173,9 +173,9 @@ class AbstractHistogram : public AbstractFilter {
 
   /**
    * Returns the id of the bin after the one that holds the given `value`.
-   * If `value` does not belong to any bin but is smaller than max(), return the id of the bin that holds the
-   * next largest value that belongs to a bin after `value`.
-   * Otherwise return INVALID_BIN_ID.
+   * If `value` does not belong to any bin but is smaller than max(), it is in a gap.
+   * In that case return the bin right after the gap.
+   * If the bin that holds the value is the last bin or it is greater than max, return INVALID_BIN_ID.
    */
   virtual BinID _upper_bound_for_value(const T value) const = 0;
 
