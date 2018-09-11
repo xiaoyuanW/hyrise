@@ -104,17 +104,6 @@ std::shared_ptr<EqualHeightHistogram<T>> EqualHeightHistogram<T>::from_segment(
 }
 
 template <typename T>
-std::shared_ptr<AbstractHistogram<T>> EqualHeightHistogram<T>::clone() const {
-  return std::make_shared<EqualHeightHistogram<T>>(_maxs, _distinct_counts, _min, _total_count);
-}
-
-template <>
-std::shared_ptr<AbstractHistogram<std::string>> EqualHeightHistogram<std::string>::clone() const {
-  return std::make_shared<EqualHeightHistogram<std::string>>(_maxs, _distinct_counts, _min, _total_count,
-                                                             _supported_characters, _string_prefix_length);
-}
-
-template <typename T>
 HistogramType EqualHeightHistogram<T>::histogram_type() const {
   return HistogramType::EqualHeight;
 }

@@ -205,17 +205,6 @@ std::shared_ptr<EqualWidthHistogram<T>> EqualWidthHistogram<T>::from_segment(
 }
 
 template <typename T>
-std::shared_ptr<AbstractHistogram<T>> EqualWidthHistogram<T>::clone() const {
-  return std::make_shared<EqualWidthHistogram<T>>(_min, _max, _counts, _distinct_counts, _num_bins_with_larger_range);
-}
-
-template <>
-std::shared_ptr<AbstractHistogram<std::string>> EqualWidthHistogram<std::string>::clone() const {
-  return std::make_shared<EqualWidthHistogram<std::string>>(
-      _min, _max, _counts, _distinct_counts, _num_bins_with_larger_range, _supported_characters, _string_prefix_length);
-}
-
-template <typename T>
 HistogramType EqualWidthHistogram<T>::histogram_type() const {
   return HistogramType::EqualWidth;
 }

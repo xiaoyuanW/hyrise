@@ -17,27 +17,56 @@
 
 namespace opossum {
 
+template <>
+std::pair<std::string, uint64_t> AbstractHistogram<std::string>::_get_or_check_prefix_settings(
+    const std::optional<std::string>& supported_characters, const std::optional<uint64_t>& string_prefix_length) {
+  std::string characters;
+  uint64_t prefix_length;
+
+  if (supported_characters) {
+    DebugAssert(supported_characters->length() > 1, "String range must consist of more than one character.");
+    for (auto it = supported_characters->cbegin(); it < supported_characters->cend(); it++) {
+      DebugAssert(std::distance(supported_characters->cbegin(), it) == *it - supported_characters->front(),
+                  "Non-consecutive or unordered string ranges are not supported.");
+    }
+
+    characters = *supported_characters;
+
+    if (string_prefix_length) {
+      DebugAssert(string_prefix_length > 0, "Invalid prefix length.");
+      DebugAssert(ipow(characters.length() + 1, *string_prefix_length) < ipow(2ul, 63ul), "Prefix too long.");
+
+      prefix_length = *string_prefix_length;
+    } else {
+      prefix_length = static_cast<uint64_t>(63 / std::log(characters.length() + 1));
+    }
+  } else {
+    DebugAssert(!static_cast<bool>(string_prefix_length),
+                "Cannot set prefix length without also setting supported characters.");
+
+    // Support most of ASCII with maximum prefix length for number of characters.
+    characters = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
+    prefix_length = 9;
+  }
+
+  return {characters, prefix_length};
+}
+
 template <typename T>
 AbstractHistogram<T>::AbstractHistogram() : _supported_characters(""), _string_prefix_length(0ul) {}
 
 template <>
-AbstractHistogram<std::string>::AbstractHistogram()
-    : _supported_characters(
-          " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"),
-      _string_prefix_length(9) {}
+AbstractHistogram<std::string>::AbstractHistogram() {
+  const auto pair = AbstractHistogram<std::string>::_get_or_check_prefix_settings();
+  _supported_characters = pair.first;
+  _string_prefix_length = pair.second;
+}
 
 template <>
 AbstractHistogram<std::string>::AbstractHistogram(const std::string& supported_characters,
                                                   const uint64_t string_prefix_length)
     : _supported_characters(supported_characters), _string_prefix_length(string_prefix_length) {
-  DebugAssert(string_prefix_length > 0, "Invalid prefix length.");
-  DebugAssert(supported_characters.length() > 1, "String range must consist of more than one character.");
-  DebugAssert(ipow(supported_characters.length() + 1, string_prefix_length) < ipow(2ul, 63ul), "Prefix too long.");
-
-  for (auto it = _supported_characters.begin(); it < _supported_characters.end(); it++) {
-    DebugAssert(std::distance(_supported_characters.begin(), it) == *it - _supported_characters.front(),
-                "Non-consecutive or unordered string ranges are not supported.");
-  }
+  AbstractHistogram<std::string>::_get_or_check_prefix_settings(_supported_characters, _string_prefix_length);
 }
 
 template <typename T>
@@ -51,7 +80,7 @@ std::string AbstractHistogram<T>::description() const {
   // stream << "  non-null " << non_null_value_ratio() << std::endl;
   stream << "  bins        " << num_bins() << std::endl;
 
-  stream << "  boundaries / counts " << std::endl;
+  stream << "  edges / counts " << std::endl;
   for (auto bin = 0u; bin < num_bins(); bin++) {
     stream << "              [" << _bin_min(bin) << ", " << _bin_max(bin) << "]: ";
     stream << _bin_count(bin) << std::endl;
@@ -128,11 +157,6 @@ std::string AbstractHistogram<T>::bins_to_csv(const bool print_header, const std
   return stream.str();
 }
 
-template <>
-const std::string& AbstractHistogram<std::string>::supported_characters() const {
-  return _supported_characters;
-}
-
 template <typename T>
 std::vector<std::pair<T, uint64_t>> AbstractHistogram<T>::_sort_value_counts(
     const std::unordered_map<T, uint64_t>& value_counts) {
@@ -159,32 +183,6 @@ std::vector<std::pair<T, uint64_t>> AbstractHistogram<T>::_calculate_value_count
   });
 
   return AbstractHistogram<T>::_sort_value_counts(value_counts);
-}
-
-template <>
-std::pair<std::string, uint64_t> AbstractHistogram<std::string>::_get_or_check_prefix_settings(
-    const std::optional<std::string>& supported_characters, const std::optional<uint64_t>& string_prefix_length) {
-  std::string characters;
-  uint64_t prefix_length;
-
-  if (supported_characters) {
-    characters = *supported_characters;
-
-    if (string_prefix_length) {
-      prefix_length = *string_prefix_length;
-    } else {
-      prefix_length = static_cast<uint64_t>(63 / std::log(characters.length() + 1));
-    }
-  } else {
-    DebugAssert(!static_cast<bool>(string_prefix_length),
-                "Cannot set prefix length without also setting supported characters.");
-
-    // Support most of ASCII with maximum prefix length for number of characters.
-    characters = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
-    prefix_length = 9;
-  }
-
-  return {characters, prefix_length};
 }
 
 template <typename T>

@@ -108,19 +108,6 @@ std::shared_ptr<EqualNumElementsHistogram<T>> EqualNumElementsHistogram<T>::from
 }
 
 template <typename T>
-std::shared_ptr<AbstractHistogram<T>> EqualNumElementsHistogram<T>::clone() const {
-  return std::make_shared<EqualNumElementsHistogram<T>>(_mins, _maxs, _counts, _distinct_count_per_bin,
-                                                        _num_bins_with_extra_value);
-}
-
-template <>
-std::shared_ptr<AbstractHistogram<std::string>> EqualNumElementsHistogram<std::string>::clone() const {
-  return std::make_shared<EqualNumElementsHistogram<std::string>>(_mins, _maxs, _counts, _distinct_count_per_bin,
-                                                                  _num_bins_with_extra_value, _supported_characters,
-                                                                  _string_prefix_length);
-}
-
-template <typename T>
 HistogramType EqualNumElementsHistogram<T>::histogram_type() const {
   return HistogramType::EqualNumElements;
 }

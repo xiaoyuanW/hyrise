@@ -28,12 +28,19 @@ class EqualWidthHistogram : public AbstractHistogram<T> {
                       const std::vector<uint64_t>& distinct_counts, const uint64_t num_bins_with_larger_range,
                       const std::string& supported_characters, const uint64_t string_prefix_length);
 
+  /**
+   * Create a histogram based on the data in a given segment.
+   * @param segment The segment containing the data.
+   * @param max_num_bins The number of bins to create. The histogram might create fewer, but never more.
+   * @param supported_characters A sorted, consecutive string of characters supported in case of string histograms.
+   * Can be omitted and will be filled with default value.
+   * @param string_prefix_length The prefix length used to calculate string ranges.
+   * * Can be omitted and will be filled with default value.
+   */
   static std::shared_ptr<EqualWidthHistogram<T>> from_segment(
       const std::shared_ptr<const BaseSegment>& segment, const size_t max_num_bins,
       const std::optional<std::string>& supported_characters = std::nullopt,
       const std::optional<uint64_t>& string_prefix_length = std::nullopt);
-
-  std::shared_ptr<AbstractHistogram<T>> clone() const override;
 
   HistogramType histogram_type() const override;
   uint64_t total_count_distinct() const override;
@@ -41,6 +48,10 @@ class EqualWidthHistogram : public AbstractHistogram<T> {
   size_t num_bins() const override;
 
  protected:
+  /**
+   * Creates bins and their statistics.
+   * This method is overloaded with more parameters for strings.
+   */
   static EqualWidthBinStats<T> _get_bin_stats(const std::vector<std::pair<T, uint64_t>>& value_counts,
                                               const size_t max_num_bins);
   static EqualWidthBinStats<std::string> _get_bin_stats(
@@ -59,10 +70,19 @@ class EqualWidthHistogram : public AbstractHistogram<T> {
   T _bin_width(const BinID index) const override;
 
  private:
+  // Minimum value of the histogram.
   T _min;
+
+  // Maximum value of the histogram.
   T _max;
+
+  // Number of values on a per-bin basis.
   std::vector<uint64_t> _counts;
+
+  // Number of distinct values on a per-bin basis.
   std::vector<uint64_t> _distinct_counts;
+
+  // Number of bins that are one element wider (only used for integral and string histograms).
   uint64_t _num_bins_with_larger_range;
 };
 
