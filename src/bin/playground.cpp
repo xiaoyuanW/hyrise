@@ -1,11 +1,17 @@
 #include <ctime>
 
+#include <algorithm>
 #include <chrono>
 #include <fstream>
 #include <iostream>
 #include <locale>
+#include <memory>
 #include <random>
 #include <tuple>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
+#include <vector>
 
 #include "constant_mappings.hpp"
 #include "types.hpp"
@@ -270,7 +276,7 @@ std::unordered_map<ColumnID, std::vector<std::pair<PredicateCondition, AllTypeVa
   }
 
   return filters_by_column;
-};
+}
 
 std::unordered_map<ColumnID, int64_t> get_distinct_count_by_column(
     const std::shared_ptr<Table>& table,
@@ -289,7 +295,7 @@ std::unordered_map<ColumnID, int64_t> get_distinct_count_by_column(
             << std::endl;
 
   return row_count_by_filter;
-};
+}
 
 std::unordered_map<ColumnID, std::unordered_map<PredicateCondition, std::unordered_map<AllTypeVariant, int64_t>>>
 get_row_count_by_filter(const std::shared_ptr<Table>& table,
@@ -313,7 +319,7 @@ get_row_count_by_filter(const std::shared_ptr<Table>& table,
             << std::endl;
 
   return row_count_by_filter;
-};
+}
 
 template <typename T>
 std::vector<std::pair<T, uint64_t>> sort_value_counts(const std::unordered_map<T, uint64_t>& value_counts) {
@@ -326,11 +332,11 @@ std::vector<std::pair<T, uint64_t>> sort_value_counts(const std::unordered_map<T
 }
 
 template <typename T>
-std::vector<std::pair<T, uint64_t>> calculate_value_counts(const std::shared_ptr<const BaseColumn>& column) {
+std::vector<std::pair<T, uint64_t>> calculate_value_counts(const std::shared_ptr<const BaseSegment>& segment) {
   std::unordered_map<T, uint64_t> value_counts;
 
-  resolve_column_type<T>(*column, [&](auto& typed_column) {
-    auto iterable = create_iterable_from_segment<T>(typed_column);
+  resolve_segment_type<T>(*segment, [&](auto& typed_segment) {
+    auto iterable = create_iterable_from_segment<T>(typed_segment);
     iterable.for_each([&](const auto& value) {
       if (!value.is_null()) {
         value_counts[value.value()]++;
@@ -391,14 +397,14 @@ get_row_count_for_filters(const std::shared_ptr<Table>& table, const ColumnID co
             << std::endl;
 
   return row_count_by_filter;
-};
+}
 
 template <typename T>
-std::unordered_set<T> get_distinct_values(const std::shared_ptr<const BaseColumn>& column) {
+std::unordered_set<T> get_distinct_values(const std::shared_ptr<const BaseSegment>& segment) {
   std::unordered_set<T> distinct_values;
 
-  resolve_column_type<T>(*column, [&](auto& typed_column) {
-    auto iterable = create_iterable_from_segment<T>(typed_column);
+  resolve_segment_type<T>(*segment, [&](auto& typed_segment) {
+    auto iterable = create_iterable_from_segment<T>(typed_segment);
     iterable.for_each([&](const auto& value) {
       if (!value.is_null()) {
         distinct_values.insert(value.value());
@@ -540,37 +546,11 @@ int main() {
           const auto predicate_condition = pair.first;
           const auto value = pair.second;
 
-          // std::cout << " " << predicate_condition_to_string.left.at(predicate_condition) << " " << value << std::endl;
-
           const auto actual_count = row_count_by_filter.at(column_id).at(predicate_condition).at(value);
-
-          // std::cout << std::chrono::system_clock::now() << " Estimating with EqualHeightHistogram...";
-          // start = std::chrono::high_resolution_clock::now();
-
           const auto equal_height_hist_count = estimate_cardinality<T>(equal_height_hist, predicate_condition, value);
-
-          // end = std::chrono::high_resolution_clock::now();
-          // std::cout << "done (" << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "µs)."
-          //           << std::endl;
-          //
-          // std::cout << std::chrono::system_clock::now() << " Estimating with EqualNumElementsHistogram...";
-          // start = std::chrono::high_resolution_clock::now();
-
           const auto equal_num_elements_hist_count =
               estimate_cardinality<T>(equal_num_elements_hist, predicate_condition, value);
-
-          // end = std::chrono::high_resolution_clock::now();
-          // std::cout << "done (" << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "µs)."
-          //           << std::endl;
-          //
-          // std::cout << std::chrono::system_clock::now() << " Estimating with EqualWidthHistogram...";
-          // start = std::chrono::high_resolution_clock::now();
-
           const auto equal_width_hist_count = estimate_cardinality<T>(equal_width_hist, predicate_condition, value);
-
-          // end = std::chrono::high_resolution_clock::now();
-          // std::cout << "done (" << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "µs)."
-          //           << std::endl;
 
           results_log << std::to_string(total_count) << "," << std::to_string(distinct_count) << ","
                       << std::to_string(num_bins) << "," << column_name << ","
