@@ -115,16 +115,6 @@ class AbstractHistogram : public AbstractFilter {
   static std::vector<std::pair<T, uint64_t>> _sort_value_counts(const std::unordered_map<T, uint64_t>& value_counts);
 
   /**
-   * This function checks whether a prefix length is allowed for a given set of supported characters.
-   * If no prefix length is supplied, it will return the maximum possible prefix length.
-   * If no set of supported characters is given, it will return ASCII characters 32 - 126,
-   * which are the vast majority of printable ASCII characters, and the maximum prefix length for that set (9).
-   */
-  static std::pair<std::string, uint64_t> _get_or_check_prefix_settings(
-      const std::optional<std::string>& supported_characters = std::nullopt,
-      const std::optional<uint64_t>& string_prefix_length = std::nullopt);
-
-  /**
    * Calculates the estimated cardinality for predicate types supported by all data types.
    */
   float _estimate_cardinality(const PredicateCondition predicate_type, const AllTypeVariant& variant_value,

@@ -154,6 +154,10 @@ TEST_F(HistogramUtilsTest, CommonPrefixLength) {
   EXPECT_EQ(common_prefix_length("abcd", "abce"), 3ul);
 }
 
+/**
+ * The following tests take quite some time (multiple seconds) and are intended for exhaustive testing.
+ * TODO(tim): discuss whether to include/deactivate/remove them.
+ */
 TEST_F(HistogramUtilsTest, NumberToStringBruteForce) {
   constexpr auto max = 475'254ul;
 

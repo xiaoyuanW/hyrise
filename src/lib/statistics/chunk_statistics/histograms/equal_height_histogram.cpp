@@ -71,7 +71,7 @@ std::shared_ptr<EqualHeightHistogram<T>> EqualHeightHistogram<T>::from_segment(
   std::string characters;
   uint64_t prefix_length;
   if constexpr (std::is_same_v<T, std::string>) {
-    const auto pair = AbstractHistogram<T>::_get_or_check_prefix_settings(supported_characters, string_prefix_length);
+    const auto pair = get_default_or_check_prefix_settings(supported_characters, string_prefix_length);
     characters = pair.first;
     prefix_length = pair.second;
   }
@@ -109,24 +109,24 @@ BinID EqualHeightHistogram<T>::_bin_for_value(const T value) const {
     return INVALID_BIN_ID;
   }
 
-  const auto it = std::lower_bound(_maxs.begin(), _maxs.end(), value);
+  const auto it = std::lower_bound(_maxs.cbegin(), _maxs.cend(), value);
 
-  if (it == _maxs.end()) {
+  if (it == _maxs.cend()) {
     return INVALID_BIN_ID;
   }
 
-  return static_cast<BinID>(std::distance(_maxs.begin(), it));
+  return static_cast<BinID>(std::distance(_maxs.cbegin(), it));
 }
 
 template <typename T>
 BinID EqualHeightHistogram<T>::_upper_bound_for_value(const T value) const {
-  const auto it = std::upper_bound(_maxs.begin(), _maxs.end(), value);
+  const auto it = std::upper_bound(_maxs.cbegin(), _maxs.cend(), value);
 
-  if (it == _maxs.end()) {
+  if (it == _maxs.cend()) {
     return INVALID_BIN_ID;
   }
 
-  return static_cast<BinID>(std::distance(_maxs.begin(), it));
+  return static_cast<BinID>(std::distance(_maxs.cbegin(), it));
 }
 
 template <typename T>
@@ -167,7 +167,7 @@ uint64_t EqualHeightHistogram<T>::total_count() const {
 
 template <typename T>
 uint64_t EqualHeightHistogram<T>::total_count_distinct() const {
-  return std::accumulate(_distinct_counts.begin(), _distinct_counts.end(), uint64_t{0});
+  return std::accumulate(_distinct_counts.cbegin(), _distinct_counts.cend(), uint64_t{0});
 }
 
 EXPLICITLY_INSTANTIATE_DATA_TYPES(EqualHeightHistogram);

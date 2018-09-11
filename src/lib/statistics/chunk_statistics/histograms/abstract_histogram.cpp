@@ -1,7 +1,5 @@
 #include "abstract_histogram.hpp"
 
-#include <cmath>
-
 #include <algorithm>
 #include <memory>
 #include <vector>
@@ -17,47 +15,12 @@
 
 namespace opossum {
 
-template <>
-std::pair<std::string, uint64_t> AbstractHistogram<std::string>::_get_or_check_prefix_settings(
-    const std::optional<std::string>& supported_characters, const std::optional<uint64_t>& string_prefix_length) {
-  std::string characters;
-  uint64_t prefix_length;
-
-  if (supported_characters) {
-    DebugAssert(supported_characters->length() > 1, "String range must consist of more than one character.");
-    for (auto it = supported_characters->cbegin(); it < supported_characters->cend(); it++) {
-      DebugAssert(std::distance(supported_characters->cbegin(), it) == *it - supported_characters->front(),
-                  "Non-consecutive or unordered string ranges are not supported.");
-    }
-
-    characters = *supported_characters;
-
-    if (string_prefix_length) {
-      DebugAssert(string_prefix_length > 0, "Invalid prefix length.");
-      DebugAssert(ipow(characters.length() + 1, *string_prefix_length) < ipow(2ul, 63ul), "Prefix too long.");
-
-      prefix_length = *string_prefix_length;
-    } else {
-      prefix_length = static_cast<uint64_t>(63 / std::log(characters.length() + 1));
-    }
-  } else {
-    DebugAssert(!static_cast<bool>(string_prefix_length),
-                "Cannot set prefix length without also setting supported characters.");
-
-    // Support most of ASCII with maximum prefix length for number of characters.
-    characters = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
-    prefix_length = 9;
-  }
-
-  return {characters, prefix_length};
-}
-
 template <typename T>
 AbstractHistogram<T>::AbstractHistogram() : _supported_characters(""), _string_prefix_length(0ul) {}
 
 template <>
 AbstractHistogram<std::string>::AbstractHistogram() {
-  const auto pair = AbstractHistogram<std::string>::_get_or_check_prefix_settings();
+  const auto pair = get_default_or_check_prefix_settings();
   _supported_characters = pair.first;
   _string_prefix_length = pair.second;
 }
@@ -66,7 +29,7 @@ template <>
 AbstractHistogram<std::string>::AbstractHistogram(const std::string& supported_characters,
                                                   const uint64_t string_prefix_length)
     : _supported_characters(supported_characters), _string_prefix_length(string_prefix_length) {
-  AbstractHistogram<std::string>::_get_or_check_prefix_settings(_supported_characters, _string_prefix_length);
+  DebugAssert(check_prefix_settings(_supported_characters, _string_prefix_length), "Invalid prefix settings.");
 }
 
 template <typename T>
@@ -81,7 +44,7 @@ std::string AbstractHistogram<T>::description() const {
   stream << "  bins        " << num_bins() << std::endl;
 
   stream << "  edges / counts " << std::endl;
-  for (auto bin = 0u; bin < num_bins(); bin++) {
+  for (BinID bin = 0u; bin < num_bins(); bin++) {
     stream << "              [" << _bin_min(bin) << ", " << _bin_max(bin) << "]: ";
     stream << _bin_count(bin) << std::endl;
   }
@@ -225,14 +188,14 @@ uint64_t AbstractHistogram<std::string>::_string_bin_width(const BinID index) co
   return num_max - num_min + 1u;
 }
 
-template <>
-std::string AbstractHistogram<std::string>::get_next_value(const std::string value) const {
-  return next_value(value, _supported_characters);
-}
-
 template <typename T>
 T AbstractHistogram<T>::get_next_value(const T value) const {
   return next_value(value);
+}
+
+template <>
+std::string AbstractHistogram<std::string>::get_next_value(const std::string value) const {
+  return next_value(value, _supported_characters);
 }
 
 template <typename T>
@@ -242,39 +205,35 @@ float AbstractHistogram<T>::_bin_share(const BinID bin_id, const T value) const 
 
 template <>
 float AbstractHistogram<std::string>::_bin_share(const BinID bin_id, const std::string value) const {
-  // TODO(tim): update description
   /**
-   * Calculate range between two strings.
-   * This is based on the following assumptions:
-   *    - a consecutive byte range, e.g. lower case letters in ASCII
-   *    - fixed-length strings
+   * Returns the share of values smaller than `value` in the given bin.
    *
-   * Treat the string range similar to the decimal system (base 26 for lower case letters).
-   * Characters in the beginning of the string have a higher value than ones at the end.
-   * Assign each letter the value of the index in the alphabet (zero-based).
-   * Then convert it to a number.
+   * We need to convert strings to their numerical representation to calculate a share.
+   * This conversion is done based on prefixes because strings of arbitrary length cannot be converted to a numerical
+   * representation that satisfies the following requirements:
+   *  1. For two strings s1 and s2: s1 < s2 -> repr(s1) < repr(s2)
+   *  2. For two strings s1 and s2: dist(s1, s2) == repr(s2) - repr(s1)
+   *  repr(s) is the numerical representation for a string s, and dist(s1, s2) returns the number of strings between
+   *  s1 and s2 in the domain of strings with at most length `string_prefix_length`
+   *  and the set of supported characters `supported_characters`.
    *
-   * Example with fixed-length 4 (possible range: [aaaa, zzzz]):
+   * Thus, we calculate the range based only on a domain of strings with a maximum length of `string_prefix_length`
+   * characters.
+   * However, we make use of a trick: if the bin edges share a common prefix, we strip that common prefix and
+   * take the substring starting after that prefix.
    *
-   *  Number of possible strings: 26**4 = 456,976
+   * Example:
+   *  - bin: ["intelligence", "intellij"]
+   *  - supported_characters: [a-z]
+   *  - string_prefix_length: 4
+   *  - value: intelligent
    *
-   * 1. aaaa - zzzz
-   *
-   *  repr(aaaa) = 0 * 26**3 + 0 * 26**2 + 0 * 26**1 + 0 * 26**0 = 0
-   *  repr(zzzz) = 25 * 26**3 + 25 * 26**2 + 25 * 26**1 + 25 * 26**0 = 456,975
-   *  Size of range: repr(zzzz) - repr(aaaa) + 1 = 456,976
-   *  Share of the range: 456,976 / 456,976 = 1
-   *
-   * 2. bhja - mmmm
-   *
-   *  repr(bhja): 1 * 26**3 + 7 * 26**2 + 9 * 26**1 + 0 * 26**0 = 22,542
-   *  repr(mmmm): 12 * 26**3 + 12 * 26**2 + 12 * 26**1 + 12 * 26**0 = 219,348
-   *  Size of range: repr(mmmm) - repr(bhja) + 1 = 196,807
-   *  Share of the range: 196,807 / 456,976 ~= 0.43
-   *
-   *  Note that strings shorter than the fixed-length will induce a small error,
-   *  because the missing characters will be treated as 'a'.
-   *  Since we are dealing with approximations this is acceptable.
+   *  Traditionally, if we did not strip the common prefix, we would calculate the range based on the
+   *  substring of length `string_prefix_length`, which is "inte" for both lower and upper edge of the bin.
+   *  We could not make a reasonable assumption how large the share is.
+   *  Instead, we strip the common prefix ("intelli") and calculate the share based on the numerical representation
+   *  of the substring after the common prefix.
+   *  That is, what is the share of values smaller than "gent" in the range ["gence", "j"]?
    */
   const auto bin_min = _bin_min(bin_id);
   const auto bin_max = _bin_max(bin_id);
@@ -318,11 +277,7 @@ bool AbstractHistogram<T>::_can_prune(const PredicateCondition predicate_type, c
       }
 
       const auto value2 = type_cast<T>(*variant_value2);
-      if (can_prune(PredicateCondition::LessThanEquals, value2)) {
-        return true;
-      }
-
-      if (value2 < value) {
+      if (can_prune(PredicateCondition::LessThanEquals, value2) || value2 < value) {
         return true;
       }
 
@@ -350,6 +305,9 @@ bool AbstractHistogram<T>::_can_prune(const PredicateCondition predicate_type, c
 
       return false;
     }
+    case PredicateCondition::Like:
+    case PredicateCondition::NotLike:
+      Fail("Predicate NOT LIKE is not supported for non-string columns.");
     default:
       // Do not prune predicates we cannot (yet) handle.
       return false;
@@ -411,7 +369,7 @@ bool AbstractHistogram<std::string>::can_prune(const PredicateCondition predicat
     }
     case PredicateCondition::NotLike: {
       if (!LikeMatcher::contains_wildcard(value)) {
-        return can_prune(PredicateCondition::NotEquals, value);
+        return can_prune(PredicateCondition::NotEquals, variant_value);
       }
 
       // If the pattern starts with a MatchAll, we can only prune it if it matches all values.
@@ -469,7 +427,7 @@ float AbstractHistogram<T>::_estimate_cardinality(const PredicateCondition predi
       return static_cast<float>(_bin_count(index)) / static_cast<float>(bin_count_distinct);
     }
     case PredicateCondition::NotEquals:
-      return total_count() - _estimate_cardinality(PredicateCondition::Equals, value);
+      return total_count() - _estimate_cardinality(PredicateCondition::Equals, variant_value);
     case PredicateCondition::LessThan: {
       if (value > max()) {
         return total_count();
@@ -512,9 +470,9 @@ float AbstractHistogram<T>::_estimate_cardinality(const PredicateCondition predi
     case PredicateCondition::LessThanEquals:
       return estimate_cardinality(PredicateCondition::LessThan, get_next_value(value));
     case PredicateCondition::GreaterThanEquals:
-      return total_count() - estimate_cardinality(PredicateCondition::LessThan, value);
+      return total_count() - estimate_cardinality(PredicateCondition::LessThan, variant_value);
     case PredicateCondition::GreaterThan:
-      return total_count() - estimate_cardinality(PredicateCondition::LessThanEquals, value);
+      return total_count() - estimate_cardinality(PredicateCondition::LessThanEquals, variant_value);
     case PredicateCondition::Between: {
       Assert(static_cast<bool>(variant_value2), "Between operator needs two values.");
       const auto value2 = type_cast<T>(*variant_value2);
@@ -523,8 +481,8 @@ float AbstractHistogram<T>::_estimate_cardinality(const PredicateCondition predi
         return 0.f;
       }
 
-      return estimate_cardinality(PredicateCondition::LessThanEquals, value2) -
-             estimate_cardinality(PredicateCondition::LessThan, value);
+      return estimate_cardinality(PredicateCondition::LessThanEquals, *variant_value2) -
+             estimate_cardinality(PredicateCondition::LessThan, variant_value);
     }
     case PredicateCondition::Like:
     case PredicateCondition::NotLike:
@@ -564,7 +522,7 @@ float AbstractHistogram<std::string>::estimate_cardinality(const PredicateCondit
   switch (predicate_type) {
     case PredicateCondition::Like: {
       if (!LikeMatcher::contains_wildcard(value)) {
-        return estimate_cardinality(PredicateCondition::Equals, value);
+        return estimate_cardinality(PredicateCondition::Equals, variant_value);
       }
 
       // We don't deal with this for now because it is not worth the effort.
@@ -600,7 +558,7 @@ float AbstractHistogram<std::string>::estimate_cardinality(const PredicateCondit
          *  The combination 'ing' in English is far more likely than 'qzy'.
          *  One improvement would be to have a frequency table for characters and take the probability from there,
          *  but it only gets you so far. It does not help with the second property.
-         *  Nevertheless, it could be helpful especially if the number of actually occuring characters in a column are
+         *  Nevertheless, it could be helpful especially if the number of actually occurring characters in a column are
          *  small compared to the supported characters and the frequency table would be not static but built during
          *  histogram generation.
          *  TODO(anyone): look into that in more detail.
@@ -639,7 +597,7 @@ float AbstractHistogram<std::string>::estimate_cardinality(const PredicateCondit
     }
     case PredicateCondition::NotLike: {
       if (!LikeMatcher::contains_wildcard(value)) {
-        return estimate_cardinality(PredicateCondition::NotEquals, value);
+        return estimate_cardinality(PredicateCondition::NotEquals, variant_value);
       }
 
       // We don't deal with this for now because it is not worth the effort.
@@ -649,7 +607,7 @@ float AbstractHistogram<std::string>::estimate_cardinality(const PredicateCondit
         return total_count();
       }
 
-      return total_count() - estimate_cardinality(PredicateCondition::Like, value);
+      return total_count() - estimate_cardinality(PredicateCondition::Like, variant_value);
     }
     default:
       return _estimate_cardinality(predicate_type, variant_value, variant_value2);
