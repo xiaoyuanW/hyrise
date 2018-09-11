@@ -158,7 +158,7 @@ TEST_F(HistogramUtilsTest, CommonPrefixLength) {
  * The following tests take quite some time (multiple seconds) and are intended for exhaustive testing.
  * TODO(tim): discuss whether to include/deactivate/remove them.
  */
-TEST_F(HistogramUtilsTest, NumberToStringBruteForce) {
+TEST_F(HistogramUtilsTest, DISABLED_NumberToStringBruteForce) {
   constexpr auto max = 475'254ul;
 
   EXPECT_EQ(_convert_string_to_number_representation(""), 0ul);
@@ -169,7 +169,7 @@ TEST_F(HistogramUtilsTest, NumberToStringBruteForce) {
   }
 }
 
-TEST_F(HistogramUtilsTest, StringToNumberBruteForce) {
+TEST_F(HistogramUtilsTest, DISABLED_StringToNumberBruteForce) {
   constexpr auto max = 475'254ul;
 
   EXPECT_EQ(_convert_string_to_number_representation(""), 0ul);
@@ -180,7 +180,7 @@ TEST_F(HistogramUtilsTest, StringToNumberBruteForce) {
   }
 }
 
-TEST_F(HistogramUtilsTest, NextValueBruteForce) {
+TEST_F(HistogramUtilsTest, DISABLED_NextValueBruteForce) {
   constexpr auto max = 475'254ul;
 
   EXPECT_EQ(_convert_string_to_number_representation(""), 0ul);

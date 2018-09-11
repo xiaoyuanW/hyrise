@@ -179,10 +179,6 @@ TEST_F(ChunkPruningTest, RangeFilterTest) {
   EXPECT_EQ(excluded, expected);
 }
 
-// deactivated because tests do not make sense here
-// pruning for these values should be tested for data structure, not for the general rule
-// because some data structures might not be able to prune this value (e.g. histograms)
-// TODO(tim): figure out better way to test this here
 TEST_F(ChunkPruningTest, LotsOfRangesFilterTest) {
   auto stored_table_node = std::make_shared<StoredTableNode>("long_compressed");
 
