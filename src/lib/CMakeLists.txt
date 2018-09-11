@@ -233,16 +233,16 @@ set(
     operators/update.hpp
     operators/validate.cpp
     operators/validate.hpp
-    optimizer/dp_ccp.cpp
-    optimizer/dp_ccp.hpp
-    optimizer/enumerate_ccp.cpp
-    optimizer/enumerate_ccp.hpp
-    optimizer/join_graph.cpp
-    optimizer/join_graph.hpp
-    optimizer/join_graph_builder.cpp
-    optimizer/join_graph_builder.hpp
-    optimizer/join_graph_edge.cpp
-    optimizer/join_graph_edge.hpp
+    optimizer/join_ordering/dp_ccp.cpp
+    optimizer/join_ordering/dp_ccp.hpp
+    optimizer/join_ordering/enumerate_ccp.cpp
+    optimizer/join_ordering/enumerate_ccp.hpp
+    optimizer/join_ordering/join_graph.cpp
+    optimizer/join_ordering/join_graph.hpp
+    optimizer/join_ordering/join_graph_builder.cpp
+    optimizer/join_ordering/join_graph_builder.hpp
+    optimizer/join_ordering/join_graph_edge.cpp
+    optimizer/join_ordering/join_graph_edge.hpp
     optimizer/optimizer.cpp
     optimizer/optimizer.hpp
     optimizer/strategy/abstract_rule.cpp
