@@ -440,16 +440,17 @@ TEST_F(EqualWidthHistogramTest, LessThan) {
 TEST_F(EqualWidthHistogramTest, FloatLessThan) {
   auto hist = EqualWidthHistogram<float>::from_segment(_float2->get_chunk(ChunkID{0})->get_segment(ColumnID{0}), 3u);
 
-  const auto bin_width = std::nextafter(6.1f - 0.5f, 6.1f - 0.5f + 1) / 3;
+  const auto bin_width = std::nextafter(6.1f - 0.5f, std::numeric_limits<float>::infinity()) / 3;
 
   EXPECT_TRUE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{0.5f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 0.5f), 0.f);
 
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan,
-                               AllTypeVariant{std::nextafter(0.5f + bin_width, 0.5f + bin_width + 1)}));
-  EXPECT_FLOAT_EQ(
-      hist->estimate_cardinality(PredicateCondition::LessThan, std::nextafter(0.5f + bin_width, 0.5f + bin_width + 1)),
-      4.f);
+  EXPECT_FALSE(
+      hist->can_prune(PredicateCondition::LessThan,
+                      AllTypeVariant{std::nextafter(0.5f + bin_width, std::numeric_limits<float>::infinity())}));
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan,
+                                             std::nextafter(0.5f + bin_width, std::numeric_limits<float>::infinity())),
+                  4.f);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{1.0f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 1.0f), (1.0f - 0.5f) / bin_width * 4);
@@ -477,11 +478,13 @@ TEST_F(EqualWidthHistogramTest, FloatLessThan) {
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 3.9f),
                   4.f + (3.9f - (0.5f + bin_width)) / bin_width * 7);
 
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan,
-                               AllTypeVariant{std::nextafter(0.5f + 2 * bin_width, 0.5f + 2 * bin_width + 1)}));
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan,
-                                             std::nextafter(0.5f + 2 * bin_width, 0.5f + 2 * bin_width + 1)),
-                  4.f + 7.f);
+  EXPECT_FALSE(
+      hist->can_prune(PredicateCondition::LessThan,
+                      AllTypeVariant{std::nextafter(0.5f + 2 * bin_width, std::numeric_limits<float>::infinity())}));
+  EXPECT_FLOAT_EQ(
+      hist->estimate_cardinality(PredicateCondition::LessThan,
+                                 std::nextafter(0.5f + 2 * bin_width, std::numeric_limits<float>::infinity())),
+      4.f + 7.f);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{4.4f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 4.4f),
@@ -491,8 +494,10 @@ TEST_F(EqualWidthHistogramTest, FloatLessThan) {
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 5.9f),
                   4.f + 7.f + (5.9f - (0.5f + 2 * bin_width)) / bin_width * 3);
 
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{std::nextafter(6.1f, 6.1f + 1)}));
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, std::nextafter(6.1f, 6.1f + 1)),
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan,
+                               AllTypeVariant{std::nextafter(6.1f, std::numeric_limits<float>::infinity())}));
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan,
+                                             std::nextafter(6.1f, std::numeric_limits<float>::infinity())),
                   4.f + 7.f + 3.f);
 }
 

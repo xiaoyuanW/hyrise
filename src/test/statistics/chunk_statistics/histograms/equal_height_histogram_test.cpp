@@ -229,38 +229,53 @@ TEST_F(EqualHeightHistogramTest, FloatLessThan) {
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{2.2f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 2.2f), (2.2f - 0.5f) / (2.5f - 0.5f) * 5);
 
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{std::nextafter(2.5f, 2.5f + 1)}));
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, std::nextafter(2.5f, 2.5f + 1)), 5.f);
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan,
+                               AllTypeVariant{std::nextafter(2.5f, std::numeric_limits<float>::infinity())}));
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan,
+                                             std::nextafter(2.5f, std::numeric_limits<float>::infinity())),
+                  5.f);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{3.0f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 3.0f),
-                  5.f + (3.0f - (std::nextafter(2.5f, 2.5f + 1))) / (4.4f - std::nextafter(2.5f, 2.5f + 1)) * 5);
+                  5.f + (3.0f - (std::nextafter(2.5f, std::numeric_limits<float>::infinity()))) /
+                            (4.4f - std::nextafter(2.5f, std::numeric_limits<float>::infinity())) * 5);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{3.3f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 3.3f),
-                  5.f + (3.3f - (std::nextafter(2.5f, 2.5f + 1))) / (4.4f - std::nextafter(2.5f, 2.5f + 1)) * 5);
+                  5.f + (3.3f - (std::nextafter(2.5f, std::numeric_limits<float>::infinity()))) /
+                            (4.4f - std::nextafter(2.5f, std::numeric_limits<float>::infinity())) * 5);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{3.6f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 3.6f),
-                  5.f + (3.6f - (std::nextafter(2.5f, 2.5f + 1))) / (4.4f - std::nextafter(2.5f, 2.5f + 1)) * 5);
+                  5.f + (3.6f - (std::nextafter(2.5f, std::numeric_limits<float>::infinity()))) /
+                            (4.4f - std::nextafter(2.5f, std::numeric_limits<float>::infinity())) * 5);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{3.9f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 3.9f),
-                  5.f + (3.9f - (std::nextafter(2.5f, 2.5f + 1))) / (4.4f - std::nextafter(2.5f, 2.5f + 1)) * 5);
+                  5.f + (3.9f - (std::nextafter(2.5f, std::numeric_limits<float>::infinity()))) /
+                            (4.4f - std::nextafter(2.5f, std::numeric_limits<float>::infinity())) * 5);
 
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{std::nextafter(4.4f, 4.4f + 1)}));
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, std::nextafter(4.4f, 4.4f + 1)), 5.f + 5.f);
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan,
+                               AllTypeVariant{std::nextafter(4.4f, std::numeric_limits<float>::infinity())}));
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan,
+                                             std::nextafter(4.4f, std::numeric_limits<float>::infinity())),
+                  5.f + 5.f);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{5.1f}));
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 5.1f),
-                  5.f + 5.f + (5.1f - (std::nextafter(4.4f, 4.4f + 1))) / (6.1f - std::nextafter(4.4f, 4.4f + 1)) * 5);
+                  5.f + 5.f +
+                      (5.1f - (std::nextafter(4.4f, std::numeric_limits<float>::infinity()))) /
+                          (6.1f - std::nextafter(4.4f, std::numeric_limits<float>::infinity())) * 5);
 
   EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{5.9f}));
   // Special case: cardinality is capped, see AbstractHistogram::estimate_cardinality().
   EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 5.9f), 14.f);
 
-  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan, AllTypeVariant{std::nextafter(6.1f, 6.1f + 1)}));
-  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, std::nextafter(6.1f, 6.1f + 1)), 14.f);
+  EXPECT_FALSE(hist->can_prune(PredicateCondition::LessThan,
+                               AllTypeVariant{std::nextafter(6.1f, std::numeric_limits<float>::infinity())}));
+  EXPECT_FLOAT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan,
+                                             std::nextafter(6.1f, std::numeric_limits<float>::infinity())),
+                  14.f);
 }
 
 TEST_F(EqualHeightHistogramTest, StringLessThan) {
