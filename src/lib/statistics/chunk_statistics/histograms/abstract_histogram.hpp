@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <unordered_map>
 #include <vector>
 
@@ -10,6 +11,30 @@
 
 namespace opossum {
 
+/**
+ * Abstract class for various histogram types.
+ * Provides logic for estimating cardinality and making pruning decisions.
+ * Inheriting classes have to implement a variety of helper functions.
+ *
+ * A histogram consists of a collection of bins.
+ * These bins are responsible for a certain range of values, and the histogram stores,
+ * in one way or another, the following information about the bins:
+ *  - lower edge
+ *  - upper edge
+ *  - number of values
+ *  - number of distinct values
+ *
+ * Histograms are supported for all five data column types we support.
+ * String histograms, however, are implemented slightly different because of their non-numerical property.
+ * Strings are converted to a numerical representation. This is only possible for strings of a fixed length.
+ * This length is stored in the member `_string_prefix_length`.
+ * Additionally, as of now, we only support a range of ASCII characters, that is stored as a string
+ * in `_supported_characters`. This range must not include gaps and the string has to be sorted.
+ * The possible maximum length of the prefix depends on the number of supported characters.
+ * It must not overflow the uint64_t data type used to represent strings as numbers.
+ * The formula used to verify the prefix length is:
+ * (supported_characters.length() + 1) ^ string_prefix_length < std::numeric_limits<uint64_t>::max()
+ */
 template <typename T>
 class AbstractHistogram : public AbstractFilter {
  public:

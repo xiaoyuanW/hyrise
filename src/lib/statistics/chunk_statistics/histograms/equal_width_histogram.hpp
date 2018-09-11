@@ -16,8 +16,11 @@ struct EqualWidthBinStats {
   uint64_t num_bins_with_larger_range;
 };
 
-class Table;
-
+/**
+ * Width-balanced histogram.
+ * Bins are of roughly equal width, i.e., cover the same share of the domain of values.
+ * Bins are consecutive (no gaps between bins), but might be empty.
+ */
 template <typename T>
 class EqualWidthHistogram : public AbstractHistogram<T> {
  public:

@@ -15,8 +15,11 @@ struct EqualHeightBinStats {
   uint64_t total_count;
 };
 
-class Table;
-
+/**
+ * Height-balanced histogram.
+ * Bins contain roughly the same number of elements actually occuring in the represented data.
+ * Bins are consecutive (no gaps between bins), and cannot be empty.
+ */
 template <typename T>
 class EqualHeightHistogram : public AbstractHistogram<T> {
  public:

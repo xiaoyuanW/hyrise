@@ -16,8 +16,11 @@ struct EqualNumElementsBinStats {
   uint64_t num_bins_with_extra_value;
 };
 
-class Table;
-
+/**
+ * Distinct-balanced histogram.
+ * Bins contain roughly the same number of distinct values actually occuring in the data.
+ * There might be gaps between bins.
+ */
 template <typename T>
 class EqualNumElementsHistogram : public AbstractHistogram<T> {
  public:

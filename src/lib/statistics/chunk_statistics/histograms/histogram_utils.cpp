@@ -141,7 +141,7 @@ bool check_prefix_settings(const std::string& supported_characters, const uint64
   }
 
   // The prefix length must not overflow for the number of supported characters when representing strings as numbers.
-  return ipow(supported_characters.length() + 1, string_prefix_length) < ipow(2ul, 63ul);
+  return ipow(supported_characters.length() + 1, string_prefix_length) < std::numeric_limits<uint64_t>::max();
 }
 
 std::pair<std::string, uint64_t> get_default_or_check_prefix_settings(
