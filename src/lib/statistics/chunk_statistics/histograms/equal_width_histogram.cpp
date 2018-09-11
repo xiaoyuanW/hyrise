@@ -65,14 +65,11 @@ EqualWidthBinStats<T> EqualWidthHistogram<T>::_get_bin_stats(const std::vector<s
 
   T current_begin_value = min;
   auto current_begin_it = value_counts.cbegin();
-  auto current_begin_index = 0ul;
   for (auto current_bin_id = 0ul; current_bin_id < num_bins; current_bin_id++) {
     T next_begin_value = current_begin_value + bin_width;
-    T current_end_value = previous_value(next_begin_value);
 
     if constexpr (std::is_integral_v<T>) {
       if (current_bin_id < num_bins_with_larger_range) {
-        current_end_value++;
         next_begin_value++;
       }
     }
@@ -82,23 +79,21 @@ EqualWidthBinStats<T> EqualWidthHistogram<T>::_get_bin_stats(const std::vector<s
       // Adding up floating point numbers adds an error over time.
       // So this is how we make sure that the last bin contains the rest of the values.
       if (current_bin_id == num_bins - 1) {
-        current_end_value = max;
+        next_begin_value = next_value(max);
       }
     }
 
     auto next_begin_it = current_begin_it;
-    while (next_begin_it != value_counts.cend() && (*next_begin_it).first <= current_end_value) {
+    while (next_begin_it != value_counts.cend() && (*next_begin_it).first < next_begin_value) {
       next_begin_it++;
     }
 
-    const auto next_begin_index = std::distance(value_counts.cbegin(), next_begin_it);
-    counts.emplace_back(std::accumulate(value_counts.cbegin() + current_begin_index,
-                                        value_counts.cbegin() + next_begin_index, uint64_t{0},
+    counts.emplace_back(std::accumulate(current_begin_it, next_begin_it, uint64_t{0},
                                         [](uint64_t a, const std::pair<T, uint64_t>& b) { return a + b.second; }));
-    distinct_counts.emplace_back(next_begin_index - current_begin_index);
+    distinct_counts.emplace_back(std::distance(current_begin_it, next_begin_it));
 
     current_begin_value = next_begin_value;
-    current_begin_index = next_begin_index;
+    current_begin_it = next_begin_it;
   }
 
   return {min, max, counts, distinct_counts, num_bins_with_larger_range};
@@ -134,38 +129,27 @@ EqualWidthBinStats<std::string> EqualWidthHistogram<std::string>::_get_bin_stats
   const auto bin_width = base_width / num_bins;
   const uint64_t num_bins_with_larger_range = base_width % num_bins;
 
-  auto current_begin_value = min;
+  auto repr_current_begin_value =
+      convert_string_to_number_representation(min, supported_characters, string_prefix_length);
   auto current_begin_it = value_counts.cbegin();
-  auto current_begin_index = 0ul;
 
-  // TODO(tim): look into refactoring of begin/end values, feels like there could be less strings
   for (auto current_bin_id = 0ul; current_bin_id < num_bins; current_bin_id++) {
-    auto num_current_begin_value =
-        convert_string_to_number_representation(current_begin_value, supported_characters, string_prefix_length);
-    auto current_end_value = convert_number_representation_to_string(num_current_begin_value + bin_width - 1u,
-                                                                     supported_characters, string_prefix_length);
-    auto next_begin_value = convert_number_representation_to_string(num_current_begin_value + bin_width,
-                                                                    supported_characters, string_prefix_length);
-
-    if (current_bin_id < num_bins_with_larger_range) {
-      current_end_value = next_begin_value;
-      next_begin_value = convert_number_representation_to_string(num_current_begin_value + bin_width + 1u,
-                                                                 supported_characters, string_prefix_length);
-    }
+    const auto repr_next_begin_value =
+        repr_current_begin_value + bin_width + (current_bin_id < num_bins_with_larger_range ? 1 : 0);
+    const auto current_end_value =
+        convert_number_representation_to_string(repr_next_begin_value - 1, supported_characters, string_prefix_length);
 
     auto next_begin_it = current_begin_it;
     while (next_begin_it != value_counts.cend() && (*next_begin_it).first <= current_end_value) {
       next_begin_it++;
     }
 
-    const auto next_begin_index = std::distance(value_counts.cbegin(), next_begin_it);
-    counts.emplace_back(std::accumulate(value_counts.begin() + current_begin_index,
-                                        value_counts.begin() + next_begin_index, uint64_t{0},
+    counts.emplace_back(std::accumulate(current_begin_it, next_begin_it, uint64_t{0},
                                         [](uint64_t a, std::pair<std::string, uint64_t> b) { return a + b.second; }));
-    distinct_counts.emplace_back(next_begin_index - current_begin_index);
+    distinct_counts.emplace_back(std::distance(current_begin_it, next_begin_it));
 
-    current_begin_value = next_begin_value;
-    current_begin_index = next_begin_index;
+    current_begin_it = next_begin_it;
+    repr_current_begin_value = repr_next_begin_value;
   }
 
   return {min, max, counts, distinct_counts, num_bins_with_larger_range};
