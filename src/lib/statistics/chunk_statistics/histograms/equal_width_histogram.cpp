@@ -16,7 +16,16 @@ EqualWidthHistogram<T>::EqualWidthHistogram(const T min, const T max, const std:
       _max(max),
       _counts(counts),
       _distinct_counts(distinct_counts),
-      _num_bins_with_larger_range(num_bins_with_larger_range) {}
+      _num_bins_with_larger_range(num_bins_with_larger_range) {
+  DebugAssert(counts.size() > 0, "Cannot have histogram without any bins.");
+  DebugAssert(counts.size() == distinct_counts.size(), "Must have counts and distinct counts for each bin.");
+  DebugAssert(min <= max, "Cannot have upper bound of histogram smaller than lower bound.");
+  if constexpr (std::is_floating_point_v<T>) {
+    DebugAssert(num_bins_with_larger_range == 0, "Cannot have bins with extra value in floating point histograms.")
+  } else {
+    DebugAssert(num_bins_with_larger_range < counts.size(), "Cannot have more bins with extra value than bins.");
+  }
+}
 
 template <>
 EqualWidthHistogram<std::string>::EqualWidthHistogram(const std::string& min, const std::string& max,
@@ -31,6 +40,10 @@ EqualWidthHistogram<std::string>::EqualWidthHistogram(const std::string& min, co
       _counts(counts),
       _distinct_counts(distinct_counts),
       _num_bins_with_larger_range(num_bins_with_larger_range) {
+  DebugAssert(counts.size() > 0, "Cannot have histogram without any bins.");
+  DebugAssert(counts.size() == distinct_counts.size(), "Must have counts and distinct counts for each bin.");
+  DebugAssert(min <= max, "Cannot have upper bound of histogram smaller than lower bound.");
+  DebugAssert(num_bins_with_larger_range < counts.size(), "Cannot have more bins with extra value than bins.");
   DebugAssert(min.find_first_not_of(supported_characters) == std::string::npos, "Unsupported characters.");
   DebugAssert(max.find_first_not_of(supported_characters) == std::string::npos, "Unsupported characters.");
 }

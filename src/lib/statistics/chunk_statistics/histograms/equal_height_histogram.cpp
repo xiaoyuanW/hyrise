@@ -10,7 +10,20 @@ namespace opossum {
 template <typename T>
 EqualHeightHistogram<T>::EqualHeightHistogram(const std::vector<T>& maxs, const std::vector<uint64_t>& distinct_counts,
                                               T min, const uint64_t total_count)
-    : AbstractHistogram<T>(), _maxs(maxs), _distinct_counts(distinct_counts), _min(min), _total_count(total_count) {}
+    : AbstractHistogram<T>(), _maxs(maxs), _distinct_counts(distinct_counts), _min(min), _total_count(total_count) {
+  DebugAssert(total_count > 0, "Cannot have histogram without any values.");
+  DebugAssert(maxs.size() > 0, "Cannot have histogram without any bins.");
+  DebugAssert(maxs.size() == distinct_counts.size(), "Must have maxs and distinct counts for each bin.");
+  DebugAssert(min <= maxs[0], "Must have maxs and distinct counts for each bin.");
+
+  for (auto bin_id = 0u; bin_id < maxs.size(); bin_id++) {
+    DebugAssert(distinct_counts[bin_id] > 0, "Cannot have bins with no distinct values.");
+
+    if (bin_id < maxs.size() - 1) {
+      DebugAssert(maxs[bin_id] < maxs[bin_id + 1], "Bins must be sorted and cannot overlap.");
+    }
+  }
+}
 
 template <>
 EqualHeightHistogram<std::string>::EqualHeightHistogram(const std::vector<std::string>& maxs,
@@ -23,8 +36,18 @@ EqualHeightHistogram<std::string>::EqualHeightHistogram(const std::vector<std::s
       _distinct_counts(distinct_counts),
       _min(min),
       _total_count(total_count) {
-  for (const auto& edge : maxs) {
-    DebugAssert(edge.find_first_not_of(supported_characters) == std::string::npos, "Unsupported characters.");
+  DebugAssert(total_count > 0, "Cannot have histogram without any values.");
+  DebugAssert(maxs.size() > 0, "Cannot have histogram without any bins.");
+  DebugAssert(maxs.size() == distinct_counts.size(), "Must have maxs and distinct counts for each bin.");
+  DebugAssert(min <= maxs[0], "Must have maxs and distinct counts for each bin.");
+
+  for (auto bin_id = 0u; bin_id < maxs.size(); bin_id++) {
+    DebugAssert(distinct_counts[bin_id] > 0, "Cannot have bins with no distinct values.");
+    DebugAssert(maxs[bin_id].find_first_not_of(supported_characters) == std::string::npos, "Unsupported characters.");
+
+    if (bin_id < maxs.size() - 1) {
+      DebugAssert(maxs[bin_id] < maxs[bin_id + 1], "Bins must be sorted and cannot overlap.");
+    }
   }
 }
 

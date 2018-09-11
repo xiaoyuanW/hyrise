@@ -17,7 +17,23 @@ EqualNumElementsHistogram<T>::EqualNumElementsHistogram(const std::vector<T>& mi
       _maxs(maxs),
       _counts(counts),
       _distinct_count_per_bin(distinct_count_per_bin),
-      _num_bins_with_extra_value(num_bins_with_extra_value) {}
+      _num_bins_with_extra_value(num_bins_with_extra_value) {
+  DebugAssert(mins.size() > 0, "Cannot have histogram without any bins.");
+  DebugAssert(mins.size() == maxs.size(), "Must have the same number of lower as upper bin edges.");
+  DebugAssert(mins.size() == counts.size(), "Must have the same number of edges and counts.");
+  DebugAssert(distinct_count_per_bin > 0, "Cannot have bins with no distinct values.");
+  DebugAssert(num_bins_with_extra_value < mins.size(), "Cannot have more bins with extra value than bins.");
+
+  for (auto bin_id = 0u; bin_id < mins.size(); bin_id++) {
+    DebugAssert(counts[bin_id] > 0, "Cannot have empty bins.");
+    DebugAssert(mins[bin_id] <= maxs[bin_id], "Cannot have overlapping bins.");
+
+    if (bin_id < maxs.size() - 1) {
+      DebugAssert(mins[bin_id] < mins[bin_id + 1], "Bins must be sorted and cannot overlap.");
+      DebugAssert(maxs[bin_id] < maxs[bin_id + 1], "Bins must be sorted and cannot overlap.");
+    }
+  }
+}
 
 template <>
 EqualNumElementsHistogram<std::string>::EqualNumElementsHistogram(
@@ -30,9 +46,22 @@ EqualNumElementsHistogram<std::string>::EqualNumElementsHistogram(
       _counts(counts),
       _distinct_count_per_bin(distinct_count_per_bin),
       _num_bins_with_extra_value(num_bins_with_extra_value) {
+  DebugAssert(mins.size() > 0, "Cannot have histogram without any bins.");
+  DebugAssert(mins.size() == maxs.size(), "Must have the same number of lower as upper bin edges.");
+  DebugAssert(mins.size() == counts.size(), "Must have the same number of edges and counts.");
+  DebugAssert(distinct_count_per_bin > 0, "Cannot have bins with no distinct values.");
+  DebugAssert(num_bins_with_extra_value < mins.size(), "Cannot have more bins with extra value than bins.");
+
   for (auto bin_id = 0u; bin_id < mins.size(); bin_id++) {
+    DebugAssert(counts[bin_id] > 0, "Cannot have empty bins.");
     DebugAssert(mins[bin_id].find_first_not_of(supported_characters) == std::string::npos, "Unsupported characters.");
     DebugAssert(maxs[bin_id].find_first_not_of(supported_characters) == std::string::npos, "Unsupported characters.");
+    DebugAssert(mins[bin_id] <= maxs[bin_id], "Cannot have upper bin edge higher than lower bin edge.");
+
+    if (bin_id < maxs.size() - 1) {
+      DebugAssert(mins[bin_id] < mins[bin_id + 1], "Bins must be sorted and cannot overlap.");
+      DebugAssert(maxs[bin_id] < maxs[bin_id + 1], "Bins must be sorted and cannot overlap.");
+    }
   }
 }
 
