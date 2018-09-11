@@ -33,7 +33,7 @@ namespace opossum {
  * The possible maximum length of the prefix depends on the number of supported characters.
  * It must not overflow the uint64_t data type used to represent strings as numbers.
  * The formula used to verify the prefix length is:
- * (supported_characters.length() + 1) ^ string_prefix_length < std::numeric_limits<uint64_t>::max()
+ * string_prefix_length < std::log(std::numeric_limits<uint64_t>::max()) / std::log(supported_characters.length() + 1)
  */
 template <typename T>
 class AbstractHistogram : public AbstractFilter {

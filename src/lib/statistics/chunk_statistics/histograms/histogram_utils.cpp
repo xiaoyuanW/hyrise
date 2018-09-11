@@ -48,6 +48,7 @@ std::string next_value(const std::string& value, const std::string& supported_ch
 
 uint64_t ipow(uint64_t base, uint64_t exp) {
   // Taken from https://stackoverflow.com/a/101613/2362807.
+  // Note: this function does not check for any possible overflows!
   uint64_t result = 1;
 
   for (;;) {
@@ -141,7 +142,8 @@ bool check_prefix_settings(const std::string& supported_characters, const uint64
   }
 
   // The prefix length must not overflow for the number of supported characters when representing strings as numbers.
-  return ipow(supported_characters.length() + 1, string_prefix_length) < std::numeric_limits<uint64_t>::max();
+  return string_prefix_length <
+         std::log(std::numeric_limits<uint64_t>::max()) / std::log(supported_characters.length() + 1);
 }
 
 std::pair<std::string, uint64_t> get_default_or_check_prefix_settings(
