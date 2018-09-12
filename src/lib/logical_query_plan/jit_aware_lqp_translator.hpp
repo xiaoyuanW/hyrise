@@ -45,9 +45,12 @@ class JitAwareLQPTranslator final : public LQPTranslator {
   std::shared_ptr<JitOperatorWrapper> _try_translate_sub_plan_to_jit_operators(
       const std::shared_ptr<AbstractLQPNode>& node) const;
 
+  bool _can_translate_predicate_to_predicate_value_id_expression(
+          const AbstractExpression& expression, const std::shared_ptr<AbstractLQPNode>& input_node) const;
+
   std::shared_ptr<const JitExpression> _try_translate_expression_to_jit_expression(
       const AbstractExpression& expression, JitReadTuples& jit_source,
-      const std::shared_ptr<AbstractLQPNode>& input_node, const bool can_be_bool_column = false) const;
+      const std::shared_ptr<AbstractLQPNode>& input_node, bool use_value_id = false, const bool can_be_bool_column = false) const;
 
   // Returns whether an LQP node with its current configuration can be part of an operator pipeline.
   bool _node_is_jittable(const std::shared_ptr<AbstractLQPNode>& node, const bool allow_aggregate_node = false,

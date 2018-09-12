@@ -95,7 +95,7 @@ void SingleColumnTableScanImpl::handle_segment(const BaseDictionarySegment& base
    * ValueID value_id; // left value id
    * Variant value; // right value
    *
-   * A ValueID value_id from the attribute vector is included in the result iff
+   * A ValueID value_id from the attribute vector is included in the result if
    *
    * Operator           |  Condition
    * value_id == value  |  dict.value_by_value_id(dict.lower_bound(value)) == value && value_id == dict.lower_bound(value)

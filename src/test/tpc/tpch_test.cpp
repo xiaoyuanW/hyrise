@@ -17,6 +17,7 @@
 #include "sql/sql_translator.hpp"
 #include "sql/sqlite_testrunner/sqlite_wrapper.hpp"
 #include "storage/storage_manager.hpp"
+#include "storage/chunk_encoder.hpp"
 
 #include "tpch/tpch_db_generator.hpp"
 #include "tpch/tpch_queries.hpp"
@@ -71,6 +72,7 @@ TEST_P(TPCHTest, TPCHQueryTest) {
   TpchDbGenerator{scale_factor, 10'000}.generate_and_store();
   for (const auto& tpch_table_name : tpch_table_names) {
     const auto table = StorageManager::get().get_table(tpch_table_name);
+    ChunkEncoder::encode_all_chunks(table);
     _sqlite_wrapper->create_table(*table, tpch_table_name);
   }
 

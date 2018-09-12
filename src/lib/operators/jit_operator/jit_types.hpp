@@ -26,6 +26,8 @@ namespace opossum {
 // Expression uses int32_t to store booleans (see src/lib/expression/evaluation/expression_evaluator.hpp)
 using Bool = int32_t;
 static constexpr auto DataTypeBool = DataType::Int;
+using JitValueID = int32_t;
+static constexpr auto DataTypeValueID = DataType::Int;
 
 /* A brief overview of the type system and the way values are handled in the JitOperatorWrapper:
  *

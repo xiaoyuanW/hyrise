@@ -24,6 +24,7 @@ class JitOperatorWrapper : public AbstractReadOnlyOperator {
       const std::shared_ptr<const AbstractOperator>& left,
       const JitExecutionMode execution_mode = JitExecutionMode::Compile,
       const std::list<std::shared_ptr<AbstractJittable>>& jit_operators = {},
+      const bool insert_loads = true,
       const std::function<void(const JitReadTuples*, JitRuntimeContext&)>& execute_func = nullptr);
 
   const std::string name() const final;
@@ -54,6 +55,7 @@ class JitOperatorWrapper : public AbstractReadOnlyOperator {
   const JitExecutionMode _execution_mode;
   JitCodeSpecializer _module;
   std::list<std::shared_ptr<AbstractJittable>> _jit_operators;
+  bool _insert_loads;
   std::function<void(const JitReadTuples*, JitRuntimeContext&)> _execute_func;
 };
 
