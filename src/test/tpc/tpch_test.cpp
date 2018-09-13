@@ -16,8 +16,8 @@
 #include "sql/sql_pipeline_builder.hpp"
 #include "sql/sql_translator.hpp"
 #include "sql/sqlite_testrunner/sqlite_wrapper.hpp"
-#include "storage/storage_manager.hpp"
 #include "storage/chunk_encoder.hpp"
+#include "storage/storage_manager.hpp"
 
 #include "tpch/tpch_db_generator.hpp"
 #include "tpch/tpch_queries.hpp"

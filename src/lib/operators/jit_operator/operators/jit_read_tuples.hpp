@@ -3,8 +3,8 @@
 #include "../jit_types.hpp"
 #include "abstract_jittable.hpp"
 #include "storage/chunk.hpp"
-#include "storage/table.hpp"
 #include "storage/segment_iterables/create_iterable_from_attribute_vector.hpp"
+#include "storage/table.hpp"
 
 namespace opossum {
 
@@ -118,9 +118,11 @@ class JitReadTuples : public AbstractJittable {
   virtual void before_query(const Table& in_table, JitRuntimeContext& context) const;
   virtual void before_chunk(const Table& in_table, const ChunkID chunk_id, JitRuntimeContext& context) const;
 
-  JitTupleValue add_input_column(const DataType data_type, const bool is_nullable, const ColumnID column_id, const bool use_value_id = false);
+  JitTupleValue add_input_column(const DataType data_type, const bool is_nullable, const ColumnID column_id,
+                                 const bool use_value_id = false);
   JitTupleValue add_literal_value(const AllTypeVariant& value, const bool use_value_id = false);
-  JitTupleValue add_parameter_value(const DataType data_type, const bool is_nullable, const ParameterID parameter_id, const bool use_value_id = false);
+  JitTupleValue add_parameter_value(const DataType data_type, const bool is_nullable, const ParameterID parameter_id,
+                                    const bool use_value_id = false);
   void add_value_id_predicate(const JitExpression& jit_expression);
   size_t add_temporary_value();
 

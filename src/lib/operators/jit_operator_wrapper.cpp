@@ -11,8 +11,7 @@ namespace opossum {
 
 JitOperatorWrapper::JitOperatorWrapper(
     const std::shared_ptr<const AbstractOperator>& left, const JitExecutionMode execution_mode,
-    const std::list<std::shared_ptr<AbstractJittable>>& jit_operators,
-    const bool insert_loads,
+    const std::list<std::shared_ptr<AbstractJittable>>& jit_operators, const bool insert_loads,
     const std::function<void(const JitReadTuples*, JitRuntimeContext&)>& execute_func)
     : AbstractReadOnlyOperator{OperatorType::JitOperatorWrapper, left},
       _execution_mode{execution_mode},

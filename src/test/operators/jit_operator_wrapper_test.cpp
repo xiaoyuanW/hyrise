@@ -5,8 +5,8 @@
 #include "operators/jit_operator/operators/jit_expression.hpp"
 #include "operators/jit_operator/operators/jit_filter.hpp"
 #include "operators/jit_operator/operators/jit_read_tuples.hpp"
-#include "operators/jit_operator/operators/jit_write_tuples.hpp"
 #include "operators/jit_operator/operators/jit_write_offset.hpp"
+#include "operators/jit_operator/operators/jit_write_tuples.hpp"
 #include "operators/jit_operator_wrapper.hpp"
 #include "operators/table_wrapper.hpp"
 #include "storage/chunk_encoder.hpp"
@@ -128,13 +128,14 @@ TEST_F(JitOperatorWrapperTest, CallsJitOperatorHooks) {
 TEST_F(JitOperatorWrapperTest, DictionaryInput) {
   // Set up dictionary encoded table with a dictionary consisting of num_entries entries.
   TableColumnDefinitions table_column_definitions;
-  table_column_definitions.emplace_back("a", DataType::Int);
+  table_column_definitions.emplace_back("a", DataType::Int, true);
 
   std::shared_ptr<Table> table = std::make_shared<Table>(table_column_definitions, TableType::Data);
 
-  for (int i = 0; i < 2; i++) {
+  for (int i = 0; i < 3; i++) {
     table->append({i});
   }
+  table->append({NULL_VALUE});
 
   ChunkEncoder::encode_all_chunks(table);
 
@@ -142,19 +143,22 @@ TEST_F(JitOperatorWrapperTest, DictionaryInput) {
   table_wrapper->execute();
 
   auto read_operator = std::make_shared<JitReadTuples>();
-  auto [input_column, input_column_index] = read_operator->add_input_column_as_value_id(DataType::Int, false, ColumnID(0));
-  auto literal_column = read_operator->add_literal_value_as_value_id(ColumnID(0), JitExpressionType::ValueIDEquals, 1);
 
-  auto left = std::make_shared<JitExpression>(input_column, JitExpressionType::ValueIDColumn);
-  left->set_load_column(0);
+  auto input_column = read_operator->add_input_column(DataType::Int, true, ColumnID(0), true);
+  auto left = std::make_shared<JitExpression>(input_column);
+
+  auto literal_column = read_operator->add_literal_value(1, true);
   auto right = std::make_shared<JitExpression>(literal_column);
+
   auto result_tuple_index = read_operator->add_temporary_value();
-  auto expression = std::make_shared<JitExpression>(left, JitExpressionType::ValueIDEquals, right, result_tuple_index);
+  auto expression = std::make_shared<JitExpression>(left, JitExpressionType::Equals, right, result_tuple_index);
+  read_operator->add_value_id_predicate(*expression);
+
   auto compute_operator = std::make_shared<JitCompute>(expression);
   auto filter_operator = std::make_shared<JitFilter>(expression->result());
 
   auto write_operator = std::make_shared<JitWriteOffset>();
-  write_operator->add_output_column({"a", DataType::Int, false, ColumnID(0)});
+  write_operator->add_output_column({"a", DataType::Int, true, ColumnID(0)});
 
   JitOperatorWrapper jit_operator_wrapper(table_wrapper, JitExecutionMode::Interpret);
   jit_operator_wrapper.add_jit_operator(read_operator);

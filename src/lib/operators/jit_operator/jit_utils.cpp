@@ -3,24 +3,26 @@
 #include <string>
 
 #include "all_type_variant.hpp"
-#include "resolve_type.hpp"
 #include "jit_types.hpp"
+#include "resolve_type.hpp"
 
 namespace opossum {
 
-template <typename NewType, typename CurrentType, typename = typename std::enable_if_t<std::is_scalar_v<NewType> == std::is_scalar_v<CurrentType>>>
+template <typename NewType, typename CurrentType,
+          typename = typename std::enable_if_t<std::is_scalar_v<NewType> == std::is_scalar_v<CurrentType>>>
 NewType cast_value_to_type(CurrentType value) {
- return value;
+  return value;
 }
-template <typename NewType, typename CurrentType, typename = typename std::enable_if_t<!std::is_scalar_v<NewType> && std::is_scalar_v<CurrentType>>>
+template <typename NewType, typename CurrentType,
+          typename = typename std::enable_if_t<!std::is_scalar_v<NewType> && std::is_scalar_v<CurrentType>>>
 std::string cast_value_to_type(CurrentType value) {
   return std::to_string(value);
 }
-template <typename NewType, typename CurrentType, typename = typename std::enable_if_t<std::is_scalar_v<NewType> && !std::is_scalar_v<CurrentType>>>
+template <typename NewType, typename CurrentType,
+          typename = typename std::enable_if_t<std::is_scalar_v<NewType> && !std::is_scalar_v<CurrentType>>>
 NewType cast_value_to_type(std::string value) {
   Fail("String to number conversions not supported.");
 }
-
 
 AllTypeVariant cast_all_type_variant_to_type(const AllTypeVariant& variant, const DataType data_type) {
   if (data_type == DataType::Null) return NULL_VALUE;
@@ -48,7 +50,7 @@ AllTypeVariant cast_all_type_variant_to_type(const AllTypeVariant& variant, cons
 }
 
 JitExpressionType swap_expression_type(const JitExpressionType expression_type) {
-  switch(expression_type) {
+  switch (expression_type) {
     case JitExpressionType::GreaterThan:
       return JitExpressionType::LessThanEquals;
     case JitExpressionType::GreaterThanEquals:
