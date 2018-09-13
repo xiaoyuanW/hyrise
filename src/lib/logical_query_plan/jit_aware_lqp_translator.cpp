@@ -259,10 +259,11 @@ std::shared_ptr<JitOperatorWrapper> JitAwareLQPTranslator::_try_translate_sub_pl
   return jit_operator;
 }
 
-bool JitAwareLQPTranslator::_can_translate_predicate_to_predicate_value_id_expression(
-    const AbstractExpression& expression, const std::shared_ptr<AbstractLQPNode>& input_node) const {
+namespace {
+bool can_translate_predicate_to_predicate_value_id_expression(const AbstractExpression& expression,
+                                                              const std::shared_ptr<AbstractLQPNode>& input_node) {
   // input node must be a stored table node
-  if (input_node->type != LQPNodeType::StoredTable) return false;
+  if (input_node && input_node->type != LQPNodeType::StoredTable) return false;
 
   const auto* predicate_expression = dynamic_cast<const AbstractPredicateExpression*>(&expression);
   // value ids can only be used in compare expressions
@@ -309,6 +310,7 @@ bool JitAwareLQPTranslator::_can_translate_predicate_to_predicate_value_id_expre
   }
   return found_input_column;
 }
+}  // namespace
 
 std::shared_ptr<const JitExpression> JitAwareLQPTranslator::_try_translate_expression_to_jit_expression(
     const AbstractExpression& expression, JitReadTuples& jit_source, const std::shared_ptr<AbstractLQPNode>& input_node,
@@ -356,7 +358,7 @@ std::shared_ptr<const JitExpression> JitAwareLQPTranslator::_try_translate_expre
                                                              true);
         }
       }
-      use_value_id = _can_translate_predicate_to_predicate_value_id_expression(expression, input_node);
+      use_value_id = can_translate_predicate_to_predicate_value_id_expression(expression, input_node);
     }
     case ExpressionType::Arithmetic:
     case ExpressionType::Logical: {
@@ -410,7 +412,8 @@ std::shared_ptr<const JitExpression> JitAwareLQPTranslator::_try_translate_expre
 }
 
 namespace {
-bool _expressions_are_jittable(const std::vector<std::shared_ptr<AbstractExpression>>& expressions) {
+bool _expressions_are_jittable(const std::vector<std::shared_ptr<AbstractExpression>>& expressions,
+                               const bool allow_string = false) {
   for (const auto& expression : expressions) {
     switch (expression->type) {
       case ExpressionType::Cast:
@@ -433,13 +436,15 @@ bool _expressions_are_jittable(const std::vector<std::shared_ptr<AbstractExpress
           default:
             break;
         }
+        return _expressions_are_jittable(
+            expression->arguments, can_translate_predicate_to_predicate_value_id_expression(*expression, nullptr));
       }
       case ExpressionType::Arithmetic:
       case ExpressionType::Logical:
         return _expressions_are_jittable(expression->arguments);
       case ExpressionType::Value: {
         const auto value_expression = std::static_pointer_cast<const ValueExpression>(expression);
-        if (data_type_from_all_type_variant(value_expression->value) == DataType::String) return false;
+        if (!allow_string && data_type_from_all_type_variant(value_expression->value) == DataType::String) return false;
         break;
       }
       case ExpressionType::Parameter: {
@@ -453,7 +458,7 @@ bool _expressions_are_jittable(const std::vector<std::shared_ptr<AbstractExpress
       case ExpressionType::LQPColumn: {
         const auto column = std::dynamic_pointer_cast<const LQPColumnExpression>(expression);
         // Filter or computation on string columns is expensive
-        if (column->data_type() == DataType::String) return false;
+        if (!allow_string && column->data_type() == DataType::String) return false;
         break;
       }
       default:
@@ -492,7 +497,7 @@ bool JitAwareLQPTranslator::_node_is_jittable(const std::shared_ptr<AbstractLQPN
         break;
     }
     if (predicate_expression->arguments.size() == 2 &&
-        !_expressions_are_jittable({predicate_expression->arguments[1]})) {
+        !_expressions_are_jittable({predicate_expression->arguments[1]}, true)) {
       return false;
     }
     return predicate_node->scan_type == ScanType::TableScan;

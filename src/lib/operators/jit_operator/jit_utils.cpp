@@ -8,21 +8,27 @@
 
 namespace opossum {
 
+namespace {
+
 template <typename NewType, typename CurrentType,
           typename = typename std::enable_if_t<std::is_scalar_v<NewType> == std::is_scalar_v<CurrentType>>>
 NewType cast_value_to_type(CurrentType value) {
   return value;
 }
+
 template <typename NewType, typename CurrentType,
           typename = typename std::enable_if_t<!std::is_scalar_v<NewType> && std::is_scalar_v<CurrentType>>>
 std::string cast_value_to_type(CurrentType value) {
   return std::to_string(value);
 }
+
 template <typename NewType, typename CurrentType,
           typename = typename std::enable_if_t<std::is_scalar_v<NewType> && !std::is_scalar_v<CurrentType>>>
 NewType cast_value_to_type(std::string value) {
   Fail("String to number conversions not supported.");
 }
+
+}  // namespace
 
 AllTypeVariant cast_all_type_variant_to_type(const AllTypeVariant& variant, const DataType data_type) {
   if (data_type == DataType::Null) return NULL_VALUE;
