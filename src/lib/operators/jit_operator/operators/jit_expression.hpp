@@ -45,6 +45,10 @@ class JitExpression {
     non_const_input_column_index = input_column_index;
   }
 
+  void set_expression_type(const JitExpressionType expression_type) const {
+    const_cast<JitExpressionType&>(_expression_type) = expression_type;
+  }
+
  private:
   std::pair<const DataType, const bool> _compute_result_type();
 

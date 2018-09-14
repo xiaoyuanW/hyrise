@@ -482,7 +482,7 @@ bool JitAwareLQPTranslator::_node_is_jittable(const std::shared_ptr<AbstractLQPN
           // Right now, the JIT does not support CountDistinct
           return aggregate_expression->aggregate_function == AggregateFunction::CountDistinct;
         });
-    return allow_aggregate_node && !has_unsupported_aggregate;
+    return false && allow_aggregate_node && !has_unsupported_aggregate;
   }
 
   if (auto predicate_node = std::dynamic_pointer_cast<PredicateNode>(node)) {
@@ -512,7 +512,12 @@ bool JitAwareLQPTranslator::_node_is_jittable(const std::shared_ptr<AbstractLQPN
   }
 
   if (auto projection_node = std::dynamic_pointer_cast<ProjectionNode>(node)) {
-    return _expressions_are_jittable(projection_node->expressions);
+    for (const auto expression : projection_node->expressions) {
+      if (expression->type != ExpressionType::LQPColumn) {
+        if (!_expressions_are_jittable({expression})) return false;
+      }
+    }
+    return true;
   }
 
   return node->type == LQPNodeType::Union;

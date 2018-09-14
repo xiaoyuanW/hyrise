@@ -19,20 +19,20 @@ std::string JitReadTuples::description() const {
   std::stringstream desc;
   desc << "[ReadTuple] ";
   for (const auto& input_column : _input_columns) {
-    desc << "("
-         << (input_column.tuple_value.data_type() == DataType::Bool
-                 ? "Bool"
-                 : data_type_to_string.left.at(input_column.tuple_value.data_type()))
+    desc << "(" << (input_column.use_value_id ? "(V) " : "")
+         << (input_column.data_type == DataType::Bool ? "Bool" : data_type_to_string.left.at(input_column.data_type))
          << " x" << input_column.tuple_value.tuple_index() << " = Column#" << input_column.column_id << "), ";
   }
   for (const auto& input_literal : _input_literals) {
-    desc << (input_literal.tuple_value.data_type() == DataType::Null
+    desc << (input_literal.use_value_id ? "(V) " : "")
+         << (input_literal.tuple_value.data_type() == DataType::Null
                  ? "null"
                  : data_type_to_string.left.at(input_literal.tuple_value.data_type()))
          << " x" << input_literal.tuple_value.tuple_index() << " = " << input_literal.value << ", ";
   }
   for (const auto& input_parameter : _input_parameters) {
-    desc << (input_parameter.tuple_value.data_type() == DataType::Null
+    desc << (input_parameter.use_value_id ? "(V) " : "")
+         << (input_parameter.tuple_value.data_type() == DataType::Null
                  ? "null"
                  : data_type_to_string.left.at(input_parameter.tuple_value.data_type()))
          << " x" << input_parameter.tuple_value.tuple_index() << " = Par#" << input_parameter.parameter_id
@@ -185,6 +185,11 @@ void JitReadTuples::before_chunk(const Table& in_table, const ChunkID chunk_id, 
       default:
         Fail("Unsupported expression type for binary value id predicate");
     }
+    if (value_id == INVALID_VALUE_ID) {
+      value_id = std::numeric_limits<JitValueID>::max();
+    } else if (static_cast<ValueID::base_type>(value_id) >= std::numeric_limits<JitValueID>::max()) {
+      Fail("ValueID used too high.");
+    }
     context.tuple.set<JitValueID>(tuple_index, value_id);
   }
 }
@@ -274,9 +279,15 @@ void JitReadTuples::add_value_id_predicate(const JitExpression& jit_expression) 
 
   auto expression = swap ? swap_expression_type(jit_expression.expression_type()) : jit_expression.expression_type();
 
-  DebugAssert(literal_id || parameter_id, "Neither input literal nor parameter index have been set.")
+  DebugAssert(literal_id || parameter_id, "Neither input literal nor parameter index have been set.");
 
-      _value_id_predicates.push_back({*column_id, expression, literal_id, parameter_id});
+  if (expression == JitExpressionType::GreaterThan) {
+    jit_expression.set_expression_type(swap ? JitExpressionType::LessThan : JitExpressionType::GreaterThanEquals);
+  } else if (expression == JitExpressionType::LessThanEquals) {
+    jit_expression.set_expression_type(swap ? JitExpressionType::GreaterThanEquals : JitExpressionType::LessThan);
+  }
+
+  _value_id_predicates.push_back({*column_id, expression, literal_id, parameter_id});
 }
 
 void JitReadTuples::set_parameters(const std::unordered_map<ParameterID, AllTypeVariant>& parameters) {
