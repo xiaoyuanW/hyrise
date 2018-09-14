@@ -94,7 +94,7 @@ std::shared_ptr<AbstractOperator> JitAwareLQPTranslator::translate_node(
 }
 
 std::shared_ptr<JitOperatorWrapper> JitAwareLQPTranslator::_try_translate_sub_plan_to_jit_operators(
-    const std::shared_ptr<AbstractLQPNode>& node) const {
+    const std::shared_ptr<AbstractLQPNode>& node, const bool use_value_id) const {
   auto jittable_node_count = size_t{0};
 
   auto input_nodes = std::unordered_set<std::shared_ptr<AbstractLQPNode>>{};
@@ -105,7 +105,7 @@ std::shared_ptr<JitOperatorWrapper> JitAwareLQPTranslator::_try_translate_sub_pl
   // Traverse query tree until a non-jittable nodes is found in each branch
   _visit(node, [&](auto& current_node) {
     const auto is_root_node = current_node == node;
-    if (_node_is_jittable(current_node, allow_aggregate, is_root_node)) {
+    if (_node_is_jittable(current_node, use_value_id, allow_aggregate, is_root_node)) {
       use_validate |= current_node->type == LQPNodeType::Validate;
       ++jittable_node_count;
       allow_aggregate &= current_node->type == LQPNodeType::Limit;
@@ -159,12 +159,16 @@ std::shared_ptr<JitOperatorWrapper> JitAwareLQPTranslator::_try_translate_sub_pl
   // there is no need to filter any tuples
   if (filter_node != input_node) {
     const auto boolean_expression = lqp_subplan_to_boolean_expression(
-        filter_node, [&](const std::shared_ptr<AbstractLQPNode>& lqp) { return _node_is_jittable(lqp, false, false); });
+        filter_node, [&](const std::shared_ptr<AbstractLQPNode>& lqp) { return _node_is_jittable(lqp, use_value_id, false, false); });
     if (!boolean_expression) return nullptr;
 
     const auto jit_boolean_expression =
         _try_translate_expression_to_jit_expression(*boolean_expression, *read_tuples, input_node);
-    if (!jit_boolean_expression) return nullptr;
+    if (!jit_boolean_expression) {
+      // retry jitting current node without using value ids, i.e. without strings
+      if (use_value_id) return _try_translate_sub_plan_to_jit_operators(node, false);
+      return nullptr;
+    }
 
     if (jit_boolean_expression->expression_type() != JitExpressionType::Column) {
       // make sure that the expression gets computed ...
@@ -349,7 +353,7 @@ std::shared_ptr<const JitExpression> JitAwareLQPTranslator::_try_translate_expre
     case ExpressionType::Predicate: {
       const auto* predicate_expression = dynamic_cast<const AbstractPredicateExpression*>(&expression);
       // Remove in jit unnecessary predicate [<bool expression> != false] added by sql translator
-      if (false && predicate_expression->predicate_condition == PredicateCondition::NotEquals &&
+      if (predicate_expression->predicate_condition == PredicateCondition::NotEquals &&
           expression.arguments[1]->type == ExpressionType::Value) {
         const auto& value = std::static_pointer_cast<ValueExpression>(expression.arguments[1])->value;
         if (data_type_from_all_type_variant(value) == DataType::Int && boost::get<int32_t>(value) == 0 &&
@@ -368,6 +372,9 @@ std::shared_ptr<const JitExpression> JitAwareLQPTranslator::_try_translate_expre
             _try_translate_expression_to_jit_expression(*argument, jit_source, input_node, use_value_id);
         if (!jit_expression) return nullptr;
         jit_expression_arguments.emplace_back(jit_expression);
+        if (!use_value_id && jit_expression->result().data_type() == DataType::String) {
+          return nullptr;  // string not supported without value ids
+        }
       }
 
       const auto jit_expression_type = _expression_to_jit_expression_type(expression);
@@ -469,7 +476,7 @@ bool _expressions_are_jittable(const std::vector<std::shared_ptr<AbstractExpress
 }
 }  // namespace
 
-bool JitAwareLQPTranslator::_node_is_jittable(const std::shared_ptr<AbstractLQPNode>& node,
+bool JitAwareLQPTranslator::_node_is_jittable(const std::shared_ptr<AbstractLQPNode>& node, const bool use_value_id,
                                               const bool allow_aggregate_node, const bool allow_limit_node) const {
   if (node->type == LQPNodeType::Aggregate) {
     // We do not support the count distinct function yet and thus need to check all aggregate expressions.
@@ -498,7 +505,7 @@ bool JitAwareLQPTranslator::_node_is_jittable(const std::shared_ptr<AbstractLQPN
     }
     if (predicate_expression->arguments.size() == 2 &&
         !_expressions_are_jittable({predicate_expression->arguments[1]},
-                can_translate_predicate_to_predicate_value_id_expression(*predicate_node->predicate, nullptr))) {
+                                   use_value_id && can_translate_predicate_to_predicate_value_id_expression(*predicate_node->predicate, nullptr))) {
       return false;
     }
     return predicate_node->scan_type == ScanType::TableScan;
