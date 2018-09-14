@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "optimizer/strategy/rule_batch.hpp"
+#include "planviz/lqp_visualizer.hpp"
 
 namespace opossum {
 
@@ -26,7 +27,14 @@ class Optimizer final {
 
   void add_rule_batch(RuleBatch rule_batch);
 
-  std::shared_ptr<AbstractLQPNode> optimize(const std::shared_ptr<AbstractLQPNode>& input) const;
+  std::shared_ptr<AbstractLQPNode> optimize(const std::shared_ptr<AbstractLQPNode>& input);
+
+  struct OptimizationStepInfo {
+    const std::string last_applied_rule;
+    const std::string visualization;
+  };
+
+  std::vector<OptimizationStepInfo> visualized_steps() const;
 
  private:
   std::vector<RuleBatch> _rule_batches;
@@ -34,8 +42,11 @@ class Optimizer final {
   // Rather arbitrary right now, atm all rules should be done after one iteration
   uint32_t _max_num_iterations = 10;
 
-  bool _apply_rule_batch(const RuleBatch& rule_batch, const std::shared_ptr<AbstractLQPNode>& root_node) const;
-  bool _apply_rule(const AbstractRule& rule, const std::shared_ptr<AbstractLQPNode>& root_node) const;
+  bool _apply_rule_batch(const RuleBatch& rule_batch, const std::shared_ptr<AbstractLQPNode>& root_node);
+  bool _apply_rule(const AbstractRule& rule, const std::shared_ptr<AbstractLQPNode>& root_node);
+
+  bool _visualize{true};
+  std::vector<OptimizationStepInfo> _visualized_steps;
 };
 
 }  // namespace opossum

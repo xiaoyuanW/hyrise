@@ -3,6 +3,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/graphviz.hpp>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -54,10 +55,8 @@ class AbstractVisualizer {
   static const uint8_t MAX_LABEL_WIDTH = 50;
 
  public:
-  AbstractVisualizer() : AbstractVisualizer(GraphvizConfig{}, VizGraphInfo{}, VizVertexInfo{}, VizEdgeInfo{}) {}
-
-  AbstractVisualizer(GraphvizConfig graphviz_config, VizGraphInfo graph_info, VizVertexInfo vertex_info,
-                     VizEdgeInfo edge_info)
+  AbstractVisualizer(GraphvizConfig graphviz_config = {}, VizGraphInfo graph_info = {}, VizVertexInfo vertex_info = {},
+                     VizEdgeInfo edge_info = {})
       : _graphviz_config(std::move(graphviz_config)),
         _graph_info(std::move(graph_info)),
         _default_vertex(std::move(vertex_info)),
@@ -83,7 +82,15 @@ class AbstractVisualizer {
     _add_property("style", &VizEdgeInfo::style);
   }
 
-  void visualize(const GraphBase& graph_base, const std::string& graph_filename, const std::string& img_filename) {
+  std::string visualize_into_string(const GraphBase& graph_base) {
+    _build_graph(graph_base);
+    std::stringstream out;
+    boost::write_graphviz_dp(out, _graph, _properties);
+    return out.str();
+  }
+
+  void visualize_into_file(const GraphBase& graph_base, const std::string& graph_filename,
+                           const std::string& img_filename) {
     _build_graph(graph_base);
     std::ofstream file(graph_filename);
     boost::write_graphviz_dp(file, _graph, _properties);

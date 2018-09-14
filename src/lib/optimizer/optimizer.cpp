@@ -107,10 +107,15 @@ Optimizer::Optimizer(const uint32_t max_num_iterations) : _max_num_iterations(ma
 
 void Optimizer::add_rule_batch(RuleBatch rule_batch) { _rule_batches.emplace_back(std::move(rule_batch)); }
 
-std::shared_ptr<AbstractLQPNode> Optimizer::optimize(const std::shared_ptr<AbstractLQPNode>& input) const {
+std::shared_ptr<AbstractLQPNode> Optimizer::optimize(const std::shared_ptr<AbstractLQPNode>& input) {
   // Add explicit root node, so the rules can freely change the tree below it without having to maintain a root node
   // to return to the Optimizer
   const auto root_node = LogicalPlanRootNode::make(input);
+
+  if (_visualize) {
+    auto visualized_step = LQPVisualizer{}.visualize_into_string({root_node->left_input()});
+    _visualized_steps.emplace_back(OptimizationStepInfo{"initial LQP", std::move(visualized_step)});
+  }
 
   for (const auto& rule_batch : _rule_batches) {
     switch (rule_batch.execution_policy()) {
@@ -143,8 +148,9 @@ std::shared_ptr<AbstractLQPNode> Optimizer::optimize(const std::shared_ptr<Abstr
   return optimized_node;
 }
 
-bool Optimizer::_apply_rule_batch(const RuleBatch& rule_batch,
-                                  const std::shared_ptr<AbstractLQPNode>& root_node) const {
+std::vector<Optimizer::OptimizationStepInfo> Optimizer::visualized_steps() const { return _visualized_steps; }
+
+bool Optimizer::_apply_rule_batch(const RuleBatch& rule_batch, const std::shared_ptr<AbstractLQPNode>& root_node) {
   auto lqp_changed = false;
 
   for (auto& rule : rule_batch.rules()) {
@@ -154,7 +160,7 @@ bool Optimizer::_apply_rule_batch(const RuleBatch& rule_batch,
   return lqp_changed;
 }
 
-bool Optimizer::_apply_rule(const AbstractRule& rule, const std::shared_ptr<AbstractLQPNode>& root_node) const {
+bool Optimizer::_apply_rule(const AbstractRule& rule, const std::shared_ptr<AbstractLQPNode>& root_node) {
   auto lqp_changed = rule.apply_to(root_node);
 
   /**
@@ -173,6 +179,11 @@ bool Optimizer::_apply_rule(const AbstractRule& rule, const std::shared_ptr<Abst
 
     // Explicitly untie the root node, otherwise the LQP is left with an expired output weak_ptr
     root_node->set_left_input(nullptr);
+  }
+
+  if (lqp_changed && _visualize) {
+    auto visualized_step = LQPVisualizer{}.visualize_into_string({root_node->left_input()});
+    _visualized_steps.emplace_back(OptimizationStepInfo{rule.name(), std::move(visualized_step)});
   }
 
   return lqp_changed;

@@ -85,6 +85,9 @@ class SQLPipeline : public Noncopyable {
   // Returns whether the pipeline requires execution to handle all statements
   bool requires_execution() const;
 
+  // Returns the used optimizer
+  const std::shared_ptr<Optimizer>& optimizer() const;
+
   const SQLPipelineMetrics& metrics();
 
  private:

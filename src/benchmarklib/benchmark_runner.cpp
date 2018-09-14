@@ -78,13 +78,12 @@ void BenchmarkRunner::run() {
 
       for (auto lqp_idx = size_t{0}; lqp_idx < lqps.size(); ++lqp_idx) {
         const auto file_prefix = name + "-LQP-" + std::to_string(lqp_idx);
-        LQPVisualizer{graphviz_config, {}, {}, {}}.visualize({lqps[lqp_idx]}, file_prefix + ".dot",
-                                                             file_prefix + ".svg");
+        LQPVisualizer{graphviz_config}.visualize_into_file({lqps[lqp_idx]}, file_prefix + ".dot", file_prefix + ".svg");
       }
       for (auto pqp_idx = size_t{0}; pqp_idx < pqps.size(); ++pqp_idx) {
         const auto file_prefix = name + "-PQP-" + std::to_string(pqp_idx);
-        SQLQueryPlanVisualizer{graphviz_config, {}, {}, {}}.visualize(*pqps[pqp_idx], file_prefix + ".dot",
-                                                                      file_prefix + ".svg");
+        SQLQueryPlanVisualizer{graphviz_config}.visualize_into_file(*pqps[pqp_idx], file_prefix + ".dot",
+                                                                    file_prefix + ".svg");
       }
     }
   }

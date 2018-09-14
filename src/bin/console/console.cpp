@@ -28,6 +28,7 @@
 #include "operators/print.hpp"
 #include "optimizer/optimizer.hpp"
 #include "pagination.hpp"
+#include "planviz/animated_optimization_visualizer.hpp"
 #include "planviz/lqp_visualizer.hpp"
 #include "planviz/sql_query_plan_visualizer.hpp"
 #include "scheduler/current_scheduler.hpp"
@@ -362,6 +363,7 @@ int Console::_help(const std::string&) {
   out("                                       Options\n");
   out("                                         - {exec, noexec} Execute the query before visualization.\n");
   out("                                                          Default: noexec\n");
+  // TODO Doc visualizer animation
   out("                                         - {lqp, unoptlqp, pqp} Type of plan to visualize. unoptlqp gives "
       "the\n");
   out("                                                                unoptimized lqp. Default: pqp\n");
@@ -500,6 +502,7 @@ int Console::_visualize(const std::string& input) {
   const std::string NOEXEC = "noexec";
   const std::string PQP = "pqp";
   const std::string LQP = "lqp";
+  const std::string LQPANIM = "lqpanim";
   const std::string UNOPTLQP = "unoptlqp";
 
   // Determine whether the specified query is to be executed before visualization
@@ -510,14 +513,17 @@ int Console::_visualize(const std::string& input) {
   }
 
   // Determine the plan type to visualize
-  enum class PlanType { LQP, UnoptLQP, PQP };
+  enum class PlanType { UnoptLQP, LQPAnimated, LQP, PQP };
   auto plan_type = PlanType::PQP;
   auto plan_type_str = std::string{"pqp"};
-  if (input_words.front() == LQP || input_words.front() == UNOPTLQP || input_words.front() == PQP) {
-    if (input_words.front() == LQP)
-      plan_type = PlanType::LQP;
-    else if (input_words.front() == UNOPTLQP)
+  if (input_words.front() == UNOPTLQP || input_words.front() == LQP || input_words.front() == LQPANIM ||
+      input_words.front() == PQP) {
+    if (input_words.front() == UNOPTLQP)
       plan_type = PlanType::UnoptLQP;
+    else if (input_words.front() == LQP)
+      plan_type = PlanType::LQP;
+    else if (input_words.front() == LQPANIM)
+      plan_type = PlanType::LQPAnimated;
 
     plan_type_str = input_words.front();
     input_words.erase(input_words.begin());
@@ -541,6 +547,17 @@ int Console::_visualize(const std::string& input) {
   if (no_execute && !sql.empty() && _sql_pipeline->requires_execution()) {
     out("We do not support the visualization of multiple dependant statements in 'noexec' mode.\n");
     return ReturnCode::Error;
+  }
+
+  if (plan_type == PlanType::LQPAnimated) {
+    // TODO Check what happens with multiple LQPs
+    // TODO This does not work if the LQP is cached
+    const auto& visualized_steps = _sql_pipeline->optimizer()->visualized_steps();
+    AnimatedOptimizationVisualizer{}.visualize_into_file(visualized_steps, "optimization.html");
+
+    out("The plan has been visualized and is available as optimization.html.");
+
+    return ReturnCode::Ok;
   }
 
   const auto graph_filename = "." + plan_type_str + ".dot";
@@ -568,7 +585,7 @@ int Console::_visualize(const std::string& input) {
     }
 
     LQPVisualizer visualizer;
-    visualizer.visualize(lqp_roots, graph_filename, img_filename);
+    visualizer.visualize_into_file(lqp_roots, graph_filename, img_filename);
 
   } else {
     // Visualize the Physical Query Plan
@@ -591,7 +608,7 @@ int Console::_visualize(const std::string& input) {
     }
 
     SQLQueryPlanVisualizer visualizer;
-    visualizer.visualize(query_plan, graph_filename, img_filename);
+    visualizer.visualize_into_file(query_plan, graph_filename, img_filename);
   }
 
   auto ret = system("./scripts/planviz/is_iterm2.sh");
