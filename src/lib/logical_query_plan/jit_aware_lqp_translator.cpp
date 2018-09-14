@@ -497,7 +497,8 @@ bool JitAwareLQPTranslator::_node_is_jittable(const std::shared_ptr<AbstractLQPN
         break;
     }
     if (predicate_expression->arguments.size() == 2 &&
-        !_expressions_are_jittable({predicate_expression->arguments[1]}, true)) {
+        !_expressions_are_jittable({predicate_expression->arguments[1]},
+                can_translate_predicate_to_predicate_value_id_expression(*predicate_node->predicate, nullptr))) {
       return false;
     }
     return predicate_node->scan_type == ScanType::TableScan;
