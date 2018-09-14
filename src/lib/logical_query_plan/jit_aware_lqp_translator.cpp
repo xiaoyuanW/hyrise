@@ -482,7 +482,7 @@ bool JitAwareLQPTranslator::_node_is_jittable(const std::shared_ptr<AbstractLQPN
           // Right now, the JIT does not support CountDistinct
           return aggregate_expression->aggregate_function == AggregateFunction::CountDistinct;
         });
-    return false && allow_aggregate_node && !has_unsupported_aggregate;
+    return allow_aggregate_node && !has_unsupported_aggregate;
   }
 
   if (auto predicate_node = std::dynamic_pointer_cast<PredicateNode>(node)) {
