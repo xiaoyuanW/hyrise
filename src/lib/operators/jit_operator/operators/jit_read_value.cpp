@@ -1,5 +1,7 @@
 #include "jit_read_value.hpp"
+
 #include "constant_mappings.hpp"
+#include "jit_segment_reader.hpp"
 
 namespace opossum {
 
@@ -10,7 +12,7 @@ std::string JitReadValue::description() const {
 }
 
 void JitReadValue::_consume(JitRuntimeContext& context) const {
-  context.inputs[_input_column_index]->read_value(context);
+  _input_segment_wrapper->read_value(context);
   _emit(context);
 }
 

@@ -5,22 +5,12 @@
 #include "storage/chunk.hpp"
 #include "storage/segment_iterables/create_iterable_from_attribute_vector.hpp"
 #include "storage/table.hpp"
+#include "jit_segment_reader.hpp"
 
 namespace opossum {
 
 class AbstractExpression;
 class JitExpression;
-
-/* Base class for all segment readers.
- * We need this class, so we can store a number of JitSegmentReaders with different template
- * specializations in a common data structure.
- */
-class BaseJitSegmentReader {
- public:
-  virtual ~BaseJitSegmentReader() = default;
-  virtual void read_value(JitRuntimeContext& context) const = 0;
-  virtual void increment() = 0;
-};
 
 // data_type and tuple_value._data_type are different for value id columns as data_type describes the actual type of the
 // column and tuple_value._data_type describes the data type in the jit code which is DataTypeValueID for value ids.
@@ -61,62 +51,16 @@ struct JitValueIDPredicate {
  *    it can request a slot in the tuple from JitReadTuples.
  */
 class JitReadTuples : public AbstractJittable {
-  /* JitSegmentReaders wrap the segment iterable interface used by most operators and makes it accessible
-   * to the JitOperatorWrapper.
-   *
-   * Why we need this wrapper:
-   * Most operators access data by creating a fixed number (usually one or two) of segment iterables and
-   * then immediately use those iterators in a lambda. The JitOperatorWrapper, on the other hand, processes
-   * data in a tuple-at-a-time fashion and thus needs access to an arbitrary number of segment iterators
-   * at the same time.
-   *
-   * We solve this problem by introducing a template-free super class to all segment iterators. This allows us to
-   * create an iterator for each input segment (before processing each chunk) and store these iterators in a
-   * common vector in the runtime context.
-   * We then use JitSegmentReader instances to access these iterators. JitSegmentReaders are templated with the
-   * type of iterator they are supposed to handle. They are initialized with an input_index and a tuple value.
-   * When requested to read a value, they will access the iterator from the runtime context corresponding to their
-   * input_index and copy the value to their JitTupleValue.
-   *
-   * All segment readers have a common template-free base class. That allows us to store the segment readers in a
-   * vector as well and access all types of segments with a single interface.
-   */
-  template <typename Iterator, typename DataType, bool Nullable>
-  class JitSegmentReader : public BaseJitSegmentReader {
-   public:
-    JitSegmentReader(const Iterator& iterator, const JitTupleValue& tuple_value)
-        : _iterator{iterator}, _tuple_index{tuple_value.tuple_index()} {}
-
-    // Reads a value from the _iterator into the _tuple_value and increments the _iterator.
-    void read_value(JitRuntimeContext& context) const final {
-      const auto& value = *_iterator;
-      // clang-format off
-      if constexpr (Nullable) {
-        context.tuple.set_is_null(_tuple_index, value.is_null());
-        if (!value.is_null()) {
-          context.tuple.set<DataType>(_tuple_index, value.value());
-        }
-      } else {
-        context.tuple.set<DataType>(_tuple_index, value.value());
-      }
-      // clang-format on
-    }
-
-    void increment() final { ++_iterator; }
-
-   private:
-    Iterator _iterator;
-    const size_t _tuple_index;
-  };
-
  public:
   explicit JitReadTuples(const bool has_validate = false,
                          const std::shared_ptr<AbstractExpression>& row_count_expression = nullptr);
 
   std::string description() const final;
 
-  virtual void before_query(const Table& in_table, JitRuntimeContext& context) const;
-  virtual void before_chunk(const Table& in_table, const ChunkID chunk_id, JitRuntimeContext& context) const;
+  virtual void before_query(const Table& in_table, JitRuntimeContext& context);
+  virtual void before_chunk(const Table& in_table, const ChunkID chunk_id, JitRuntimeContext& context);
+
+  void create_default_input_wrappers();
 
   JitTupleValue add_input_column(const DataType data_type, const bool is_nullable, const ColumnID column_id,
                                  const bool use_value_id = false);
@@ -129,6 +73,7 @@ class JitReadTuples : public AbstractJittable {
   void set_parameters(const std::unordered_map<ParameterID, AllTypeVariant>& parameters);
 
   std::vector<JitInputColumn> input_columns() const;
+  std::vector<std::shared_ptr<BaseJitSegmentReaderWrapper>> input_wrappers() const;
   std::vector<JitInputLiteral> input_literals() const;
   std::vector<JitInputParameter> input_parameters() const;
   std::vector<JitValueIDPredicate> value_id_predicates() const;
@@ -142,6 +87,8 @@ class JitReadTuples : public AbstractJittable {
 
  protected:
   uint32_t _num_tuple_values{0};
+  std::vector<std::shared_ptr<BaseJitSegmentReaderWrapper>> _input_wrappers;
+  std::map<DataType, uint32_t> _num_values;
   std::vector<JitInputColumn> _input_columns;
   std::vector<JitInputLiteral> _input_literals;
   std::vector<JitInputParameter> _input_parameters;
@@ -151,6 +98,7 @@ class JitReadTuples : public AbstractJittable {
   void _consume(JitRuntimeContext& context) const final {}
   const bool _has_validate;
   const std::shared_ptr<AbstractExpression> _row_count_expression;
+  void add_input_segment_iterators(JitRuntimeContext& context, const Table& in_table, const Chunk& in_chunk, const bool prepare_wrapper);
 };
 
 }  // namespace opossum

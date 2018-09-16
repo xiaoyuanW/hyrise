@@ -69,10 +69,14 @@ std::shared_ptr<llvm::Module> JitCodeSpecializer::specialize_function(
 
   // Run the first specialization and optimization pass
   context.runtime_value_map[context.root_function->arg_begin()] = runtime_this;
+  // initially unroll first loop incrementing segment readers
+  _optimize(context, true, false);
+  context.runtime_value_map.clear();
+  context.runtime_value_map[context.root_function->arg_begin()] = runtime_this;
   _inline_function_calls(context);
   _perform_load_substitution(context);
   // Unroll loops only if two passes are selected
-  _optimize(context, two_passes);
+  _optimize(context, two_passes, false);
 
   // Conditionally run a second pass
   if (two_passes) {
@@ -81,7 +85,7 @@ std::shared_ptr<llvm::Module> JitCodeSpecializer::specialize_function(
     context.runtime_value_map[context.root_function->arg_begin()] = runtime_this;
     _inline_function_calls(context);
     _perform_load_substitution(context);
-    _optimize(context, false);
+    _optimize(context, false, false);
   }
   if (false) print(context);
   if (false) print_function(context.root_function);
@@ -165,14 +169,21 @@ void JitCodeSpecializer::_inline_function_calls(SpecializationContext& context) 
           virtual_resolved = true;
         }
       } else {
+        if (call_site.getCalledFunction()) {
+          std::cout << "could not inline v call: " << call_site.getCalledFunction()->getName().str() << std::endl;
+        }
         // The virtual call could not be resolved. There is nothing we can inline so we move on.
         call_sites.pop();
         continue;
       }
     }
 
-    constexpr bool print = false;
+    constexpr bool print = true;
 
+    if (!call_site.getCalledFunction()) {
+      call_sites.pop();
+      continue;
+    }
     auto& function = *call_site.getCalledFunction();
     auto function_name = function.getName().str();
 
@@ -245,7 +256,7 @@ void JitCodeSpecializer::_inline_function_calls(SpecializationContext& context) 
     llvm::InlineFunctionInfo info;
     if (InlineFunction(call_site, info, nullptr, false, nullptr, context)) {
       if (print) std::cout << "Func: " << function_name << " inlined" << std::endl;
-      // std::cout << "+++     inlined func: " << function_name << std::endl;
+      std::cout << "+++     inlined func: " << function_name << std::endl;
       for (const auto& new_call_site : info.InlinedCallSites) {
         call_sites.push(new_call_site);
       }
@@ -293,14 +304,16 @@ void JitCodeSpecializer::_perform_load_substitution(SpecializationContext& conte
   });
 }
 
-void JitCodeSpecializer::_optimize(SpecializationContext& context, const bool unroll_loops) const {
+void JitCodeSpecializer::_optimize(SpecializationContext& context, const bool unroll_loops, const bool only_unroll_loops) const {
   // Create a pass manager that handles dependencies between the optimization passes.
   // The selection of optimization passes is a manual trail-and-error-based selection and provides a "good" balance
   // between the result and runtime of the optimization.
   llvm::legacy::PassManager pass_manager;
 
-  // Removes common subexpressions
-  pass_manager.add(llvm::createEarlyCSEPass(true));
+  if (!only_unroll_loops) {
+    // Removes common subexpressions
+    pass_manager.add(llvm::createEarlyCSEPass(true));
+  }
   // Attempts to remove as much code from the body of a loop to either before or after the loop
   pass_manager.add(llvm::createLICMPass());
 
@@ -316,12 +329,15 @@ void JitCodeSpecializer::_optimize(SpecializationContext& context, const bool un
     pass_manager.add(llvm::createLoopUnrollPass(3, std::numeric_limits<int>::max(), -1, 0));
   }
 
-  // Removes dead code (e.g., unreachable instructions or instructions whose result is unused)
-  pass_manager.add(llvm::createAggressiveDCEPass());
-  // Simplifies the control flow by combining basic blocks, removing unreachable blocks, etc.
-  pass_manager.add(llvm::createCFGSimplificationPass());
-  // Combines instructions to fold computation of expressions with many constants
-  pass_manager.add(llvm::createInstructionCombiningPass(false));
+  if (!only_unroll_loops) {
+    // Removes dead code (e.g., unreachable instructions or instructions whose result is unused)
+    pass_manager.add(llvm::createAggressiveDCEPass());
+    // Simplifies the control flow by combining basic blocks, removing unreachable blocks, etc.
+    pass_manager.add(llvm::createCFGSimplificationPass());
+    // Combines instructions to fold computation of expressions with many constants
+    pass_manager.add(llvm::createInstructionCombiningPass(false));
+  }
+
   pass_manager.run(*context.module);
 }
 

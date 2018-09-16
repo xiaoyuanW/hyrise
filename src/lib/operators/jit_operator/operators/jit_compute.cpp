@@ -29,7 +29,7 @@ std::map<size_t, bool> JitCompute::accessed_column_ids() const {
   return column_ids;
 }
 
-void JitCompute::set_load_column(const size_t tuple_id, const size_t input_column_index) const {
+void JitCompute::set_load_column(const size_t tuple_id, const std::shared_ptr<BaseJitSegmentReaderWrapper> _input_segment_wrapper) const {
   std::stack<std::shared_ptr<const JitExpression>> stack;
   stack.push(_expression);
   while (!stack.empty()) {
@@ -40,7 +40,7 @@ void JitCompute::set_load_column(const size_t tuple_id, const size_t input_colum
     if (current->expression_type() == JitExpressionType::Column) {
       const auto tuple_index = current->result().tuple_index();
       if (tuple_id == tuple_index) {
-        current->set_load_column(input_column_index);
+        current->set_load_column(_input_segment_wrapper);
         return;
       }
     }

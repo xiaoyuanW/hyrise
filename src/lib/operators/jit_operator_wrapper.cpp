@@ -44,10 +44,12 @@ const std::shared_ptr<AbstractJittableSink> JitOperatorWrapper::_sink() const {
 }
 
 void JitOperatorWrapper::insert_loads(const bool lazy) {
+  const auto input_wrappers = _source()->input_wrappers();
+
   if (!lazy) {
     auto itr = ++_jit_operators.cbegin();
     for (size_t index = 0; index < _source()->input_columns().size(); ++index) {
-      itr = _jit_operators.insert(itr, std::make_shared<JitReadValue>(_source()->input_columns()[index], index));
+      itr = _jit_operators.insert(itr, std::make_shared<JitReadValue>(_source()->input_columns()[index], input_wrappers[index]));
     }
     return;
   }
@@ -77,10 +79,10 @@ void JitOperatorWrapper::insert_loads(const bool lazy) {
         if (pair.second && column_id_used_by_one_operator[pair.first]) {
           // insert within JitCompute operator
           auto compute_ptr = std::dynamic_pointer_cast<JitCompute>(jit_operator);
-          compute_ptr->set_load_column(pair.first, inverted_input_columns[pair.first]);
+          compute_ptr->set_load_column(pair.first, input_wrappers[inverted_input_columns[pair.first]]);
         } else {
           jit_operators.emplace_back(std::make_shared<JitReadValue>(
-              _source()->input_columns()[inverted_input_columns[pair.first]], inverted_input_columns[pair.first]));
+              _source()->input_columns()[inverted_input_columns[pair.first]], input_wrappers[inverted_input_columns[pair.first]]));
         }
         column_id_used_by_one_operator.erase(pair.first);
       }
@@ -95,11 +97,13 @@ void JitOperatorWrapper::_prepare() {
   Assert(_source(), "JitOperatorWrapper does not have a valid source node.");
   Assert(_sink(), "JitOperatorWrapper does not have a valid sink node.");
 
-  _choose_execute_func();
+  // _choose_execute_func();
 }
 
 void JitOperatorWrapper::_choose_execute_func() {
   if (_execute_func) return;
+
+  if (_source()->input_wrappers().empty()) _source()->create_default_input_wrappers();
 
   // std::cout << "Before make loads lazy:" << std::endl << description(DescriptionMode::MultiLine) << std::endl;
   if (_insert_loads) insert_loads(Global::get().lazy_load);
@@ -116,7 +120,7 @@ void JitOperatorWrapper::_choose_execute_func() {
   // We want to perform two specialization passes if the operator chain contains a JitAggregate operator, since the
   // JitAggregate operator contains multiple loops that need unrolling.
   auto two_specialization_passes = static_cast<bool>(std::dynamic_pointer_cast<JitAggregate>(_sink()));
-  switch (_execution_mode) {  // _execution_mode
+  switch (JitExecutionMode::Interpret) {  // _execution_mode
     case JitExecutionMode::Compile:
       // this corresponds to "opossum::JitReadTuples::execute(opossum::JitRuntimeContext&) const"
       _execute_func = _module.specialize_and_compile_function<void(const JitReadTuples*, JitRuntimeContext&)>(
@@ -141,12 +145,21 @@ std::shared_ptr<const Table> JitOperatorWrapper::_on_execute() {
   _source()->before_query(*in_table, context);
   _sink()->before_query(*in_table, *out_table, context);
 
-  for (opossum::ChunkID chunk_id{0}; chunk_id < in_table->chunk_count(); ++chunk_id) {
-    _source()->before_chunk(*in_table, chunk_id, context);
-    _execute_func(_source().get(), context);
-    _sink()->after_chunk(in_table, *out_table, context);
-    // break, if limit is reached
-    if (context.chunk_offset == std::numeric_limits<ChunkOffset>::max()) break;
+  if (in_table->chunk_count() > 0) {
+    _choose_execute_func();
+
+    for (opossum::ChunkID chunk_id{0}; chunk_id < in_table->chunk_count(); ++chunk_id) {
+      if (chunk_id + 1 == in_table->chunk_count()) {
+        std::cout << "last chunk, chunk no " << chunk_id << std::endl;
+      } else {
+      std::cout << "chunk no " << chunk_id << std::endl;
+      }
+      _source()->before_chunk(*in_table, chunk_id, context);
+      _execute_func(_source().get(), context);
+      _sink()->after_chunk(in_table, *out_table, context);
+      // break, if limit is reached
+      if (context.chunk_offset == std::numeric_limits<ChunkOffset>::max()) break;
+    }
   }
 
   _sink()->after_query(*out_table, context);

@@ -5,17 +5,19 @@
 
 namespace opossum {
 
+class BaseJitSegmentReaderWrapper;
+
 class JitReadValue : public AbstractJittable {
  public:
-  explicit JitReadValue(const JitInputColumn input_column, const size_t input_column_index)
-      : _input_column(input_column), _input_column_index(input_column_index) {}
+  explicit JitReadValue(const JitInputColumn input_column, std::shared_ptr<BaseJitSegmentReaderWrapper> input_segment_wrapper)
+      : _input_column(input_column), _input_segment_wrapper(input_segment_wrapper) {}
 
   std::string description() const final;
 
  private:
   void _consume(JitRuntimeContext& context) const final;
   const JitInputColumn _input_column;
-  const size_t _input_column_index;
+  const std::shared_ptr<BaseJitSegmentReaderWrapper> _input_segment_wrapper;
 };
 
 }  // namespace opossum

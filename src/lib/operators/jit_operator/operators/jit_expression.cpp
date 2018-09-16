@@ -3,6 +3,7 @@
 #include "../jit_constant_mappings.hpp"
 #include "../jit_operations.hpp"
 #include "jit_read_tuples.hpp"
+#include "jit_segment_reader.hpp"
 
 namespace opossum {
 
@@ -10,7 +11,7 @@ JitExpression::JitExpression(const JitTupleValue& tuple_value)
     : _expression_type{JitExpressionType::Column},
       _result_value{tuple_value},
       _load_column{false},
-      _input_column_index{} {}
+      _input_segment_wrapper{} {}
 
 JitExpression::JitExpression(const std::shared_ptr<const JitExpression>& child, const JitExpressionType expression_type,
                              const size_t result_tuple_index)
@@ -18,7 +19,7 @@ JitExpression::JitExpression(const std::shared_ptr<const JitExpression>& child, 
       _expression_type{expression_type},
       _result_value{JitTupleValue(_compute_result_type(), result_tuple_index)},
       _load_column{false},
-      _input_column_index{} {}
+      _input_segment_wrapper{} {}
 
 JitExpression::JitExpression(const std::shared_ptr<const JitExpression>& left_child,
                              const JitExpressionType expression_type,
@@ -28,11 +29,11 @@ JitExpression::JitExpression(const std::shared_ptr<const JitExpression>& left_ch
       _expression_type{expression_type},
       _result_value{JitTupleValue(_compute_result_type(), result_tuple_index)},
       _load_column{false},
-      _input_column_index{} {}
+      _input_segment_wrapper{} {}
 
 std::string JitExpression::to_string() const {
   if (_expression_type == JitExpressionType::Column) {
-    std::string load_column = _load_column ? " (Using input reader #" + std::to_string(_input_column_index) + ")" : "";
+    std::string load_column = _load_column ? " (Using input reader #" + std::to_string(_input_segment_wrapper->reader_index) + ")" : "";
     return "x" + std::to_string(_result_value.tuple_index()) + load_column;
   }
 
@@ -44,7 +45,7 @@ std::string JitExpression::to_string() const {
 void JitExpression::compute(JitRuntimeContext& context) const {
   // We are dealing with an already computed value here, so there is nothing to do.
   if (_expression_type == JitExpressionType::Column) {
-    if (_load_column) context.inputs[_input_column_index]->read_value(context);
+    if (_load_column) _input_segment_wrapper->read_value(context);
     return;
   }
 
@@ -197,5 +198,6 @@ std::pair<const DataType, const bool> JitExpression::_compute_result_type() {
   return std::make_pair(result_data_type,
                         input_is_null || (_left_child->result().is_nullable() || _right_child->result().is_nullable()));
 }
+
 
 }  // namespace opossum

@@ -4,6 +4,8 @@
 
 namespace opossum {
 
+class BaseJitSegmentReaderWrapper;
+
 /* JitExpression represents a SQL expression - this includes arithmetic and logical expressions as well as comparisons.
  * Each JitExpression works on JitTupleValues and is structured as a binary tree. All leaves of that tree reference a tuple
  * value in the JitRuntimeContext and are of type JitExpressionType::Column - independent of whether these values actually
@@ -38,11 +40,10 @@ class JitExpression {
    */
   void compute(JitRuntimeContext& context) const;
 
-  void set_load_column(const size_t input_column_index) const {
+  void set_load_column(const std::shared_ptr<BaseJitSegmentReaderWrapper> input_segment_wrapper) const {
     auto& non_const_load_column = const_cast<bool&>(_load_column);
     non_const_load_column = true;
-    auto& non_const_input_column_index = const_cast<size_t&>(_input_column_index);
-    non_const_input_column_index = input_column_index;
+    const_cast<std::shared_ptr<BaseJitSegmentReaderWrapper>&>(_input_segment_wrapper) = input_segment_wrapper;
   }
 
   void set_expression_type(const JitExpressionType expression_type) const {
@@ -57,7 +58,7 @@ class JitExpression {
   const JitExpressionType _expression_type;
   const JitTupleValue _result_value;
   const bool _load_column;
-  const size_t _input_column_index;
+  const std::shared_ptr<BaseJitSegmentReaderWrapper> _input_segment_wrapper;
 };
 
 }  // namespace opossum

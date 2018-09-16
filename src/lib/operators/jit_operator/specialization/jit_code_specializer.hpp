@@ -62,7 +62,7 @@ class JitCodeSpecializer {
   void _perform_load_substitution(SpecializationContext& context) const;
 
   // Run the LLVM optimizer on the specialized module.
-  void _optimize(SpecializationContext& context, const bool unroll_loops) const;
+  void _optimize(SpecializationContext& context, const bool unroll_loops, const bool only_unroll_loops) const;
 
   // Creates a function declaration (i.e., a function signature without a function body) for the given function.
   llvm::Function* _create_function_declaration(SpecializationContext& context, const llvm::Function& function,
