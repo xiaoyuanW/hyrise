@@ -7,6 +7,7 @@
 #include <locale>
 #include <memory>
 #include <random>
+#include <regex>
 #include <string>
 #include <tuple>
 #include <unordered_map>
@@ -17,6 +18,7 @@
 #include "constant_mappings.hpp"
 #include "types.hpp"
 
+#include "expression/evaluation/like_matcher.hpp"
 #include "statistics/chunk_statistics/histograms/equal_height_histogram.hpp"
 #include "statistics/chunk_statistics/histograms/equal_num_elements_histogram.hpp"
 #include "statistics/chunk_statistics/histograms/equal_width_histogram.hpp"
@@ -435,6 +437,42 @@ get_row_count_for_filters(
             row_count_by_filter[column_id][predicate_type][value] =
                 std::accumulate(it, value_counts.cend(), uint64_t{0},
                                 [](uint64_t a, const std::pair<T, uint64_t>& b) { return a + b.second; });
+            break;
+          }
+          case PredicateCondition::Like: {
+            if constexpr (!std::is_same_v<T, std::string>) {
+              Fail("LIKE predicates only work for string columns");
+            } else {
+              const auto regex_string = LikeMatcher::sql_like_to_regex(t_value);
+              const auto regex = std::regex{regex_string};
+
+              uint64_t sum = 0;
+              for (const auto &p : value_counts) {
+                if (std::regex_match(p.first, regex)) {
+                  sum += p.second;
+                }
+              }
+
+              row_count_by_filter[column_id][predicate_type][value] = sum;
+            }
+            break;
+          }
+          case PredicateCondition::NotLike: {
+            if constexpr (!std::is_same_v<T, std::string>) {
+              Fail("NOT LIKE predicates only work for string columns");
+            } else {
+              const auto regex_string = LikeMatcher::sql_like_to_regex(t_value);
+              const auto regex = std::regex{regex_string};
+
+              uint64_t sum = 0;
+              for (const auto &p : value_counts) {
+                if (!std::regex_match(p.first, regex)) {
+                  sum += p.second;
+                }
+              }
+
+              row_count_by_filter[column_id][predicate_type][value] = sum;
+            }
             break;
           }
           default:
