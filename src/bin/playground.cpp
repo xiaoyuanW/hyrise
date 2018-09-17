@@ -366,6 +366,7 @@ get_row_count_for_filters(
   std::unordered_map<ColumnID, std::unordered_map<PredicateCondition, std::unordered_map<AllTypeVariant, uint64_t>>>
       row_count_by_filter;
   Assert(table->chunk_count() == 1u, "Table has more than one chunk.");
+  const auto total_count = table->row_count();
 
   for (const auto& column_filters : filters_by_column) {
     const auto column_id = column_filters.first;
@@ -390,12 +391,49 @@ get_row_count_for_filters(
             }
             break;
           }
+          case PredicateCondition::NotEquals: {
+            const auto it = std::find_if(value_counts.cbegin(), value_counts.cend(),
+                                         [&](const std::pair<T, uint64_t>& p) { return p.first == t_value; });
+            uint64_t count = total_count;
+            if (it != value_counts.cend()) {
+              count -= (*it).second;
+            }
+            row_count_by_filter[column_id][predicate_type][value] = count;
+            break;
+          }
           case PredicateCondition::LessThan: {
             const auto it =
                 std::lower_bound(value_counts.cbegin(), value_counts.cend(), t_value,
                                  [](const std::pair<T, uint64_t>& lhs, const T& rhs) { return lhs.first < rhs; });
             row_count_by_filter[column_id][predicate_type][value] =
                 std::accumulate(value_counts.cbegin(), it, uint64_t{0},
+                                [](uint64_t a, const std::pair<T, uint64_t>& b) { return a + b.second; });
+            break;
+          }
+          case PredicateCondition::LessThanEquals: {
+            const auto it =
+                std::upper_bound(value_counts.cbegin(), value_counts.cend(), t_value,
+                                 [](const T& lhs, const std::pair<T, uint64_t>& rhs) { return lhs < rhs.first; });
+            row_count_by_filter[column_id][predicate_type][value] =
+                std::accumulate(value_counts.cbegin(), it, uint64_t{0},
+                                [](uint64_t a, const std::pair<T, uint64_t>& b) { return a + b.second; });
+            break;
+          }
+          case PredicateCondition::GreaterThanEquals: {
+            const auto it =
+                std::lower_bound(value_counts.cbegin(), value_counts.cend(), t_value,
+                                 [](const std::pair<T, uint64_t>& lhs, const T& rhs) { return lhs.first < rhs; });
+            row_count_by_filter[column_id][predicate_type][value] =
+                std::accumulate(it, value_counts.cend(), uint64_t{0},
+                                [](uint64_t a, const std::pair<T, uint64_t>& b) { return a + b.second; });
+            break;
+          }
+          case PredicateCondition::GreaterThan: {
+            const auto it =
+                std::upper_bound(value_counts.cbegin(), value_counts.cend(), t_value,
+                                 [](const T& lhs, const std::pair<T, uint64_t>& rhs) { return lhs < rhs.first; });
+            row_count_by_filter[column_id][predicate_type][value] =
+                std::accumulate(it, value_counts.cend(), uint64_t{0},
                                 [](uint64_t a, const std::pair<T, uint64_t>& b) { return a + b.second; });
             break;
           }
