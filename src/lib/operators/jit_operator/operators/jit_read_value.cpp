@@ -11,7 +11,6 @@ std::string JitReadValue::description() const {
 
 void JitReadValue::_consume(JitRuntimeContext& context) const {
   context.inputs[_input_column_index]->read_value(context);
-  jit_end_operator_read_value();
   _emit(context);
 }
 

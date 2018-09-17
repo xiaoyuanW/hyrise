@@ -367,7 +367,6 @@ void JitAggregate::_consume(JitRuntimeContext& context) const {
       }
     }
   }
-  jit_end_operator_aggregate();
 #if JIT_MEASURE
   _end(context);
 #endif

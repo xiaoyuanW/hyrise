@@ -34,7 +34,7 @@ void jit_not(const JitTupleValue& lhs, const JitTupleValue& result, JitRuntimeCo
   result.set_is_null(lhs.is_null(context), context);
 }
 
-
+#if JIT_LOGICAL_PRUNING
 void jit_and(const JitTupleValue& lhs, const JitTupleValue& rhs, const JitTupleValue& result,
              JitRuntimeContext& context, const bool prune_right_side) {
   // If the input values are computed by non-jit operators, their data type is int but they can be read as bool values.
@@ -77,7 +77,7 @@ void jit_or(const JitTupleValue& lhs, const JitTupleValue& rhs, const JitTupleVa
   }
 }
 
-/*
+#else
 void jit_and(const JitTupleValue& lhs, const JitTupleValue& rhs, const JitTupleValue& result,
              JitRuntimeContext& context) {
   DebugAssert(
@@ -109,7 +109,7 @@ void jit_or(const JitTupleValue& lhs, const JitTupleValue& rhs, const JitTupleVa
     result.set_is_null(!lhs.get<bool>(context) && rhs.is_null(context), context);
   }
 }
-*/
+#endif
 
 bool jit_like(const std::string& a, const std::string& b) {
   const auto regex_string = LikeMatcher::sql_like_to_regex(b);

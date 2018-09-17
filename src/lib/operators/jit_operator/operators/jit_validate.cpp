@@ -42,7 +42,6 @@ void JitValidate<input_table_type>::_consume(JitRuntimeContext& context) const {
     row_is_visible = jit_is_row_visible(context.transaction_id, context.snapshot_commit_id, context.chunk_offset,
                                         *context.mvcc_data);
   }
-  jit_end_operator_validate();
   if (row_is_visible) {
     _emit(context);
 #if JIT_MEASURE

@@ -15,11 +15,12 @@ namespace opossum {
 
 JitOperatorWrapper::JitOperatorWrapper(
     const std::shared_ptr<const AbstractOperator>& left, const JitExecutionMode execution_mode,
-    const std::list<std::shared_ptr<AbstractJittable>>& jit_operators,
+    const std::list<std::shared_ptr<AbstractJittable>>& jit_operators, const bool insert_loads,
     const std::function<void(const JitReadTuples*, JitRuntimeContext&)>& execute_func)
     : AbstractReadOnlyOperator{OperatorType::JitOperatorWrapper, left},
       _execution_mode{execution_mode},
       _jit_operators{jit_operators},
+      _insert_loads{insert_loads},
       _execute_func{execute_func} {
   if (JitEvaluationHelper::get().experiment().count("jit_use_jit")) {
     _execution_mode = JitEvaluationHelper::get().experiment().at("jit_use_jit") ? JitExecutionMode::Compile : JitExecutionMode::Interpret;
@@ -51,6 +52,7 @@ const std::shared_ptr<AbstractJittableSink> JitOperatorWrapper::_sink() const {
 }
 
 void JitOperatorWrapper::insert_loads(const bool lazy) {
+  if constexpr (!JIT_LAZY_LOAD) return;
   if (!lazy) {
     auto itr = ++_jit_operators.cbegin();
     for (size_t index = 0; index < _source()->input_columns().size(); ++index) {
@@ -109,7 +111,7 @@ void JitOperatorWrapper::_choose_execute_func() {
   if (_execute_func) return;
 
   // std::cout << "Before make loads lazy:" << std::endl << description(DescriptionMode::MultiLine) << std::endl;
-  // insert_loads(Global::get().lazy_load);
+  if (_insert_loads) insert_loads(Global::get().lazy_load);
   // std::cout << "Specialising: " << (_execution_mode == JitExecutionMode::Compile ? "true" : "false") << std::endl;
 
   // Connect operators to a chain
@@ -201,7 +203,7 @@ std::shared_ptr<AbstractOperator> JitOperatorWrapper::_on_deep_copy(
     const std::shared_ptr<AbstractOperator>& copied_input_left,
     const std::shared_ptr<AbstractOperator>& copied_input_right) const {
   if (Global::get().deep_copy_exists) const_cast<JitOperatorWrapper*>(this)->_choose_execute_func();
-  return std::make_shared<JitOperatorWrapper>(copied_input_left, _execution_mode, _jit_operators,
+  return std::make_shared<JitOperatorWrapper>(copied_input_left, _execution_mode, _jit_operators, false,
                                               Global::get().deep_copy_exists ? _execute_func : nullptr);
 }
 

@@ -44,7 +44,9 @@ std::string JitExpression::to_string() const {
 void JitExpression::compute(JitRuntimeContext& context) const {
   // We are dealing with an already computed value here, so there is nothing to do.
   if (_expression_type == JitExpressionType::Column) {
-    // if (_load_column) context.inputs[_input_column_index]->read_value(context);
+#if JIT_LAZY_LOAD
+    if (_load_column) context.inputs[_input_column_index]->read_value(context);
+#endif
     return;
   }
 
@@ -70,7 +72,7 @@ void JitExpression::compute(JitRuntimeContext& context) const {
   // Check, whether right side can be pruned
   // AND: false and true/false/null = false
   // OR:  true  or  true/false/null = true
-
+#if JIT_LOGICAL_PRUNING
   if (_expression_type == JitExpressionType::And && !_left_child->result().is_null(context) &&
       !_left_child->result().get<bool>(context)) {
     return jit_and(_left_child->result(), _right_child->result(), _result_value, context, true);
@@ -78,6 +80,7 @@ void JitExpression::compute(JitRuntimeContext& context) const {
              _left_child->result().get<bool>(context)) {
     return jit_or(_left_child->result(), _right_child->result(), _result_value, context, true);
   }
+#endif
 
 
   _right_child->compute(context);
@@ -128,10 +131,18 @@ void JitExpression::compute(JitRuntimeContext& context) const {
       break;
 
     case JitExpressionType::And:
+#if JIT_LOGICAL_PRUNING
       jit_and(_left_child->result(), _right_child->result(), _result_value, context, false);
+#else
+      jit_and(_left_child->result(), _right_child->result(), _result_value, context);
+#endif
       break;
     case JitExpressionType::Or:
+#if JIT_LOGICAL_PRUNING
       jit_or(_left_child->result(), _right_child->result(), _result_value, context, false);
+#else
+      jit_or(_left_child->result(), _right_child->result(), _result_value, context);
+#endif
       break;
     default:
       Fail("Expression type is not supported.");
