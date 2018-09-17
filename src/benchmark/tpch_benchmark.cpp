@@ -15,6 +15,8 @@
 #include "tpch/tpch_db_generator.hpp"
 #include "tpch/tpch_queries.hpp"
 #include "jit_evaluation_helper.hpp"
+#include "storage/storage_manager.hpp"
+#include "storage/chunk_encoder.hpp"
 
 /**
  * This benchmark measures Hyrise's performance executing the TPC-H queries, it doesn't (yet) support running the TPC-H
@@ -144,6 +146,16 @@ class TpchBenchmark final {
     out() << "- Generating TPCH Tables with scale_factor=" << _scale_factor << "..." << std::endl;
     opossum::TpchDbGenerator(_scale_factor, _chunk_size).generate_and_store();
     out() << "- Done." << std::endl;
+
+    constexpr bool encode = true;
+    if (encode) {
+      out() << "- Compressing tables ..." << _scale_factor << "..." << std::endl;
+      for (const auto& table_name : opossum::StorageManager::get().table_names()) {
+        auto table = opossum::StorageManager::get().get_table(table_name);
+        opossum::ChunkEncoder::encode_all_chunks(table);
+      }
+      out() << "- Done." << std::endl;
+    }
 
     /**
      * Run the TPCH queries in the selected mode
