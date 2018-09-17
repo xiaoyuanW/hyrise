@@ -149,7 +149,7 @@ class TpchBenchmark final {
 
     constexpr bool encode = true;
     if (encode) {
-      out() << "- Compressing tables ..." << _scale_factor << "..." << std::endl;
+      out() << "- Compressing tables ..." << std::endl;
       for (const auto& table_name : opossum::StorageManager::get().table_names()) {
         auto table = opossum::StorageManager::get().get_table(table_name);
         opossum::ChunkEncoder::encode_all_chunks(table);
