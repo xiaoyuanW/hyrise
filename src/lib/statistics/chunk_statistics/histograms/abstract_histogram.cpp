@@ -363,6 +363,13 @@ bool AbstractHistogram<std::string>::can_prune(const PredicateCondition predicat
         }
 
         const auto search_prefix_next_value = next_value(search_prefix, _supported_characters, search_prefix.length());
+
+        // If the next value is the same as the prefix, it means that there is no larger value in the domain
+        // of substrings. In that case we cannot prune, because otherwise we previous check would already return true.
+        if (search_prefix == search_prefix_next_value) {
+          return false;
+        }
+
         if (can_prune(PredicateCondition::LessThan, search_prefix_next_value)) {
           return true;
         }
@@ -631,9 +638,14 @@ float AbstractHistogram<std::string>::estimate_cardinality(const PredicateCondit
           additional_characters = static_cast<uint64_t>(maximum_exponent);
         }
 
-        return (estimate_cardinality(PredicateCondition::LessThan,
-                                     next_value(search_prefix, _supported_characters, search_prefix.length())) -
-                estimate_cardinality(PredicateCondition::LessThan, search_prefix)) /
+        const auto search_prefix_next_value = next_value(search_prefix, _supported_characters, search_prefix.length());
+        // If the next value is the same as the prefix, it means that there is no larger value in the domain
+        // of substrings. In that case all values (total_count()) are smaller than search_prefix_next_value.
+        const auto count_smaller_next_value =
+            search_prefix == search_prefix_next_value
+                ? total_count()
+                : estimate_cardinality(PredicateCondition::LessThan, search_prefix_next_value);
+        return (count_smaller_next_value - estimate_cardinality(PredicateCondition::LessThan, search_prefix)) /
                ipow(_supported_characters.length(), additional_characters);
       }
 
