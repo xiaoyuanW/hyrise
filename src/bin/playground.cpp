@@ -45,6 +45,10 @@ std::ostream& operator<<(std::ostream& stream, const std::chrono::time_point<Clo
 #endif
 }
 
+void log(const std::string& str) {
+  std::cout << std::chrono::system_clock::now() << str << std::endl;
+}
+
 /**
  * Converts string to T.
  */
@@ -165,6 +169,8 @@ std::string vec2str(const std::vector<T>& items) {
  */
 template <typename T>
 std::unordered_set<T> get_distinct_values(const std::shared_ptr<const BaseSegment>& segment) {
+  log("Getting distinct values...");
+
   std::unordered_set<T> distinct_values;
 
   resolve_segment_type<T>(*segment, [&](auto& typed_segment) {
@@ -183,6 +189,8 @@ std::unordered_set<T> get_distinct_values(const std::shared_ptr<const BaseSegmen
  * Returns the distinct count for a segment.
  */
 uint64_t get_distinct_count(const std::shared_ptr<const BaseSegment>& segment) {
+  log("Getting distinct count...");
+
   uint64_t distinct_count;
 
   resolve_data_type(segment->data_type(), [&](auto type) {
@@ -240,6 +248,8 @@ std::vector<std::tuple<ColumnID, PredicateCondition, AllTypeVariant>> generate_f
 std::vector<std::tuple<ColumnID, PredicateCondition, AllTypeVariant>> generate_filters(
     const ColumnID column_id, const PredicateCondition predicate_type, std::mt19937 gen,
     std::uniform_real_distribution<> dis, const uint32_t num_filters) {
+  log("Generating " + std::to_string(num_filters) + " random filters...");
+
   std::unordered_set<double> used_values;
   std::vector<std::tuple<ColumnID, PredicateCondition, AllTypeVariant>> filters;
   filters.reserve(num_filters);
@@ -264,6 +274,8 @@ std::vector<std::tuple<ColumnID, PredicateCondition, AllTypeVariant>> generate_f
 std::vector<std::tuple<ColumnID, PredicateCondition, AllTypeVariant>> generate_filters(
     const ColumnID column_id, const PredicateCondition predicate_type, std::mt19937 gen,
     std::uniform_int_distribution<> dis, const uint32_t num_filters) {
+  log("Generating " + std::to_string(num_filters) + " random filters...");
+
   std::unordered_set<int64_t> used_values;
   std::vector<std::tuple<ColumnID, PredicateCondition, AllTypeVariant>> filters;
   filters.reserve(num_filters);
@@ -288,6 +300,8 @@ std::vector<std::tuple<ColumnID, PredicateCondition, AllTypeVariant>> generate_f
 std::vector<std::tuple<ColumnID, PredicateCondition, AllTypeVariant>> generate_filters(
     const std::shared_ptr<Table>& table, const ColumnID column_id, const PredicateCondition predicate_type,
     const std::optional<uint32_t> num_filters = std::nullopt) {
+  log("Generating " + (num_filters ? std::to_string(*num_filters) : "") + " filters with distinct values...");
+
   Assert(table->chunk_count() == 1u, "Table has more than one chunk.");
 
   std::vector<std::tuple<ColumnID, PredicateCondition, AllTypeVariant>> filters;
@@ -347,6 +361,8 @@ std::vector<std::pair<T, uint64_t>> sort_value_counts(const std::unordered_map<T
  */
 template <typename T>
 std::vector<std::pair<T, uint64_t>> calculate_value_counts(const std::shared_ptr<const BaseSegment>& segment) {
+  log("Calculating value counts...");
+
   std::unordered_map<T, uint64_t> value_counts;
 
   resolve_segment_type<T>(*segment, [&](auto& typed_segment) {
@@ -369,6 +385,8 @@ std::unordered_map<ColumnID, std::unordered_map<PredicateCondition, std::unorder
 get_prunable_for_filters(
     const std::shared_ptr<Table>& table,
     const std::unordered_map<ColumnID, std::vector<std::pair<PredicateCondition, AllTypeVariant>>>& filters_by_column) {
+  log("Getting actual prune results...");
+
   std::unordered_map<ColumnID, std::unordered_map<PredicateCondition, std::unordered_map<AllTypeVariant, bool>>>
       prunable_by_filter;
   Assert(table->chunk_count() == 1u, "Table has more than one chunk.");
@@ -472,6 +490,8 @@ std::unordered_map<ColumnID, std::unordered_map<PredicateCondition, std::unorder
 get_row_count_for_filters(
     const std::shared_ptr<Table>& table,
     const std::unordered_map<ColumnID, std::vector<std::pair<PredicateCondition, AllTypeVariant>>>& filters_by_column) {
+  log("Getting actual row count results...");
+
   std::unordered_map<ColumnID, std::unordered_map<PredicateCondition, std::unordered_map<AllTypeVariant, uint64_t>>>
       row_count_by_filter;
   Assert(table->chunk_count() == 1u, "Table has more than one chunk.");
@@ -595,6 +615,8 @@ get_row_count_for_filters(
 void run_pruning(const std::shared_ptr<Table> table, const std::vector<uint64_t> num_bins_list,
                  const std::vector<std::tuple<ColumnID, PredicateCondition, AllTypeVariant>>& filters,
                  const std::string& output_path) {
+  log("Running pruning...");
+
   Assert(table->chunk_count() == 1u, "Table has more than one chunk.");
 
   // std::cout.imbue(std::locale("en_US.UTF-8"));
@@ -616,11 +638,12 @@ void run_pruning(const std::shared_ptr<Table> table, const std::vector<uint64_t>
   const auto total_count = table->row_count();
 
   for (auto num_bins : num_bins_list) {
+    log("  " + std::to_string(num_bins) + " bins...");
+
     for (auto it : filters_by_column) {
       const auto column_id = it.first;
       const auto distinct_count = distinct_count_by_column.at(column_id);
       const auto column_name = table->column_name(column_id);
-      std::cout << column_name << std::endl;
 
       const auto column_data_type = table->column_data_type(column_id);
       resolve_data_type(column_data_type, [&](auto type) {
@@ -663,6 +686,8 @@ void run_pruning(const std::shared_ptr<Table> table, const std::vector<uint64_t>
 void run_estimation(const std::shared_ptr<Table> table, const std::vector<uint64_t> num_bins_list,
                     const std::vector<std::tuple<ColumnID, PredicateCondition, AllTypeVariant>>& filters,
                     const std::string& output_path) {
+  log("Running estimation...");
+
   Assert(table->chunk_count() == 1u, "Table has more than one chunk.");
 
   // std::cout.imbue(std::locale("en_US.UTF-8"));
@@ -684,11 +709,12 @@ void run_estimation(const std::shared_ptr<Table> table, const std::vector<uint64
   const auto total_count = table->row_count();
 
   for (auto num_bins : num_bins_list) {
+    log("  " + std::to_string(num_bins) + " bins...");
+
     for (auto it : filters_by_column) {
       const auto column_id = it.first;
       const auto distinct_count = distinct_count_by_column.at(column_id);
       const auto column_name = table->column_name(column_id);
-      std::cout << column_name << std::endl;
 
       const auto column_data_type = table->column_data_type(column_id);
       resolve_data_type(column_data_type, [&](auto type) {
@@ -737,6 +763,7 @@ int main(int argc, char** argv) {
   const auto chunk_size = get_cmd_option<uint32_t>(argv, argv_end, "--chunk-size", Chunk::MAX_SIZE);
   const auto output_path = get_cmd_option<std::string>(argv, argv_end, "--output-path", "../results/");
 
+  log("Loading table...");
   const auto table = load_table(table_path, chunk_size);
 
   std::vector<std::tuple<ColumnID, PredicateCondition, AllTypeVariant>> filters;
