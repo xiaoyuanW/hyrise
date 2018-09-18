@@ -208,6 +208,7 @@ int main(int argc, char* argv[]) {
     } else if (experiment.at("engine") == "jit") {
       if (!experiment.count("lazy_load")) experiment["lazy_load"] = true;
       if (!experiment.count("jit_validate")) experiment["jit_validate"] = true;
+      if (!experiment.count("jit_use_jit")) experiment["jit_use_jit"] = true;
       opossum::Global::get().jit = true;
       opossum::Global::get().lazy_load = experiment["lazy_load"];
       opossum::Global::get().jit_validate = experiment["jit_validate"];
