@@ -106,6 +106,27 @@
       "task": "run"
     },
     {
+      "engine": "jit",
+      "query_id": "TPCH1",
+      "jit_use_jit": false,
+      "repetitions": 50,
+      "task": "run"
+    },
+    {
+      "engine": "jit",
+      "query_id": "TPCH6",
+      "jit_use_jit": false,
+      "repetitions": 50,
+      "task": "run"
+    },
+    {
+      "engine": "jit",
+      "query_id": "TPCH10",
+      "jit_use_jit": false,
+      "repetitions": 50,
+      "task": "run"
+    },
+    {
       "engine": "opossum",
       "query_id": "TPCH1",
       "repetitions": 50,
