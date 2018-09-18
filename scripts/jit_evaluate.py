@@ -125,6 +125,8 @@ for key, query in d.iteritems():
 		ind = np.arange(N)    # the x locations for the groups
 		width = 0.35       # the width of the bars: can also be len(x) sequence
 
+		plt.rcParams.update({'font.size': 16})
+		plt.rcParams.update({'figure.figsize': [6.5, 6]})
 		p1 = plt.bar(ind, hyrise_only, color='#9D56C2')
 		p2 = plt.bar(ind, pipeline_execition, color='#DC002D')
 		p3 = plt.bar(ind, pipeline_spez, color='#00A739')
