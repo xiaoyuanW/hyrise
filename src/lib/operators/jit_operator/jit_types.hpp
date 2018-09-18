@@ -90,15 +90,15 @@ class JitVariantVector {
 
   void resize(const size_t new_size);
 
-  template <typename T>
-  __attribute__((always_inline))
+  template <typename T, typename = typename std::enable_if_t<!std::is_scalar_v<T>>>
+  __attribute__((optnone)) std::string get(const size_t index) const;
+  template <typename T, typename = typename std::enable_if_t<std::is_scalar_v<T>>>
   T get(const size_t index) const;
-  template <typename T>
-  __attribute__((always_inline))
+  template <typename T, typename = typename std::enable_if_t<!std::is_scalar_v<T>>>
+  __attribute__((optnone)) void set(const size_t index, const std::string& value);
+  template <typename T, typename = typename std::enable_if_t<std::is_scalar_v<T>>>
   void set(const size_t index, const T& value);
-  __attribute__((always_inline))
   bool is_null(const size_t index);
-  __attribute__((always_inline))
   void set_is_null(const size_t index, const bool is_null);
 
   // Adds an element to the internal vector for the specified data type.
@@ -175,20 +175,16 @@ class JitTupleValue {
   size_t tuple_index() const;
 
   template <typename T>
-  __attribute__((always_inline))
   T get(JitRuntimeContext& context) const {
     return context.tuple.get<T>(_tuple_index);
   }
 
   template <typename T>
-  __attribute__((always_inline))
   void set(const T value, JitRuntimeContext& context) const {
     context.tuple.set<T>(_tuple_index, value);
   }
 
-  __attribute__((always_inline))
   bool is_null(JitRuntimeContext& context) const;
-  __attribute__((always_inline))
   void set_is_null(const bool is_null, JitRuntimeContext& context) const;
 
   // Compares two JitTupleValue instances for equality. This method does NOT compare actual concrete values but only the
@@ -226,11 +222,19 @@ class JitHashmapValue {
   bool is_nullable() const;
   size_t column_index() const;
 
-  template <typename T>
+  template <typename T, typename = typename std::enable_if_t<!std::is_scalar_v<T>>>
+  __attribute__((optnone)) std::string get(const size_t index, JitRuntimeContext& context) const {
+    return context.hashmap.columns[_column_index].get<std::string>(index);
+  }
+  template <typename T, typename = typename std::enable_if_t<std::is_scalar_v<T>>>
   T get(const size_t index, JitRuntimeContext& context) const {
     return context.hashmap.columns[_column_index].get<T>(index);
   }
-  template <typename T>
+  template <typename T, typename = typename std::enable_if_t<!std::is_scalar_v<T>>>
+  __attribute__((optnone)) void set(const std::string& value, const size_t index, JitRuntimeContext& context) const {
+    context.hashmap.columns[_column_index].set<std::string>(index, value);
+  }
+  template <typename T, typename = typename std::enable_if_t<std::is_scalar_v<T>>>
   void set(const T value, const size_t index, JitRuntimeContext& context) const {
     context.hashmap.columns[_column_index].set<T>(index, value);
   }
