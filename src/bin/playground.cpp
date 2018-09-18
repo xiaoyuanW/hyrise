@@ -45,9 +45,7 @@ std::ostream& operator<<(std::ostream& stream, const std::chrono::time_point<Clo
 #endif
 }
 
-void log(const std::string& str) {
-  std::cout << std::chrono::system_clock::now() << str << std::endl;
-}
+void log(const std::string& str) { std::cout << std::chrono::system_clock::now() << " " << str << std::endl; }
 
 /**
  * Converts string to T.
@@ -228,12 +226,13 @@ std::unordered_map<ColumnID, uint64_t> get_distinct_count_by_column(
  */
 template <typename T>
 std::vector<std::tuple<ColumnID, PredicateCondition, AllTypeVariant>> generate_filters(
-    const ColumnID column_id, const PredicateCondition predicate_type, const T min, const T max,
-    const uint32_t num_filters) {
-  std::vector<std::tuple<ColumnID, PredicateCondition, AllTypeVariant>> filters;
-  filters.reserve(num_filters);
+    const ColumnID column_id, const PredicateCondition predicate_type, const T min, const T max, const T step) {
+  log("Generating filters in range [" + std::to_string(min) + ", " + std::to_string(max) + "] with step " +
+      std::to_string(step) + "...");
 
-  const auto step = (max - min) / num_filters;
+  std::vector<std::tuple<ColumnID, PredicateCondition, AllTypeVariant>> filters;
+  filters.reserve((max - min) / step);
+
   for (auto v = min; v <= max; v += step) {
     filters.emplace_back(std::tuple<ColumnID, PredicateCondition, AllTypeVariant>{column_id, predicate_type, v});
   }
@@ -801,16 +800,16 @@ int main(int argc, char** argv) {
     const auto column_id = ColumnID{get_cmd_option<uint16_t>(argv, argv_end, "--column-id")};
     const auto predicate_type =
         predicate_condition_to_string.right.at(get_cmd_option<std::string>(argv, argv_end, "--predicate-type"));
-    const auto num_filters = get_cmd_option<uint32_t>(argv, argv_end, "--num-filters");
     const auto data_type = table->column_data_type(column_id);
 
     resolve_data_type(data_type, [&](auto type) {
       using ColumnDataType = typename decltype(type)::type;
       const auto min = get_cmd_option<ColumnDataType>(argv, argv_end, "--filter-min");
       const auto max = get_cmd_option<ColumnDataType>(argv, argv_end, "--filter-max");
+      const auto step = get_cmd_option<ColumnDataType>(argv, argv_end, "--filter-step");
 
       if constexpr (std::is_arithmetic_v<ColumnDataType>) {
-        filters = generate_filters(column_id, predicate_type, min, max, num_filters);
+        filters = generate_filters(column_id, predicate_type, min, max, step);
       } else {
         Fail("Data type not supported to generate values in steps.");
       }
