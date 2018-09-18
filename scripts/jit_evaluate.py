@@ -31,11 +31,13 @@ def combine_results(results):
 		combined_rumtimes.append({'name': key, 'prepare': value['prepare'] / len(results), 'execute': value['execute'] / len(results)})
 	return (combined_rumtimes, (compile_time/len(results), execution_time/len(results), optimize_time/len(results), (compile_time + execution_time + optimize_time)/len(results)))
 
-def calc_sum(operators):
+def calc_sum(operators, only_jit_wrapper = False):
 	prepare = 0
 	execute = 0
 	for operator in operators:
 		if operator['name'].startswith('_'):
+			continue
+		if only_jit_wrapper and operator['name'] != 'JitOperatorWrapper':
 			continue
 		prepare += operator['prepare']
 		execute += operator['execute']
@@ -70,15 +72,19 @@ for experiment in data['results']:
 	for i in range(1, 7):
 		table.justify_columns[i] = 'right'
 
+	jit_wrapper_times = calc_sum(summary, True)
+
 	print(table.table)
 	print("")
 	if experiment['experiment']['query_id'] not in d:
 		d[experiment['experiment']['query_id']] = {}
-	d[experiment['experiment']['query_id']][experiment['experiment']['engine']] = (runtimes, (prepare, execute, total))
+	d[experiment['experiment']['query_id']][experiment['experiment']['engine']] = (runtimes, (prepare, execute, total), jit_wrapper_times)
 
 for key, query in d.iteritems():
-	print('Query: ' + key)
-	pipeline_runtimes, operator_runtimes = query
+	pipeline_runtimes, operator_runtimes, jit_wrapper_times = query['jit']
+	jit_spez_time, jit_execute_time = jit_wrapper_times
+	print('Query: ' + key + ', Specialization time ' +  "{:,.0f}".format(jit_spez_time) + ' Jit execute time ' +  "{:,.0f}".format(jit_execute_time))
+
 	table_data = []
 	table_data.append(['Time (micro s)', 'Opossum', 'Jit', 'Diff', '%', 'Diff %'])
 	table = AsciiTable(table_data)
