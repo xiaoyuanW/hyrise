@@ -223,6 +223,7 @@ std::vector<std::tuple<ColumnID, PredicateCondition, AllTypeVariant>> generate_f
     const ColumnID column_id, const PredicateCondition predicate_type, const T min, const T max,
     const uint32_t num_filters) {
   std::vector<std::tuple<ColumnID, PredicateCondition, AllTypeVariant>> filters;
+  filters.reserve(num_filters);
 
   const auto step = (max - min) / num_filters;
   for (auto v = min; v <= max; v += step) {
@@ -239,8 +240,9 @@ std::vector<std::tuple<ColumnID, PredicateCondition, AllTypeVariant>> generate_f
 std::vector<std::tuple<ColumnID, PredicateCondition, AllTypeVariant>> generate_filters(
     const ColumnID column_id, const PredicateCondition predicate_type, std::mt19937 gen,
     std::uniform_real_distribution<> dis, const uint32_t num_filters) {
-  std::vector<std::tuple<ColumnID, PredicateCondition, AllTypeVariant>> filters;
   std::unordered_set<double> used_values;
+  std::vector<std::tuple<ColumnID, PredicateCondition, AllTypeVariant>> filters;
+  filters.reserve(num_filters);
 
   for (auto i = 0u; i < num_filters; i++) {
     auto v = dis(gen);
@@ -262,8 +264,9 @@ std::vector<std::tuple<ColumnID, PredicateCondition, AllTypeVariant>> generate_f
 std::vector<std::tuple<ColumnID, PredicateCondition, AllTypeVariant>> generate_filters(
     const ColumnID column_id, const PredicateCondition predicate_type, std::mt19937 gen,
     std::uniform_int_distribution<> dis, const uint32_t num_filters) {
-  std::vector<std::tuple<ColumnID, PredicateCondition, AllTypeVariant>> filters;
   std::unordered_set<int64_t> used_values;
+  std::vector<std::tuple<ColumnID, PredicateCondition, AllTypeVariant>> filters;
+  filters.reserve(num_filters);
 
   for (auto i = 0u; i < num_filters; i++) {
     auto v = dis(gen);
@@ -292,6 +295,7 @@ std::vector<std::tuple<ColumnID, PredicateCondition, AllTypeVariant>> generate_f
   resolve_data_type(table->column_data_type(column_id), [&](auto type) {
     using T = typename decltype(type)::type;
     const auto distinct_values = get_distinct_values<T>(table->get_chunk(ChunkID{0})->get_segment(column_id));
+    filters.reserve(num_filters ? *num_filters : distinct_values.size());
 
     auto i = 0u;
     for (const auto& v : distinct_values) {
