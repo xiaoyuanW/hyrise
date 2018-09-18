@@ -10,6 +10,8 @@
 #include <utility>
 #include <vector>
 
+#include "boost/algorithm/string/replace.hpp"
+
 #include "expression/evaluation/like_matcher.hpp"
 #include "histogram_utils.hpp"
 #include "storage/create_iterable_from_segment.hpp"
@@ -51,6 +53,73 @@ std::string AbstractHistogram<T>::description() const {
   for (BinID bin = 0u; bin < num_bins(); bin++) {
     stream << "              [" << _bin_min(bin) << ", " << _bin_max(bin) << "]: ";
     stream << _bin_count(bin) << std::endl;
+  }
+
+  return stream.str();
+}
+
+template <typename T>
+std::string AbstractHistogram<T>::bins_to_csv(const bool print_header, const std::optional<std::string>& column_name,
+                                              const std::optional<uint64_t>& requested_num_bins) const {
+  std::stringstream stream;
+
+  if (print_header) {
+    stream << "histogram_type";
+
+    if (column_name) {
+      stream << ",column_name";
+    }
+
+    stream << ",actual_num_bins";
+
+    if (requested_num_bins) {
+      stream << ",requested_num_bins";
+    }
+
+    stream << ",bin_id,bin_min,bin_max,bin_min_repr,bin_max_repr,bin_width,bin_count,bin_count_distinct";
+    stream << std::endl;
+  }
+
+  for (auto bin = 0u; bin < num_bins(); bin++) {
+    stream << histogram_type_to_string.at(histogram_type());
+
+    if (column_name) {
+      stream << "," << *column_name;
+    }
+
+    stream << "," << num_bins();
+
+    if (requested_num_bins) {
+      stream << "," << *requested_num_bins;
+    }
+
+    stream << "," << bin;
+
+    if constexpr (std::is_same_v<T, std::string>) {
+      constexpr auto patterns = std::array<std::pair<const char*, const char*>, 2u>{{{"\\", "\\\\"}, {"\"", "\\\""}}};
+      auto min = _bin_min(bin);
+      auto max = _bin_max(bin);
+
+      for (const auto& pair : patterns) {
+        boost::replace_all(min, pair.first, pair.second);
+        boost::replace_all(max, pair.first, pair.second);
+      }
+
+      stream << ",\"" << min << "\"";
+      stream << ",\"" << max << "\"";
+      stream << "," << _convert_string_to_number_representation(_bin_min(bin));
+      stream << "," << _convert_string_to_number_representation(_bin_max(bin));
+    } else {
+      stream << "," << _bin_min(bin);
+      stream << "," << _bin_max(bin);
+      stream << "," << _bin_min(bin);
+      stream << "," << _bin_max(bin);
+    }
+
+    stream << "," << _bin_width(bin);
+    stream << "," << _bin_count(bin);
+    stream << "," << _bin_count_distinct(bin);
+    stream << std::endl;
   }
 
   return stream.str();
@@ -289,11 +358,57 @@ bool AbstractHistogram<std::string>::can_prune(const PredicateCondition predicat
       const auto match_all_index = value.find('%');
       if (match_all_index != std::string::npos) {
         const auto search_prefix = value.substr(0, match_all_index);
-        const auto upper_bound = next_value(search_prefix, _supported_characters, search_prefix.length());
-        return can_prune(PredicateCondition::GreaterThanEquals, search_prefix) ||
-               can_prune(PredicateCondition::LessThan, upper_bound) ||
-               (_bin_for_value(search_prefix) == INVALID_BIN_ID && _bin_for_value(upper_bound) == INVALID_BIN_ID &&
-                _upper_bound_for_value(search_prefix) == _upper_bound_for_value(upper_bound));
+        if (can_prune(PredicateCondition::GreaterThanEquals, search_prefix)) {
+          return true;
+        }
+
+        const auto search_prefix_next_value = next_value(search_prefix, _supported_characters, search_prefix.length());
+        if (can_prune(PredicateCondition::LessThan, search_prefix_next_value)) {
+          return true;
+        }
+
+        const auto search_prefix_bin = _bin_for_value(search_prefix);
+        const auto search_prefix_next_value_bin = _bin_for_value(search_prefix_next_value);
+
+        if (search_prefix_bin == INVALID_BIN_ID) {
+          const auto search_prefix_upper_bound_bin = _upper_bound_for_value(search_prefix);
+
+          // In an EqualNumElementsHistogram, if both values fall into the same gap, we can prune the predicate.
+          // We need to have at least two bins to rule out pruning if search_prefix < min
+          // and search_prefix_next_value > max.
+          if (search_prefix_next_value_bin == INVALID_BIN_ID && num_bins() > 1ul &&
+              search_prefix_upper_bound_bin == _upper_bound_for_value(search_prefix_next_value)) {
+            return true;
+          }
+
+          // In an EqualNumElementsHistogram, if the search_prefix_next_value is exactly the lower bin edge of
+          // the upper bound of search_prefix, we can also prune.
+          // That's because search_prefix_next_value does not belong to the range covered by the pattern,
+          // but is the next value after it.
+          if (search_prefix_next_value_bin != INVALID_BIN_ID &&
+              search_prefix_upper_bound_bin == search_prefix_next_value_bin &&
+              _bin_min(search_prefix_next_value_bin) == search_prefix_next_value) {
+            return true;
+          }
+        }
+
+        // In an EqualWidthHistogram, if both values fall into a bin that has no elements,
+        // and there are either no bins in between or none of them have any elements, we can also prune the predicate.
+        // If the count of search_prefix_next_value_bin is not 0 but search_prefix_next_value is the lower bin edge,
+        // we can still prune, because search_prefix_next_value is not part of the range (same as above).
+        if (search_prefix_bin != INVALID_BIN_ID && search_prefix_next_value_bin != INVALID_BIN_ID &&
+            _bin_count(search_prefix_bin) == 0u &&
+            (_bin_count(search_prefix_next_value_bin) == 0u ||
+             _bin_min(search_prefix_next_value_bin) == search_prefix_next_value)) {
+          for (auto current_bin = search_prefix_bin + 1; current_bin < search_prefix_next_value_bin; current_bin++) {
+            if (_bin_count(current_bin) > 0u) {
+              return false;
+            }
+          }
+          return true;
+        }
+
+        return false;
       }
 
       return false;

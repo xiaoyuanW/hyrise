@@ -499,7 +499,7 @@ void run(const std::shared_ptr<Table> table, const std::vector<uint64_t> num_bin
   results_log << "total_count,distinct_count,num_bins,column_name,predicate_condition,value,actual_count,equal_"
                  "height_hist_count,equal_num_elements_hist_count,equal_width_hist_count\n";
 
-  auto histogram_log = std::ofstream(output_path + "/histogram_bins.log", std::ios_base::out | std::ios_base::trunc);
+  auto histogram_log = std::ofstream(output_path + "/estimation_bins.log", std::ios_base::out | std::ios_base::trunc);
   histogram_log << "histogram_type,column_name,actual_num_bins,requested_num_bins,bin_id,bin_min,bin_max,"
                    "bin_min_repr,bin_max_repr,bin_count,bin_count_distinct\n";
 
@@ -511,10 +511,10 @@ void run(const std::shared_ptr<Table> table, const std::vector<uint64_t> num_bin
   for (auto num_bins : num_bins_list) {
     for (auto it : filters_by_column) {
       const auto column_id = it.first;
+      const auto distinct_count = distinct_count_by_column.at(column_id);
       const auto column_name = table->column_name(column_id);
       std::cout << column_name << std::endl;
 
-      const auto distinct_count = distinct_count_by_column.at(column_id);
       const auto column_data_type = table->column_data_type(column_id);
       resolve_data_type(column_data_type, [&](auto type) {
         using T = typename decltype(type)::type;
@@ -526,10 +526,10 @@ void run(const std::shared_ptr<Table> table, const std::vector<uint64_t> num_bin
         const auto equal_width_hist =
             EqualWidthHistogram<T>::from_segment(table->get_chunk(ChunkID{0})->get_segment(column_id), num_bins);
 
-        // histogram_log << equal_height_hist->bins_to_csv(false, column_name, num_bins);
-        // histogram_log << equal_num_elements_hist->bins_to_csv(false, column_name, num_bins);
-        // histogram_log << equal_width_hist->bins_to_csv(false, column_name, num_bins);
-        // histogram_log.flush();
+        histogram_log << equal_height_hist->bins_to_csv(false, column_name, num_bins);
+        histogram_log << equal_num_elements_hist->bins_to_csv(false, column_name, num_bins);
+        histogram_log << equal_width_hist->bins_to_csv(false, column_name, num_bins);
+        histogram_log.flush();
 
         for (const auto& pair : it.second) {
           const auto predicate_condition = pair.first;
