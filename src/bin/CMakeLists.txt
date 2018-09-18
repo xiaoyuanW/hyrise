@@ -79,13 +79,6 @@ target_link_libraries(
     jitEvaluate
     hyrise
     hyriseBenchmarkLib
-    ${PAPI_LIBRARIES}
-)
-target_include_directories(
-    jitEvaluate
-
-    PUBLIC
-    ${READLINE_INCLUDE_DIR}
-    ${PAPI_INCLUDE_DIRS}    
+    # ${PAPI_LIBRARIES}
 )
 
