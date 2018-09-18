@@ -381,7 +381,7 @@ get_row_count_for_filters(
 
       for (const auto& filter : filters) {
         const auto predicate_type = std::get<0>(filter);
-        const auto value = std::get<1>(filter);
+        const auto& value = std::get<1>(filter);
         const auto t_value = type_cast<T>(value);
 
         switch (predicate_type) {
