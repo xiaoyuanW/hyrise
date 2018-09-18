@@ -359,6 +359,109 @@ std::vector<std::pair<T, uint64_t>> calculate_value_counts(const std::shared_ptr
 
 /**
  * For all filters, return a map from ColumnID via predicate type via value
+ * to a bool indicating whether the predicate on this column with this value is prunable.
+ */
+std::unordered_map<ColumnID, std::unordered_map<PredicateCondition, std::unordered_map<AllTypeVariant, bool>>>
+get_prunable_for_filters(
+    const std::shared_ptr<Table>& table,
+    const std::unordered_map<ColumnID, std::vector<std::pair<PredicateCondition, AllTypeVariant>>>& filters_by_column) {
+  std::unordered_map<ColumnID, std::unordered_map<PredicateCondition, std::unordered_map<AllTypeVariant, bool>>>
+      prunable_by_filter;
+  Assert(table->chunk_count() == 1u, "Table has more than one chunk.");
+
+  for (const auto& column_filters : filters_by_column) {
+    const auto column_id = column_filters.first;
+    const auto filters = column_filters.second;
+
+    resolve_data_type(table->column_data_type(column_id), [&](auto type) {
+      using T = typename decltype(type)::type;
+
+      const auto distinct_set = get_distinct_values<T>(table->get_chunk(ChunkID{0})->get_segment(column_id));
+      std::vector<T> distinct_values(distinct_set.cbegin(), distinct_set.cend());
+      std::sort(distinct_values.begin(), distinct_values.end());
+
+      for (const auto& filter : filters) {
+        const auto predicate_type = std::get<0>(filter);
+        const auto& value = std::get<1>(filter);
+        const auto t_value = type_cast<T>(value);
+
+        switch (predicate_type) {
+          case PredicateCondition::Equals: {
+            const auto it = std::find(distinct_values.cbegin(), distinct_values.cend(), t_value);
+            prunable_by_filter[column_id][predicate_type][value] = it == distinct_values.cend();
+            break;
+          }
+          case PredicateCondition::NotEquals: {
+            prunable_by_filter[column_id][predicate_type][value] =
+                distinct_values.size() == 1 && distinct_values.front() == t_value;
+            break;
+          }
+          case PredicateCondition::LessThan: {
+            prunable_by_filter[column_id][predicate_type][value] = t_value <= distinct_values.front();
+            break;
+          }
+          case PredicateCondition::LessThanEquals: {
+            prunable_by_filter[column_id][predicate_type][value] = t_value < distinct_values.front();
+            break;
+          }
+          case PredicateCondition::GreaterThanEquals: {
+            prunable_by_filter[column_id][predicate_type][value] = t_value > distinct_values.back();
+            break;
+          }
+          case PredicateCondition::GreaterThan: {
+            prunable_by_filter[column_id][predicate_type][value] = t_value >= distinct_values.back();
+            break;
+          }
+          case PredicateCondition::Like: {
+            if constexpr (!std::is_same_v<T, std::string>) {
+              Fail("LIKE predicates only work for string columns");
+            } else {
+              const auto regex_string = LikeMatcher::sql_like_to_regex(t_value);
+              const auto regex = std::regex{regex_string};
+
+              auto prunable = true;
+              for (const auto& value : distinct_values) {
+                if (std::regex_match(value, regex)) {
+                  prunable = false;
+                  break;
+                }
+              }
+
+              prunable_by_filter[column_id][predicate_type][value] = prunable;
+            }
+            break;
+          }
+          case PredicateCondition::NotLike: {
+            if constexpr (!std::is_same_v<T, std::string>) {
+              Fail("NOT LIKE predicates only work for string columns");
+            } else {
+              const auto regex_string = LikeMatcher::sql_like_to_regex(t_value);
+              const auto regex = std::regex{regex_string};
+
+              auto prunable = true;
+              for (const auto& value : distinct_values) {
+                if (!std::regex_match(value, regex)) {
+                  prunable = false;
+                  break;
+                }
+              }
+
+              prunable_by_filter[column_id][predicate_type][value] = prunable;
+            }
+            break;
+          }
+          default:
+            Fail("Predicate type not supported.");
+        }
+      }
+    });
+  }
+
+  return prunable_by_filter;
+}
+
+/**
+ * For all filters, return a map from ColumnID via predicate type via value
  * to the number of rows matching the predicate on this column with this value.
  */
 std::unordered_map<ColumnID, std::unordered_map<PredicateCondition, std::unordered_map<AllTypeVariant, uint64_t>>>
@@ -447,7 +550,7 @@ get_row_count_for_filters(
               const auto regex = std::regex{regex_string};
 
               uint64_t sum = 0;
-              for (const auto &p : value_counts) {
+              for (const auto& p : value_counts) {
                 if (std::regex_match(p.first, regex)) {
                   sum += p.second;
                 }
@@ -465,7 +568,7 @@ get_row_count_for_filters(
               const auto regex = std::regex{regex_string};
 
               uint64_t sum = 0;
-              for (const auto &p : value_counts) {
+              for (const auto& p : value_counts) {
                 if (!std::regex_match(p.first, regex)) {
                   sum += p.second;
                 }
@@ -485,9 +588,77 @@ get_row_count_for_filters(
   return row_count_by_filter;
 }
 
-void run(const std::shared_ptr<Table> table, const std::vector<uint64_t> num_bins_list,
-         const std::vector<std::tuple<ColumnID, PredicateCondition, AllTypeVariant>>& filters,
-         const std::string& output_path) {
+void run_pruning(const std::shared_ptr<Table> table, const std::vector<uint64_t> num_bins_list,
+                 const std::vector<std::tuple<ColumnID, PredicateCondition, AllTypeVariant>>& filters,
+                 const std::string& output_path) {
+  Assert(table->chunk_count() == 1u, "Table has more than one chunk.");
+
+  // std::cout.imbue(std::locale("en_US.UTF-8"));
+  // auto start = std::chrono::high_resolution_clock::now();
+  // auto end = std::chrono::high_resolution_clock::now();
+  // std::cout << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << std::endl;
+
+  auto results_log = std::ofstream(output_path + "/pruning_results.log", std::ios_base::out | std::ios_base::trunc);
+  results_log << "total_count,distinct_count,num_bins,column_name,predicate_condition,value,actually_prunable,equal_"
+                 "height_hist_prunable,equal_num_elements_hist_prunable,equal_width_hist_prunable\n";
+
+  auto histogram_log = std::ofstream(output_path + "/pruning_bins.log", std::ios_base::out | std::ios_base::trunc);
+  histogram_log << "histogram_type,column_name,actual_num_bins,requested_num_bins,bin_id,bin_min,bin_max,"
+                   "bin_min_repr,bin_max_repr,bin_count,bin_count_distinct\n";
+
+  const auto filters_by_column = get_filters_by_column(filters);
+  const auto prunable_by_filter = get_prunable_for_filters(table, filters_by_column);
+  const auto distinct_count_by_column = get_distinct_count_by_column(table, filters_by_column);
+  const auto total_count = table->row_count();
+
+  for (auto num_bins : num_bins_list) {
+    for (auto it : filters_by_column) {
+      const auto column_id = it.first;
+      const auto distinct_count = distinct_count_by_column.at(column_id);
+      const auto column_name = table->column_name(column_id);
+      std::cout << column_name << std::endl;
+
+      const auto column_data_type = table->column_data_type(column_id);
+      resolve_data_type(column_data_type, [&](auto type) {
+        using T = typename decltype(type)::type;
+
+        const auto equal_height_hist =
+            EqualHeightHistogram<T>::from_segment(table->get_chunk(ChunkID{0})->get_segment(column_id), num_bins);
+        const auto equal_num_elements_hist =
+            EqualNumElementsHistogram<T>::from_segment(table->get_chunk(ChunkID{0})->get_segment(column_id), num_bins);
+        const auto equal_width_hist =
+            EqualWidthHistogram<T>::from_segment(table->get_chunk(ChunkID{0})->get_segment(column_id), num_bins);
+
+        histogram_log << equal_height_hist->bins_to_csv(false, column_name, num_bins);
+        histogram_log << equal_num_elements_hist->bins_to_csv(false, column_name, num_bins);
+        histogram_log << equal_width_hist->bins_to_csv(false, column_name, num_bins);
+        histogram_log.flush();
+
+        for (const auto& pair : it.second) {
+          const auto predicate_condition = pair.first;
+          const auto value = pair.second;
+
+          const auto actually_prunable = prunable_by_filter.at(column_id).at(predicate_condition).at(value);
+          const auto equal_height_hist_prunable = equal_height_hist->can_prune(predicate_condition, value);
+          const auto equal_num_elements_hist_prunable = equal_num_elements_hist->can_prune(predicate_condition, value);
+          const auto equal_width_hist_prunable = equal_width_hist->can_prune(predicate_condition, value);
+
+          results_log << std::to_string(total_count) << "," << std::to_string(distinct_count) << ","
+                      << std::to_string(num_bins) << "," << column_name << ","
+                      << predicate_condition_to_string.left.at(predicate_condition) << "," << value << ","
+                      << std::to_string(actually_prunable) << "," << std::to_string(equal_height_hist_prunable) << ","
+                      << std::to_string(equal_num_elements_hist_prunable) << ","
+                      << std::to_string(equal_width_hist_prunable) << "\n";
+          results_log.flush();
+        }
+      });
+    }
+  }
+}
+
+void run_estimation(const std::shared_ptr<Table> table, const std::vector<uint64_t> num_bins_list,
+                    const std::vector<std::tuple<ColumnID, PredicateCondition, AllTypeVariant>>& filters,
+                    const std::string& output_path) {
   Assert(table->chunk_count() == 1u, "Table has more than one chunk.");
 
   // std::cout.imbue(std::locale("en_US.UTF-8"));
@@ -655,7 +826,13 @@ int main(int argc, char** argv) {
     Fail("Mode '" + filter_mode + "' not supported.");
   }
 
-  run(table, num_bins_list, filters, output_path);
+  if (cmd_option_exists(argv, argv_end, "--estimation")) {
+    run_estimation(table, num_bins_list, filters, output_path);
+  } else if (cmd_option_exists(argv, argv_end, "--pruning")) {
+    run_pruning(table, num_bins_list, filters, output_path);
+  } else {
+    Fail("Specify either '--estimation' or '--pruning' to decide what to measure.");
+  }
 
   return 0;
 }
