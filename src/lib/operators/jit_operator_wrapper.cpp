@@ -116,7 +116,8 @@ void JitOperatorWrapper::_choose_execute_func() {
   // We want to perform two specialization passes if the operator chain contains a JitAggregate operator, since the
   // JitAggregate operator contains multiple loops that need unrolling.
   auto two_specialization_passes = static_cast<bool>(std::dynamic_pointer_cast<JitAggregate>(_sink()));
-  switch (_execution_mode) {  // _execution_mode
+  const auto mode = Global::get().interpret ? JitExecutionMode::Interpret : JitExecutionMode::Compile;
+  switch (mode) {  // _execution_mode
     case JitExecutionMode::Compile:
       // this corresponds to "opossum::JitReadTuples::execute(opossum::JitRuntimeContext&) const"
       _execute_func = _module.specialize_and_compile_function<void(const JitReadTuples*, JitRuntimeContext&)>(
