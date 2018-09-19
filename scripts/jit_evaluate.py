@@ -6,12 +6,14 @@ from terminaltables import AsciiTable
 from termcolor import colored
 from scipy.stats import ttest_ind
 from array import array
-# draw charts
-import numpy as np
-import matplotlib.pyplot as plt
 
 def str2bool(v):
 	return v.lower() in ("yes", "true", "t", "1")
+
+if len(sys.argv) > 2 and str2bool(sys.argv[2]):
+	# draw charts
+	import numpy as np
+	import matplotlib.pyplot as plt
 
 def combine_results(results):
 	d = {}
