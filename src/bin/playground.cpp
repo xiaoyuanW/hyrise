@@ -116,10 +116,14 @@ T get_cmd_option(char** begin, char** end, const std::string& option,
  */
 template <typename T>
 std::vector<T> get_cmd_option_list(char** begin, char** end, const std::string& option,
-                                   const std::vector<T>& default_value = std::vector<T>{}) {
+                                   const std::optional<std::vector<T>>& default_value = std::nullopt) {
   const auto iter = std::find(begin, end, option);
   if (iter == end || iter + 1 == end) {
-    return default_value;
+    if (static_cast<bool>(default_value)) {
+      return *default_value;
+    }
+
+    Fail("Option '" + option + "' was not specified, and no default was given.");
   }
 
   std::vector<T> result;
@@ -218,6 +222,41 @@ std::unordered_map<ColumnID, uint64_t> get_distinct_count_by_column(
   }
 
   return distinct_count_by_column;
+}
+
+/**
+ * Reads a list of filters from the specified file.
+ */
+std::vector<std::tuple<ColumnID, PredicateCondition, AllTypeVariant>> read_filters_from_file(
+        const std::string& filter_file, const std::shared_ptr<Table>& table) {
+  std::ifstream infile(filter_file);
+  Assert(infile.is_open(), "Could not find file: " + filter_file + ".");
+
+  std::vector<std::tuple<ColumnID, PredicateCondition, AllTypeVariant>> filters;
+
+  std::string line;
+  while (std::getline(infile, line)) {
+    std::vector<std::string> fields;
+    std::stringstream ss(line);
+    std::string token;
+
+    while (std::getline(ss, token, ',')) {
+      fields.push_back(token);
+    }
+
+    Assert(fields.size() == 3, "Filter file invalid in line: '" + line + "'.");
+
+    const auto column_id = ColumnID{str2T<uint16_t>(fields[0])};
+    const auto predicate_type = predicate_condition_to_string.right.at(fields[1]);
+
+    resolve_data_type(table->column_data_type(column_id), [&](auto type) {
+      using ColumnDataType = typename decltype(type)::type;
+      const auto v = AllTypeVariant{str2T<ColumnDataType>(fields[2])};
+      filters.emplace_back(std::tuple<ColumnID, PredicateCondition, AllTypeVariant>{column_id, predicate_type, v});
+    });
+  }
+
+  return filters;
 }
 
 /**
@@ -827,31 +866,7 @@ int main(int argc, char** argv) {
     filters = generate_filters(table, column_id, predicate_type, num_filters);
   } else if (filter_mode == "from_file") {
     const auto filter_file = get_cmd_option<std::string>(argv, argv_end, "--filter-file");
-
-    std::ifstream infile(filter_file);
-    Assert(infile.is_open(), "Could not find file: " + filter_file + ".");
-
-    std::string line;
-    while (std::getline(infile, line)) {
-      std::vector<std::string> fields;
-      std::stringstream ss(line);
-      std::string token;
-
-      while (std::getline(ss, token, ',')) {
-        fields.push_back(token);
-      }
-
-      Assert(fields.size() == 3, "Filter file invalid in line: '" + line + "'.");
-
-      const auto column_id = ColumnID{str2T<uint16_t>(fields[0])};
-      const auto predicate_type = predicate_condition_to_string.right.at(fields[1]);
-
-      resolve_data_type(table->column_data_type(column_id), [&](auto type) {
-        using ColumnDataType = typename decltype(type)::type;
-        const auto v = AllTypeVariant{str2T<ColumnDataType>(fields[2])};
-        filters.emplace_back(std::tuple<ColumnID, PredicateCondition, AllTypeVariant>{column_id, predicate_type, v});
-      });
-    }
+    filters = read_filters_from_file(filter_file, table);
   } else {
     Fail("Mode '" + filter_mode + "' not supported.");
   }
