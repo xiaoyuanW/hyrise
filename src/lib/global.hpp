@@ -20,6 +20,7 @@ struct Global {
   bool jit_validate = false;
   bool deep_copy_exists = false;
   bool jit_evaluate = false;
+  bool interpret = false;
   std::map<OperatorType, OperatorTimes> times;
 };
 

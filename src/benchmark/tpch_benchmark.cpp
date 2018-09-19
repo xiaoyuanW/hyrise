@@ -44,6 +44,7 @@ int main(int argc, char* argv[]) {
     ("queries", "Specify queries to run, default is all", cxxopts::value<std::vector<opossum::QueryID>>())
     ("jit", "Enable jit", cxxopts::value<bool>()->default_value("false"))
     ("lazy_load", "Enable lazy load in jit", cxxopts::value<bool>()->default_value("false"))
+    ("interpret", "Interpret jit codde", cxxopts::value<bool>()->default_value("false"))
     ("jit_validate", "Use jit validate", cxxopts::value<bool>()->default_value("false")); // NOLINT
   // clang-format on
 
@@ -52,6 +53,7 @@ int main(int argc, char* argv[]) {
   float scale_factor;
   bool& jit = opossum::Global::get().jit;
   bool& lazy_load = opossum::Global::get().lazy_load;
+  bool& interpret = opossum::Global::get().interpret;
   bool& jit_validate = opossum::Global::get().jit_validate;
 
   if (opossum::CLIConfigParser::cli_has_json_config(argc, argv)) {
@@ -61,6 +63,7 @@ int main(int argc, char* argv[]) {
     query_ids = json_config.value("queries", std::vector<opossum::QueryID>());
     jit = json_config.value("jit", false);
     lazy_load = json_config.value("lazy_load", false);
+    interpret = json_config.value("interpret", false);
     jit_validate = json_config.value("jit_validate", false);
 
     config = std::make_unique<opossum::BenchmarkConfig>(
@@ -82,6 +85,7 @@ int main(int argc, char* argv[]) {
 
     jit = cli_parse_result["jit"].as<bool>();
     lazy_load = cli_parse_result["lazy_load"].as<bool>();
+    interpret = cli_parse_result["interpret"].as<bool>();
     jit_validate = cli_parse_result["jit_validate"].as<bool>();
 
     scale_factor = cli_parse_result["scale"].as<float>();
@@ -101,6 +105,7 @@ int main(int argc, char* argv[]) {
 
   config->out << "- Jitting is " << bool_to_verb(jit) << std::endl;
   config->out << "- Lazy load is " << bool_to_verb(lazy_load) << std::endl;
+  config->out << "- Jit interpretation is " << bool_to_verb(interpret) << std::endl;
   config->out << "- Jit validate is " << bool_to_verb(jit_validate) << std::endl;
 
   config->out << "- Benchmarking Queries: [ ";
@@ -137,6 +142,7 @@ int main(int argc, char* argv[]) {
 
   context.emplace("jit", bool_to_str(jit));
   context.emplace("lazy_load", bool_to_str(lazy_load));
+  context.emplace("interpret", bool_to_str(interpret));
   context.emplace("jit_validate", bool_to_str(jit_validate));
 
   // Run the benchmark

@@ -125,7 +125,7 @@ void JitOperatorWrapper::_choose_execute_func() {
   // We want to perform two specialization passes if the operator chain contains a JitAggregate operator, since the
   // JitAggregate operator contains multiple loops that need unrolling.
   auto two_specialization_passes = static_cast<bool>(std::dynamic_pointer_cast<JitAggregate>(_sink()));
-  bool specialize = true;
+  bool specialize = !Global::get().interpret;
   if (JitEvaluationHelper::get().experiment().count("jit_use_jit")) {
     specialize = JitEvaluationHelper::get().experiment().at("jit_use_jit");
   }
