@@ -196,11 +196,18 @@ void JitReadTuples::before_chunk(const Table& in_table, const ChunkID chunk_id, 
 
 void JitReadTuples::execute(JitRuntimeContext& context) const {
   for (; context.chunk_offset < context.chunk_size; ++context.chunk_offset) {
+#if JIT_LAZY_LOAD
     _emit(context);
     // We advance all segment iterators, after processing the tuple with the next operators.
     for (const auto& input : context.inputs) {
       input->increment();
     }
+#else
+    for (const auto& input : context.inputs) {
+      input->read_value(context);
+    }
+    _emit(context);
+#endif
   }
 }
 

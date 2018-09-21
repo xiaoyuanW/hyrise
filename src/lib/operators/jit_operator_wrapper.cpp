@@ -44,6 +44,7 @@ const std::shared_ptr<AbstractJittableSink> JitOperatorWrapper::_sink() const {
 }
 
 void JitOperatorWrapper::insert_loads(const bool lazy) {
+  if constexpr (!JIT_LAZY_LOAD) return;
   if (!lazy) {
     auto itr = ++_jit_operators.cbegin();
     for (size_t index = 0; index < _source()->input_columns().size(); ++index) {

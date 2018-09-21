@@ -160,10 +160,16 @@ DataType jit_compute_type(const T& op_func, const DataType lhs, const DataType r
 }
 
 void jit_not(const JitTupleValue& lhs, const JitTupleValue& result, JitRuntimeContext& context);
+#if JIT_LOGICAL_PRUNING
 void jit_and(const JitTupleValue& lhs, const JitTupleValue& rhs, const JitTupleValue& result,
              JitRuntimeContext& context, const bool prune_right_side);
 void jit_or(const JitTupleValue& lhs, const JitTupleValue& rhs, const JitTupleValue& result, JitRuntimeContext& context,
             const bool prune_right_side);
+#else
+void jit_and(const JitTupleValue& lhs, const JitTupleValue& rhs, const JitTupleValue& result,
+             JitRuntimeContext& context);
+void jit_or(const JitTupleValue& lhs, const JitTupleValue& rhs, const JitTupleValue& result, JitRuntimeContext& context);
+#endif
 void jit_is_null(const JitTupleValue& lhs, const JitTupleValue& result, JitRuntimeContext& context);
 void jit_is_not_null(const JitTupleValue& lhs, const JitTupleValue& result, JitRuntimeContext& context);
 

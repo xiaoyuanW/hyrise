@@ -33,7 +33,7 @@ void jit_not(const JitTupleValue& lhs, const JitTupleValue& result, JitRuntimeCo
   result.set<bool>(!lhs.get<bool>(context), context);
   result.set_is_null(lhs.is_null(context), context);
 }
-
+#if JIT_LOGICAL_PRUNING
 void jit_and(const JitTupleValue& lhs, const JitTupleValue& rhs, const JitTupleValue& result,
              JitRuntimeContext& context, const bool prune_right_side) {
   // If the input values are computed by non-jit operators, their data type is int but they can be read as bool values.
@@ -75,6 +75,39 @@ void jit_or(const JitTupleValue& lhs, const JitTupleValue& rhs, const JitTupleVa
     result.set_is_null(rhs.is_null(context), context);
   }
 }
+#else
+void jit_and(const JitTupleValue& lhs, const JitTupleValue& rhs, const JitTupleValue& result,
+             JitRuntimeContext& context) {
+  DebugAssert(
+           lhs.data_type() == DataType::Bool && rhs.data_type() == DataType::Bool && result.data_type() == DataType::Bool,
+           "invalid type for operation");
+ 
+   // three-valued logic AND
+   if (lhs.is_null(context)) {
+     result.set<bool>(false, context);
+     result.set_is_null(rhs.is_null(context) || rhs.get<bool>(context), context);
+   } else {
+     result.set<bool>(lhs.get<bool>(context) && rhs.get<bool>(context), context);
+     result.set_is_null(lhs.get<bool>(context) && rhs.is_null(context), context);
+   }
+ }
+ 
+ void jit_or(const JitTupleValue& lhs, const JitTupleValue& rhs, const JitTupleValue& result,
+             JitRuntimeContext& context) {
+   DebugAssert(
+           lhs.data_type() == DataType::Bool && rhs.data_type() == DataType::Bool && result.data_type() == DataType::Bool,
+           "invalid type for operation");
+ 
+   // three-valued logic OR
+   if (lhs.is_null(context)) {
+     result.set<bool>(true, context);
+     result.set_is_null(rhs.is_null(context) || !rhs.get<bool>(context), context);
+   } else {
+     result.set<bool>(lhs.get<bool>(context) || rhs.get<bool>(context), context);
+    result.set_is_null(!lhs.get<bool>(context) && rhs.is_null(context), context);
+  }
+}
+#endif
 
 bool jit_like(const std::string& a, const std::string& b) {
   const auto regex_string = LikeMatcher::sql_like_to_regex(b);
