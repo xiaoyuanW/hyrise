@@ -25,8 +25,8 @@ namespace opossum {
 #ifndef JIT_LAZY_LOAD
 #define JIT_LAZY_LOAD 1
 #endif
-#define JIT_LOGICAL_PRUNING 1
 #ifndef JIT_LOGICAL_PRUNING
+#define JIT_LOGICAL_PRUNING 1
 #endif
 
 // Expression uses int32_t to store booleans (see src/lib/expression/evaluation/expression_evaluator.hpp)
