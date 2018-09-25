@@ -205,6 +205,7 @@ int main(int argc, char* argv[]) {
   for (size_t current_experiment = 0; current_experiment < num_experiments; ++current_experiment) {
     auto& experiment = config["experiments"][current_experiment];
     if (!experiment.count("mvcc")) experiment["mvcc"] = false;
+    if (!experiment.count("optimize")) experiment["optimize"] = true;
     if (experiment.at("engine") == "opossum") {
       opossum::Global::get().jit = false;
     } else if (experiment.at("engine") == "jit") {
