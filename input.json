@@ -9,8 +9,8 @@
     ],
     "papi_events": [],
     "scale_factor": 1,
-    "use_other_tables": false,
-    "use_tpch_tables": true
+    "use_other_tables": true,
+    "use_tpch_tables": false
   },
   "queries": {
     "0": {
@@ -84,63 +84,96 @@
       "tables": [
         "customer", "orders", "lineitem", "nation"
       ]
+    },
+    "TYPE_Int": {
+      "query": "SELECT L1 FROM TABLE_TYPES WHERE I1 = 5 AND I2 = 5;",
+      "tables": [
+        "TABLE_TYPES"
+      ]
+    },
+    "TYPE_Long": {
+      "query": "SELECT I1 FROM TABLE_TYPES WHERE L1 = 5 AND L2 = 5;",
+      "tables": [
+        "TABLE_TYPES"
+      ]
+    },
+    "TYPE_Float": {
+      "query": "SELECT I1 FROM TABLE_TYPES WHERE F1 = 5 AND F2 = 5;",
+      "tables": [
+        "TABLE_TYPES"
+      ]
+    },
+    "TYPE_Double": {
+      "query": "SELECT I1 FROM TABLE_TYPES WHERE D1 = 5 AND D2 = 5;",
+      "tables": [
+        "TABLE_TYPES"
+      ]
+    },
+    "TYPE_String": {
+      "query": "SELECT I1 FROM TABLE_TYPES WHERE S1 = '70' AND S2 = '70';",
+      "tables": [
+        "TABLE_TYPES"
+      ]
     }
   },
   "experiments": [
     {
       "engine": "jit",
-      "query_id": "TPCH1",
+      "query_id": "TYPE_Int",
       "repetitions": 50,
       "task": "run"
     },
     {
       "engine": "jit",
-      "query_id": "TPCH6",
+      "query_id": "TYPE_Long",
       "repetitions": 50,
       "task": "run"
     },
     {
       "engine": "jit",
-      "query_id": "TPCH10",
+      "query_id": "TYPE_Float",
       "repetitions": 50,
       "task": "run"
     },
     {
       "engine": "jit",
-      "query_id": "TPCH1",
-      "jit_use_jit": false,
+      "query_id": "TYPE_Double",
       "repetitions": 50,
       "task": "run"
     },
     {
       "engine": "jit",
-      "query_id": "TPCH6",
-      "jit_use_jit": false,
-      "repetitions": 50,
-      "task": "run"
-    },
-    {
-      "engine": "jit",
-      "query_id": "TPCH10",
-      "jit_use_jit": false,
+      "query_id": "TYPE_String",
       "repetitions": 50,
       "task": "run"
     },
     {
       "engine": "opossum",
-      "query_id": "TPCH1",
+      "query_id": "TYPE_Int",
       "repetitions": 50,
       "task": "run"
     },
     {
       "engine": "opossum",
-      "query_id": "TPCH6",
+      "query_id": "TYPE_Long",
       "repetitions": 50,
       "task": "run"
     },
     {
       "engine": "opossum",
-      "query_id": "TPCH10",
+      "query_id": "TYPE_Float",
+      "repetitions": 50,
+      "task": "run"
+    },
+    {
+      "engine": "opossum",
+      "query_id": "TYPE_Double",
+      "repetitions": 50,
+      "task": "run"
+    },
+    {
+      "engine": "opossum",
+      "query_id": "TYPE_String",
       "repetitions": 50,
       "task": "run"
     }
