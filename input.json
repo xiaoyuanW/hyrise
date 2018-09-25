@@ -110,7 +110,7 @@
       ]
     },
     "TYPE_String": {
-      "query": "SELECT I1 FROM TABLE_TYPES WHERE S1 = '5' AND S2 = '5';",
+      "query": "SELECT I1 FROM TABLE_TYPES WHERE S1 = 'A' AND S2 = 'A';",
       "tables": [
         "TABLE_TYPES"
       ]
