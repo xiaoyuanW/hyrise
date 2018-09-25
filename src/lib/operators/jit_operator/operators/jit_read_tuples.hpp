@@ -95,7 +95,7 @@ class JitReadTuples : public AbstractJittable {
 #if JIT_LAZY_LOAD
     void read_value(JitRuntimeContext& context) const final {
 #else
-    void read_value(JitRuntimeContext& context) const {
+    void read_value(JitRuntimeContext& context) final
 #endif
       const auto& value = *_iterator;
       // clang-format off

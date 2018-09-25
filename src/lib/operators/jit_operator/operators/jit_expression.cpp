@@ -8,17 +8,13 @@ namespace opossum {
 
 JitExpression::JitExpression(const JitTupleValue& tuple_value)
     : _expression_type{JitExpressionType::Column},
-      _result_value{tuple_value} /*,
-      _load_column{false},
-      _input_column_index{} */ {}
+      _result_value{tuple_value} {}
 
 JitExpression::JitExpression(const std::shared_ptr<const JitExpression>& child, const JitExpressionType expression_type,
                              const size_t result_tuple_index)
     : _left_child{child},
       _expression_type{expression_type},
-      _result_value{JitTupleValue(_compute_result_type(), result_tuple_index)} /*,
-      _load_column{false},
-      _input_column_index{} */ {}
+      _result_value{JitTupleValue(_compute_result_type(), result_tuple_index)} {}
 
 JitExpression::JitExpression(const std::shared_ptr<const JitExpression>& left_child,
                              const JitExpressionType expression_type,
@@ -26,13 +22,14 @@ JitExpression::JitExpression(const std::shared_ptr<const JitExpression>& left_ch
     : _left_child{left_child},
       _right_child{right_child},
       _expression_type{expression_type},
-      _result_value{JitTupleValue(_compute_result_type(), result_tuple_index)} /*,
-      _load_column{false},
-      _input_column_index{} */ {}
+      _result_value{JitTupleValue(_compute_result_type(), result_tuple_index)} {}
 
 std::string JitExpression::to_string() const {
   if (_expression_type == JitExpressionType::Column) {
-    std::string load_column = "";  // _load_column ? " (Using input reader #" + std::to_string(_input_column_index) + ")" : "";
+    std::string load_column;
+#if JIT_LAZY_LOAD
+    load_column = _load_column ? " (Using input reader #" + std::to_string(_input_column_index) + ")" : "";
+#endif
     return "x" + std::to_string(_result_value.tuple_index()) + load_column;
   }
 
@@ -81,7 +78,6 @@ void JitExpression::compute(JitRuntimeContext& context) const {
     return jit_or(_left_child->result(), _right_child->result(), _result_value, context, true);
   }
 #endif
-
 
   _right_child->compute(context);
 

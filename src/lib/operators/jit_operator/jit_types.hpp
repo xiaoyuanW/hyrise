@@ -26,8 +26,13 @@ namespace opossum {
   std::vector<BOOST_PP_TUPLE_ELEM(3, 0, type)> BOOST_PP_TUPLE_ELEM(3, 1, type);
 
 #define JIT_MEASURE 0
+
+#ifndef JIT_LAZY_LOAD
 #define JIT_LAZY_LOAD 1
+#endif
+#ifndef JIT_LOGICAL_PRUNING
 #define JIT_LOGICAL_PRUNING 1
+#endif
 
 // Expression uses int32_t to store booleans (see src/lib/expression/evaluation/expression_evaluator.hpp)
 using Bool = int32_t;
