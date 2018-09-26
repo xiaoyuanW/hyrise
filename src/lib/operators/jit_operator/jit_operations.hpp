@@ -92,6 +92,72 @@ const auto jit_less_than_equals = [](const auto a, const auto b) -> decltype(a <
 const auto jit_greater_than = [](const auto a, const auto b) -> decltype(a > b) { return a > b; };
 const auto jit_greater_than_equals = [](const auto a, const auto b) -> decltype(a >= b) { return a >= b; };
 
+struct JitMaximum {
+  template <typename T1, typename T2,
+            typename = typename std::enable_if_t<std::is_scalar_v<T1> == std::is_scalar_v<T2>>>
+  auto operator()(const T1 a, const T2 b) const {
+    return std::max(a, b);
+  }
+};
+const JitMaximum jit_string_maximum{};
+struct JitMinimum {
+  template <typename T1, typename T2,
+            typename = typename std::enable_if_t<std::is_scalar_v<T1> == std::is_scalar_v<T2>>>
+  auto operator()(const T1 a, const T2 b) const {
+    return std::min(a, b);
+  }
+};
+const JitMinimum jit_string_minimum{};
+
+struct JitEquals {
+  template <typename T1, typename T2,
+            typename = typename std::enable_if_t<std::is_scalar_v<T1> == std::is_scalar_v<T2>>>
+  bool operator()(const T1 a, const T2 b) const {
+    return a == b;
+  }
+};
+const JitEquals jit_string_equals{};
+struct JitNotEquals {
+  template <typename T1, typename T2,
+            typename = typename std::enable_if_t<std::is_scalar_v<T1> == std::is_scalar_v<T2>>>
+  bool operator()(const T1 a, const T2 b) const {
+    return a != b;
+  }
+};
+const JitNotEquals jit_string_not_equals{};
+struct JitLessThan {
+  template <typename T1, typename T2,
+            typename = typename std::enable_if_t<std::is_scalar_v<T1> == std::is_scalar_v<T2>>>
+  bool operator()(const T1 a, const T2 b) const {
+    return a < b;
+  }
+};
+const JitLessThan jit_string_less_than{};
+struct JitLessThanEquals {
+  template <typename T1, typename T2,
+            typename = typename std::enable_if_t<std::is_scalar_v<T1> == std::is_scalar_v<T2>>>
+  bool operator()(const T1 a, const T2 b) const {
+    return a <= b;
+  }
+};
+const JitLessThanEquals jit_string_less_than_equals{};
+struct JitGreaterThan {
+  template <typename T1, typename T2,
+            typename = typename std::enable_if_t<std::is_scalar_v<T1> == std::is_scalar_v<T2>>>
+  bool operator()(const T1 a, const T2 b) const {
+    return a > b;
+  }
+};
+const JitGreaterThan jit_string_greater_than{};
+struct JitGreaterThanEquals {
+  template <typename T1, typename T2,
+            typename = typename std::enable_if_t<std::is_scalar_v<T1> == std::is_scalar_v<T2>>>
+  bool operator()(const T1 a, const T2 b) const {
+    return a >= b;
+  }
+};
+const JitGreaterThanEquals jit_string_greater_than_equals{};
+
 bool jit_like(const std::string& a, const std::string& b);
 bool jit_not_like(const std::string& a, const std::string& b);
 
