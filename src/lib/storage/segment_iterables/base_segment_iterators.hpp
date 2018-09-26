@@ -49,7 +49,7 @@ class JitBaseSegmentIterator {};
  */
 template <typename Derived, typename Value>
 class BaseSegmentIterator : public boost::iterator_facade<Derived, Value, boost::random_access_traversal_tag, Value>,
-                           public JitBaseSegmentIterator {};
+                            public JitBaseSegmentIterator {};
 
 /**
  * @brief base class of all point-access iterators used by iterables

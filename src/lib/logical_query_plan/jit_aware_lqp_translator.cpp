@@ -158,8 +158,10 @@ std::shared_ptr<JitOperatorWrapper> JitAwareLQPTranslator::_try_translate_sub_pl
   // If we can reach the input node without encountering a UnionNode or PredicateNode,
   // there is no need to filter any tuples
   if (filter_node != input_node) {
-    const auto boolean_expression = lqp_subplan_to_boolean_expression(
-        filter_node, [&](const std::shared_ptr<AbstractLQPNode>& lqp) { return _node_is_jittable(lqp, use_value_id, false, false); });
+    const auto boolean_expression =
+        lqp_subplan_to_boolean_expression(filter_node, [&](const std::shared_ptr<AbstractLQPNode>& lqp) {
+          return _node_is_jittable(lqp, use_value_id, false, false);
+        });
     if (!boolean_expression) return nullptr;
 
     const auto jit_boolean_expression =
@@ -505,7 +507,8 @@ bool JitAwareLQPTranslator::_node_is_jittable(const std::shared_ptr<AbstractLQPN
     }
     if (predicate_expression->arguments.size() == 2 &&
         !_expressions_are_jittable({predicate_expression->arguments[1]},
-                                   use_value_id && can_translate_predicate_to_predicate_value_id_expression(*predicate_node->predicate, nullptr))) {
+                                   use_value_id && can_translate_predicate_to_predicate_value_id_expression(
+                                                       *predicate_node->predicate, nullptr))) {
       return false;
     }
     return predicate_node->scan_type == ScanType::TableScan;

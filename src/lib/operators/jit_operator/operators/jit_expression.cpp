@@ -7,8 +7,7 @@
 namespace opossum {
 
 JitExpression::JitExpression(const JitTupleValue& tuple_value)
-    : _expression_type{JitExpressionType::Column},
-      _result_value{tuple_value} {}
+    : _expression_type{JitExpressionType::Column}, _result_value{tuple_value} {}
 
 JitExpression::JitExpression(const std::shared_ptr<const JitExpression>& child, const JitExpressionType expression_type,
                              const size_t result_tuple_index)
