@@ -89,6 +89,11 @@ class JitReadTuples : public AbstractJittable {
 
     // Reads a value from the _iterator into the _tuple_value and increments the _iterator.
     void read_value(JitRuntimeContext& context) final {
+#if JIT_LAZY_LOAD
+      const size_t current_offset = context.chunk_offset;
+      _iterator += current_offset - _chunk_offset;
+      _chunk_offset = current_offset;
+#endif
       const auto& value = *_iterator;
       // clang-format off
       if constexpr (Nullable) {
@@ -100,13 +105,7 @@ class JitReadTuples : public AbstractJittable {
         context.tuple.set<DataType>(_tuple_index, value.value());
       }
       // clang-format on
-#if JIT_LAZY_LOAD
-      /*
-      const size_t current_offset = context.chunk_offset;
-      _iterator += current_offset - _chunk_offset;
-      _chunk_offset = current_offset;
-      */
-#else
+#if !JIT_LAZY_LOAD
       ++_iterator;
       ++_chunk_offset;
 #endif
