@@ -8,8 +8,9 @@ namespace opossum {
 class JitReadValue : public AbstractJittable {
  public:
   explicit JitReadValue(const JitInputColumn input_column, const size_t input_column_index)
+          : AbstractJittable(JitOperatorType::ReadValue)
 #if JIT_LAZY_LOAD
-      : _input_column(input_column),
+      , _input_column(input_column),
         _input_column_index(input_column_index)
 #endif
   {

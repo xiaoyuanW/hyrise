@@ -81,15 +81,12 @@ TEST_F(JitReadWriteTupleTest, CopyTable) {
   write_tuples->add_output_column("a", a_value);
   write_tuples->add_output_column("b", b_value);
 
-  /*
   auto read_value_a = std::make_shared<JitReadValue>(read_tuples->input_columns()[0], 0);
   auto read_value_b = std::make_shared<JitReadValue>(read_tuples->input_columns()[1], 1);
 
   read_tuples->set_next_operator(read_value_a);
   read_value_a->set_next_operator(read_value_b);
   read_value_b->set_next_operator(write_tuples);
-  */
-  read_tuples->set_next_operator(write_tuples);
 
   // Initialize operators with actual input table
   auto input_table = load_table("src/test/tables/int_float_null_sorted_asc.tbl", 2);
