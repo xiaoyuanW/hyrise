@@ -81,8 +81,8 @@ void jit_or(const JitTupleValue& lhs, const JitTupleValue& rhs, const JitTupleVa
 void jit_and(const JitTupleValue& lhs, const JitTupleValue& rhs, const JitTupleValue& result,
              JitRuntimeContext& context) {
   DebugAssert(
-          lhs.data_type() == DataType::Bool && rhs.data_type() == DataType::Bool && result.data_type() == DataType::Bool,
-          "invalid type for operation");
+      lhs.data_type() == DataType::Bool && rhs.data_type() == DataType::Bool && result.data_type() == DataType::Bool,
+      "invalid type for operation");
 
   // three-valued logic AND
   if (lhs.is_null(context)) {
@@ -97,8 +97,8 @@ void jit_and(const JitTupleValue& lhs, const JitTupleValue& rhs, const JitTupleV
 void jit_or(const JitTupleValue& lhs, const JitTupleValue& rhs, const JitTupleValue& result,
             JitRuntimeContext& context) {
   DebugAssert(
-          lhs.data_type() == DataType::Bool && rhs.data_type() == DataType::Bool && result.data_type() == DataType::Bool,
-          "invalid type for operation");
+      lhs.data_type() == DataType::Bool && rhs.data_type() == DataType::Bool && result.data_type() == DataType::Bool,
+      "invalid type for operation");
 
   // three-valued logic OR
   if (lhs.is_null(context)) {

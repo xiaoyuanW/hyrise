@@ -7,8 +7,7 @@
 namespace opossum {
 
 JitExpression::JitExpression(const JitTupleValue& tuple_value)
-    : _expression_type{JitExpressionType::Column},
-      _result_value{tuple_value} {}
+    : _expression_type{JitExpressionType::Column}, _result_value{tuple_value} {}
 
 JitExpression::JitExpression(const std::shared_ptr<const JitExpression>& child, const JitExpressionType expression_type,
                              const size_t result_tuple_index)
@@ -80,6 +79,32 @@ void JitExpression::compute(JitRuntimeContext& context) const {
 #endif
 
   _right_child->compute(context);
+
+  if (_left_child->result().data_type() == DataType::String) {
+    switch (_expression_type) {
+      case JitExpressionType::Equals:
+        jit_compute(jit_string_equals, _left_child->result(), _right_child->result(), _result_value, context);
+        return;
+      case JitExpressionType::NotEquals:
+        jit_compute(jit_string_not_equals, _left_child->result(), _right_child->result(), _result_value, context);
+        return;
+      case JitExpressionType::GreaterThan:
+        jit_compute(jit_string_greater_than, _left_child->result(), _right_child->result(), _result_value, context);
+        return;
+      case JitExpressionType::GreaterThanEquals:
+        jit_compute(jit_string_greater_than_equals, _left_child->result(), _right_child->result(), _result_value,
+                    context);
+        return;
+      case JitExpressionType::LessThan:
+        jit_compute(jit_string_less_than, _left_child->result(), _right_child->result(), _result_value, context);
+        return;
+      case JitExpressionType::LessThanEquals:
+        jit_compute(jit_string_less_than_equals, _left_child->result(), _right_child->result(), _result_value, context);
+        return;
+      default:
+        break;
+    }
+  }
 
   switch (_expression_type) {
     case JitExpressionType::Addition:
