@@ -2,8 +2,8 @@
 
 #include <vector>
 
-#include "operators/jit_operator/jit_types.hpp"
 #include "../jit_utils.hpp"
+#include "operators/jit_operator/jit_types.hpp"
 
 namespace opossum {
 
@@ -16,7 +16,7 @@ namespace opossum {
  */
 class AbstractJittable {
  public:
-  AbstractJittable(const JitOperatorType type) : jit_operator_type(type) {}
+  explicit AbstractJittable(const JitOperatorType type) : jit_operator_type(type) {}
   virtual ~AbstractJittable() = default;
 
   void set_next_operator(const std::shared_ptr<AbstractJittable>& next_operator) { _next_operator = next_operator; }

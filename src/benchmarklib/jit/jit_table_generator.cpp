@@ -3,13 +3,13 @@
 namespace opossum {
 
 JitTableGenerator::JitTableGenerator(const float scale_factor, const opossum::ChunkOffset chunk_size)
-        : AbstractBenchmarkTableGenerator(chunk_size), _scale_factor{scale_factor} {}
+    : AbstractBenchmarkTableGenerator(chunk_size), _scale_factor{scale_factor} {}
 
 std::map<std::string, std::shared_ptr<opossum::Table>> JitTableGenerator::generate_all_tables() {
   std::map<std::string, std::shared_ptr<opossum::Table>> tables;
   RandomGenerator generator;
-  auto cardinalities =
-          std::make_shared<std::vector<size_t>>(std::initializer_list<size_t>{static_cast<size_t>(_scale_factor * 1000000)});
+  auto cardinalities = std::make_shared<std::vector<size_t>>(
+      std::initializer_list<size_t>{static_cast<size_t>(_scale_factor * 1000000)});
 
   {
     std::vector<Segments> columns_by_chunk;
@@ -82,7 +82,7 @@ std::map<std::string, std::shared_ptr<opossum::Table>> JitTableGenerator::genera
                         [&](std::vector<size_t> indices) { return 100000; });
 
     auto table = std::make_shared<Table>(column_definitions, TableType::Data, _chunk_size, UseMvcc::Yes);
-    for (const auto &chunk_columns : columns_by_chunk) table->append_chunk(chunk_columns);
+    for (const auto& chunk_columns : columns_by_chunk) table->append_chunk(chunk_columns);
     tables.emplace("TABLE_SCAN", table);
   }
 
@@ -90,7 +90,8 @@ std::map<std::string, std::shared_ptr<opossum::Table>> JitTableGenerator::genera
     std::vector<Segments> columns_by_chunk;
     TableColumnDefinitions column_definitions;
 
-    add_column<int32_t>(columns_by_chunk, column_definitions, "ID", cardinalities, [&](std::vector<size_t> indices) { return indices[0]; });
+    add_column<int32_t>(columns_by_chunk, column_definitions, "ID", cardinalities,
+                        [&](std::vector<size_t> indices) { return indices[0]; });
     add_column<int32_t>(columns_by_chunk, column_definitions, "A", cardinalities,
                         [&](std::vector<size_t> indices) { return generator.random_number(0, 10); });
     add_column<int32_t>(columns_by_chunk, column_definitions, "B", cardinalities,
@@ -117,7 +118,7 @@ std::map<std::string, std::shared_ptr<opossum::Table>> JitTableGenerator::genera
                         [&](std::vector<size_t> indices) { return generator.random_number(0, 99999); });
 
     auto table = std::make_shared<Table>(column_definitions, TableType::Data, _chunk_size, UseMvcc::Yes);
-    for (const auto &chunk_columns : columns_by_chunk) table->append_chunk(chunk_columns);
+    for (const auto& chunk_columns : columns_by_chunk) table->append_chunk(chunk_columns);
     tables.emplace("TABLE_AGGREGATE", table);
   }
 
@@ -142,18 +143,16 @@ std::map<std::string, std::shared_ptr<opossum::Table>> JitTableGenerator::genera
     add_column<double>(columns_by_chunk, column_definitions, "D2", cardinalities,
                        [&](std::vector<size_t> indices) { return generator.random_number(0, 10); });
     add_column<std::string>(columns_by_chunk, column_definitions, "S1", cardinalities,
-                            [&](std::vector<size_t> indices) { return std::string(1,
-                                                                                  static_cast<char>(generator.random_number(
-                                                                                          65, 75)));
+                            [&](std::vector<size_t> indices) {
+                              return std::string(1, static_cast<char>(generator.random_number(65, 75)));
                             });
     add_column<std::string>(columns_by_chunk, column_definitions, "S2", cardinalities,
-                            [&](std::vector<size_t> indices) { return std::string(1,
-                                                                                  static_cast<char>(generator.random_number(
-                                                                                          65, 75)));
+                            [&](std::vector<size_t> indices) {
+                              return std::string(1, static_cast<char>(generator.random_number(65, 75)));
                             });
 
     auto table = std::make_shared<Table>(column_definitions, TableType::Data, _chunk_size, UseMvcc::Yes);
-    for (const auto &chunk_columns : columns_by_chunk) table->append_chunk(chunk_columns);
+    for (const auto& chunk_columns : columns_by_chunk) table->append_chunk(chunk_columns);
     tables.emplace("TABLE_TYPES", table);
   }
   return tables;

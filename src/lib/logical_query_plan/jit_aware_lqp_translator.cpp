@@ -16,6 +16,7 @@
 #include "expression/parameter_expression.hpp"
 #include "expression/value_expression.hpp"
 #include "global.hpp"
+#include "jit_evaluation_helper.hpp"
 #include "logical_query_plan/aggregate_node.hpp"
 #include "logical_query_plan/limit_node.hpp"
 #include "logical_query_plan/lqp_utils.hpp"
@@ -33,7 +34,6 @@
 #include "operators/operator_scan_predicate.hpp"
 #include "resolve_type.hpp"
 #include "storage/storage_manager.hpp"
-#include "jit_evaluation_helper.hpp"
 #include "types.hpp"
 
 using namespace std::string_literals;  // NOLINT

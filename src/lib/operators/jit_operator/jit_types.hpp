@@ -1,8 +1,8 @@
 #pragma once
 
-#include <chrono>
-
 #include <boost/preprocessor/seq/for_each.hpp>
+
+#include <chrono>
 
 #include "all_type_variant.hpp"
 #include "storage/base_value_segment.hpp"
@@ -139,7 +139,18 @@ struct JitRuntimeHashmap {
   std::vector<JitVariantVector> columns;
 };
 
-enum JitOperatorType{Read = 0, Write = 1, Aggregate = 2, Filter = 3, Compute = 4, Validate = 5, Limit = 6, ReadValue = 7, WriteOffset = 8, Size = 9};
+enum JitOperatorType {
+  Read = 0,
+  Write = 1,
+  Aggregate = 2,
+  Filter = 3,
+  Compute = 4,
+  Validate = 5,
+  Limit = 6,
+  ReadValue = 7,
+  WriteOffset = 8,
+  Size = 9
+};
 
 // The structure encapsulates all data available to the JitOperatorWrapper at runtime,
 // but NOT during code specialization.

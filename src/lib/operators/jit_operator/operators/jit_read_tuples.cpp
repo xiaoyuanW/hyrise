@@ -10,13 +10,14 @@
 #include "jit_expression.hpp"
 #include "resolve_type.hpp"
 #include "storage/create_iterable_from_segment.hpp"
-#include "../jit_utils.hpp"
 // #include "utils/tracing/probes.hpp"
 
 namespace opossum {
 
 JitReadTuples::JitReadTuples(const bool has_validate, const std::shared_ptr<AbstractExpression>& row_count_expression)
-    : AbstractJittable(JitOperatorType::Read), _has_validate(has_validate), _row_count_expression(row_count_expression) {}
+    : AbstractJittable(JitOperatorType::Read),
+      _has_validate(has_validate),
+      _row_count_expression(row_count_expression) {}
 
 std::string JitReadTuples::description() const {
   std::stringstream desc;

@@ -1,28 +1,27 @@
-#include <iostream>
-
 #include <json.hpp>
 
-#include <jit/jit_table_generator.hpp>
-#include <jit_evaluation_helper.hpp>
-#include <operators/jit_operator/specialization/jit_repository.hpp>
-#include <planviz/lqp_visualizer.hpp>
-#include <planviz/sql_query_plan_visualizer.hpp>
-#include <sql/sql_pipeline.hpp>
-#include <tpch/tpch_db_generator.hpp>
-#include <resolve_type.hpp>
-#include <storage/chunk_encoder.hpp>
-#include <scheduler/current_scheduler.hpp>
-#include "storage/vector_compression/fixed_size_byte_aligned/fixed_size_byte_aligned_vector.hpp"
-
 #include <papi.h>
-#include <sql/sql_pipeline_builder.hpp>
-#include "types.hpp"
+
+#include <iostream>
+
+#include "jit/jit_table_generator.hpp"
+#include "jit_evaluation_helper.hpp"
+#include "operators/jit_operator/specialization/jit_repository.hpp"
+#include "planviz/lqp_visualizer.hpp"
+#include "planviz/sql_query_plan_visualizer.hpp"
+#include "resolve_type.hpp"
+#include "scheduler/current_scheduler.hpp"
+#include "sql/sql_pipeline.hpp"
+#include "storage/chunk_encoder.hpp"
+#include "storage/vector_compression/fixed_size_byte_aligned/fixed_size_byte_aligned_vector.hpp"
+#include "tpch/tpch_db_generator.hpp"
+
 #include "global.hpp"
+#include "sql/sql_pipeline_builder.hpp"
 #include "sql/sql_query_cache.hpp"
+#include "types.hpp"
 
 const size_t cache_line = 64;
-
-using namespace opossum;
 
 template <typename Vector>
 void remove_vector_from_cache(Vector& vector) {
@@ -33,7 +32,7 @@ void remove_vector_from_cache(Vector& vector) {
     }
   }
   asm volatile("sfence\n\t" : : : "memory");
-};
+}
 
 void remove_table_from_cache(opossum::Table& table) {
   for (opossum::ChunkID chunk_id{0}; chunk_id < table.chunk_count(); ++chunk_id) {
@@ -49,15 +48,21 @@ void remove_table_from_cache(opossum::Table& table) {
           if (table.column_is_nullable(column_id)) {
             remove_vector_from_cache(value_column->null_values());
           }
-        } else if (auto dict_column = std::dynamic_pointer_cast<const opossum::DictionarySegment<ColumnDataType>>(segment)) {
+        } else if (auto dict_column =
+                       std::dynamic_pointer_cast<const opossum::DictionarySegment<ColumnDataType>>(segment)) {
           remove_vector_from_cache(*dict_column->dictionary());
           auto base_attribute_vector = dict_column->attribute_vector();
 
-          if (auto attribute_vector = std::dynamic_pointer_cast<const opossum::FixedSizeByteAlignedVector<uint8_t>>(base_attribute_vector)) {
+          if (auto attribute_vector = std::dynamic_pointer_cast<const opossum::FixedSizeByteAlignedVector<uint8_t>>(
+                  base_attribute_vector)) {
             remove_vector_from_cache(attribute_vector->data());
-          } else if (auto attribute_vector = std::dynamic_pointer_cast<const opossum::FixedSizeByteAlignedVector<uint16_t>>(base_attribute_vector)) {
+          } else if (auto attribute_vector =
+                         std::dynamic_pointer_cast<const opossum::FixedSizeByteAlignedVector<uint16_t>>(
+                             base_attribute_vector)) {
             remove_vector_from_cache(attribute_vector->data());
-          } else if (auto attribute_vector = std::dynamic_pointer_cast<const opossum::FixedSizeByteAlignedVector<uint32_t>>(base_attribute_vector)) {
+          } else if (auto attribute_vector =
+                         std::dynamic_pointer_cast<const opossum::FixedSizeByteAlignedVector<uint32_t>>(
+                             base_attribute_vector)) {
             remove_vector_from_cache(attribute_vector->data());
           } else {
             throw std::logic_error("could not flush cache, unknown attribute vector type");
@@ -79,7 +84,8 @@ void lqp() {
 
   const std::string query_string = opossum::JitEvaluationHelper::get().queries()[query_id]["query"];
 
-  opossum::SQLPipeline pipeline = opossum::SQLPipelineBuilder(query_string).with_mvcc(UseMvcc(mvcc)).create_pipeline();
+  opossum::SQLPipeline pipeline =
+      opossum::SQLPipelineBuilder(query_string).with_mvcc(opossum::UseMvcc(mvcc)).create_pipeline();
   const auto plans = optimize ? pipeline.get_optimized_logical_plans() : pipeline.get_unoptimized_logical_plans();
 
   opossum::LQPVisualizer visualizer;
@@ -94,7 +100,10 @@ void pqp() {
 
   const std::string query_string = opossum::JitEvaluationHelper::get().queries()[query_id]["query"];
 
-  opossum::SQLPipeline pipeline = opossum::SQLPipelineBuilder(query_string).with_mvcc(UseMvcc(mvcc)).dont_cleanup_temporaries().create_pipeline();
+  opossum::SQLPipeline pipeline = opossum::SQLPipelineBuilder(query_string)
+                                      .with_mvcc(opossum::UseMvcc(mvcc))
+                                      .dont_cleanup_temporaries()
+                                      .create_pipeline();
   pipeline.get_result_table();
   opossum::SQLQueryPlan query_plan(opossum::CleanupTemporaries::No);
   const auto plans = pipeline.get_query_plans();
@@ -121,7 +130,10 @@ void run() {
   }
 
   // Make sure all table statistics are generated and ready.
-  opossum::SQLPipelineBuilder(query_string).with_mvcc(UseMvcc(mvcc)).create_pipeline().get_optimized_logical_plans();
+  opossum::SQLPipelineBuilder(query_string)
+      .with_mvcc(opossum::UseMvcc(mvcc))
+      .create_pipeline()
+      .get_optimized_logical_plans();
   auto& result = opossum::JitEvaluationHelper::get().result();
 
   result = nlohmann::json::object();
@@ -134,7 +146,8 @@ void run() {
     opossum::JitEvaluationHelper::get().result()["replaced_values"] = 0;
   }
 
-  opossum::SQLPipeline pipeline = opossum::SQLPipelineBuilder(query_string).with_mvcc(UseMvcc(mvcc)).create_pipeline();
+  opossum::SQLPipeline pipeline =
+      opossum::SQLPipelineBuilder(query_string).with_mvcc(opossum::UseMvcc(mvcc)).create_pipeline();
   const auto table = pipeline.get_result_table();
 
   if (experiment.count("print") && experiment["print"]) {
@@ -188,7 +201,8 @@ int main(int argc, char* argv[]) {
   std::cerr << "Table Information" << std::endl;
   for (const auto& table_name : opossum::StorageManager::get().table_names()) {
     auto table = opossum::StorageManager::get().get_table(table_name);
-    std::cerr << table_name << ": " << table->row_count() << " rows, " << table->chunk_count() << " chunks, " << table->column_count() << " columns, " << table->estimate_memory_usage() << " bytes" <<  std::endl;
+    std::cerr << table_name << ": " << table->row_count() << " rows, " << table->chunk_count() << " chunks, "
+              << table->column_count() << " columns, " << table->estimate_memory_usage() << " bytes" << std::endl;
   }
 
   std::cerr << "Initializing JIT repository" << std::endl;
@@ -217,12 +231,14 @@ int main(int argc, char* argv[]) {
       opossum::Fail("unknown query engine parameter");
     }
     opossum::JitEvaluationHelper::get().experiment() = experiment;
-    nlohmann::json output{{"globals", config["globals"]}, {"experiment", experiment}, {"results", nlohmann::json::array()}};
+    nlohmann::json output{
+        {"globals", config["globals"]}, {"experiment", experiment}, {"results", nlohmann::json::array()}};
     const uint32_t num_repetitions = experiment.count("repetitions") ? experiment["repetitions"].get<uint32_t>() : 1;
     uint32_t current_repetition = 0;
     for (uint32_t i = 0; i < num_repetitions; ++i) {
       current_repetition++;
-      std::cerr << "Running experiment " << (current_experiment+1) << "/" << num_experiments << " repetition " << current_repetition << "/" << num_repetitions << std::endl;
+      std::cerr << "Running experiment " << (current_experiment + 1) << "/" << num_experiments << " repetition "
+                << current_repetition << "/" << num_repetitions << std::endl;
 
       opossum::JitEvaluationHelper::get().result() = nlohmann::json::object();
       if (experiment["task"] == "lqp") {
@@ -236,7 +252,7 @@ int main(int argc, char* argv[]) {
       }
       output["results"].push_back(opossum::JitEvaluationHelper::get().result());
     }
-    SQLQueryCache<SQLQueryPlan>::get().clear();
+    opossum::SQLQueryCache<opossum::SQLQueryPlan>::get().clear();
     std::cout << output;
     bool not_last = current_experiment + 1 < num_experiments;
     if (not_last) std::cout << ",";

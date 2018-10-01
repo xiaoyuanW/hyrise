@@ -2,12 +2,12 @@
 
 #include "expression/expression_utils.hpp"
 #include "global.hpp"
+#include "operators/jit_operator/jit_constant_mappings.hpp"
 #include "operators/jit_operator/operators/jit_aggregate.hpp"
 #include "operators/jit_operator/operators/jit_compute.hpp"
 #include "operators/jit_operator/operators/jit_read_value.hpp"
 #include "operators/jit_operator/operators/jit_validate.hpp"
 #include "utils/timer.hpp"
-#include "operators/jit_operator/jit_constant_mappings.hpp"
 
 #include "jit_evaluation_helper.hpp"
 
@@ -23,7 +23,8 @@ JitOperatorWrapper::JitOperatorWrapper(
       _insert_loads{insert_loads},
       _execute_func{execute_func} {
   if (JitEvaluationHelper::get().experiment().count("jit_use_jit")) {
-    _execution_mode = JitEvaluationHelper::get().experiment().at("jit_use_jit") ? JitExecutionMode::Compile : JitExecutionMode::Interpret;
+    _execution_mode = JitEvaluationHelper::get().experiment().at("jit_use_jit") ? JitExecutionMode::Compile
+                                                                                : JitExecutionMode::Interpret;
   }
 }
 
@@ -131,10 +132,9 @@ void JitOperatorWrapper::_choose_execute_func() {
   }
   if (specialize) {
     // this corresponds to "opossum::JitReadTuples::execute(opossum::JitRuntimeContext&) const"
-    _execute_func = _module.specialize_and_compile_function < void(
-    const JitReadTuples*, JitRuntimeContext &)>(
-            "_ZNK7opossum13JitReadTuples7executeERNS_17JitRuntimeContextE",
-                    std::make_shared<JitConstantRuntimePointer>(_source().get()), two_specialization_passes);
+    _execute_func = _module.specialize_and_compile_function<void(const JitReadTuples*, JitRuntimeContext&)>(
+        "_ZNK7opossum13JitReadTuples7executeERNS_17JitRuntimeContextE",
+        std::make_shared<JitConstantRuntimePointer>(_source().get()), two_specialization_passes);
   } else {
     _execute_func = &JitReadTuples::execute;
   }
@@ -159,7 +159,6 @@ std::shared_ptr<const Table> JitOperatorWrapper::_on_execute() {
   _sink()->before_query(*in_table, *out_table, context);
   auto before_query_time = timer.lap();
 
-
   for (opossum::ChunkID chunk_id{0}; chunk_id < in_table->chunk_count(); ++chunk_id) {
     _source()->before_chunk(*in_table, chunk_id, context);
     before_chunk_time += timer.lap();
@@ -175,7 +174,7 @@ std::shared_ptr<const Table> JitOperatorWrapper::_on_execute() {
   auto after_query_time = timer.lap();
 
   auto& operators = JitEvaluationHelper::get().result()["operators"];
-  auto add_time = [&operators] (const std::string& name, const auto& time) {
+  auto add_time = [&operators](const std::string& name, const auto& time) {
     const auto micro_s = std::chrono::duration_cast<std::chrono::microseconds>(time).count();
     if (micro_s > 0) {
       nlohmann::json jit_op = {{"name", name}, {"prepare", false}, {"walltime", micro_s}};
@@ -192,7 +191,7 @@ std::shared_ptr<const Table> JitOperatorWrapper::_on_execute() {
 #if JIT_MEASURE
   std::chrono::nanoseconds operator_total_time{0};
   for (size_t index = 0; index < JitOperatorType::Size; ++index) {
-    add_time( "_" + jit_operator_type_to_string.left.at(static_cast<JitOperatorType>(index)), context.times[index]);
+    add_time("_" + jit_operator_type_to_string.left.at(static_cast<JitOperatorType>(index)), context.times[index]);
     operator_total_time += context.times[index];
   }
   add_time("_Jit_OperatorsTotal", operator_total_time);

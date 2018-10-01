@@ -7,14 +7,14 @@
 namespace opossum {
 
 class JitTableGenerator : public AbstractBenchmarkTableGenerator {
-public:
-  JitTableGenerator(float scale_factor, uint32_t chunk_size = Chunk::MAX_SIZE);
+ public:
+  explicit JitTableGenerator(float scale_factor, uint32_t chunk_size = Chunk::MAX_SIZE);
 
   void generate_and_store();
 
   std::map<std::string, std::shared_ptr<opossum::Table>> generate_all_tables();
 
-private:
+ private:
   const float _scale_factor;
 };
 
