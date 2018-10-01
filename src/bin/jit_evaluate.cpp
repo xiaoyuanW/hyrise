@@ -14,7 +14,7 @@
 #include <scheduler/current_scheduler.hpp>
 #include "storage/vector_compression/fixed_size_byte_aligned/fixed_size_byte_aligned_vector.hpp"
 
-// #include <papi.h>
+#include <papi.h>
 #include <sql/sql_pipeline_builder.hpp>
 #include "types.hpp"
 #include "global.hpp"
@@ -194,11 +194,9 @@ int main(int argc, char* argv[]) {
   std::cerr << "Initializing JIT repository" << std::endl;
   opossum::JitRepository::get();
 
-  /*
   std::cerr << "Initializing PAPI" << std::endl;
   if (PAPI_library_init(PAPI_VER_CURRENT) < 0) throw std::logic_error("PAPI error");
   std::cerr << "  supports " << PAPI_num_counters() << " event counters" << std::endl;
-  */
   std::cout << "{" << std::endl << "\"results\":[" << std::endl;
 
   const size_t num_experiments = config["experiments"].size();
