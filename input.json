@@ -114,59 +114,9 @@
       "tables": [
         "TABLE_TYPES"
       ]
-    },
-    "Scan": {
-      "query": "SELECT ID FROM TABLE_SCAN;",
-      "tables": [
-        "TABLE_SCAN"
-      ]
     }
   },
-    "experiments": [
-    {
-      "engine": "jit",
-      "query_id": "Scan",
-      "repetitions": 1,
-      "jit_validate": false,
-      "mvcc": true,
-      "task": "run"
-    },
-    {
-      "engine": "jit",
-      "query_id": "Scan",
-      "repetitions": 1,
-      "mvcc": true,
-      "task": "run"
-    },
-    {
-      "engine": "jit",
-      "query_id": "Scan",
-      "repetitions": 1,
-      "task": "run"
-    }
-  ],
-  "_experiments": [
-    {
-      "engine": "jit",
-      "pqp_file": "Scan-PQP-wo_jit_val",
-      "jit_validate": false,
-      "query_id": "Scan",
-      "mvcc": true,
-      "task": "pqp"
-    },
-    {
-      "engine": "jit",
-      "pqp_file": "Scan-PQP-w_jit_val",
-      "query_id": "Scan",
-      "mvcc": true,
-      "task": "pqp"
-    },
-    {
-      "engine": "jit",
-      "pqp_file": "Scan-PQP-wo_mvcc",
-      "query_id": "Scan",
-      "task": "pqp"
-    },
+  "experiments": [
     {
       "engine": "jit",
       "query_id": "TYPE_Int",
