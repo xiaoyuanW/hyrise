@@ -12,8 +12,7 @@ namespace opossum {
 class BaseJitSegmentReader {
  public:
   virtual ~BaseJitSegmentReader() = default;
-  virtual void read_value(JitRuntimeContext& context) const = 0;
-  virtual void increment() = 0;
+  virtual void read_value(JitRuntimeContext& context) = 0;
 };
 
 class BaseJitSegmentReaderWrapper {
@@ -22,9 +21,6 @@ class BaseJitSegmentReaderWrapper {
   virtual ~BaseJitSegmentReaderWrapper() = default;
   virtual void read_value(JitRuntimeContext& context) const {
     context.inputs[reader_index]->read_value(context);
-  }
-  virtual void increment(JitRuntimeContext& context) {
-    context.inputs[reader_index]->increment();
   }
 
   const size_t reader_index;
@@ -53,13 +49,19 @@ class BaseJitSegmentReaderWrapper {
 template <typename Iterator, typename DataType, bool Nullable>
 class JitSegmentReader : public BaseJitSegmentReader {
  public:
+  using ITERATOR = Iterator;
   JitSegmentReader(const Iterator& iterator, const JitTupleValue& tuple_value)
       : _iterator{iterator}, _tuple_index{tuple_value.tuple_index()} {
     std::cout << "";
   }
 
   // Reads a value from the _iterator into the _tuple_value and increments the _iterator.
-  void read_value(JitRuntimeContext& context) const final {
+  void read_value(JitRuntimeContext& context) final {
+#if JIT_LAZY_LOAD
+    const size_t current_offset = context.chunk_offset;
+    _iterator += current_offset - _chunk_offset;
+    _chunk_offset = current_offset;
+#endif
     const auto& value = *_iterator;
     // clang-format off
     if constexpr (Nullable) {
@@ -71,31 +73,34 @@ class JitSegmentReader : public BaseJitSegmentReader {
       context.tuple.set<DataType>(_tuple_index, value.value());
     }
     // clang-format on
-  }
-
-  void increment() final {
+#if !JIT_LAZY_LOAD
     ++_iterator;
+#endif
   }
 
  private:
   Iterator _iterator;
   const size_t _tuple_index;
+#if JIT_LAZY_LOAD
+  size_t _chunk_offset = 0;
+#endif
 };
 
 template <typename JitSegmentReader>
 class JitSegmentReaderWrapper : public BaseJitSegmentReaderWrapper {
  public:
-  using BaseJitSegmentReaderWrapper::BaseJitSegmentReaderWrapper;
+  // using BaseJitSegmentReaderWrapper::BaseJitSegmentReaderWrapper;
+  JitSegmentReaderWrapper(size_t reader_index)
+  : BaseJitSegmentReaderWrapper(reader_index) {
+    std::cout << "";
+  }
 
   // Reads a value from the _iterator into the _tuple_value and increments the _iterator.
   void read_value(JitRuntimeContext& context) const final {
     DebugAssert(std::dynamic_pointer_cast<JitSegmentReader>(context.inputs[reader_index]), "Different reader type, no " + std::to_string(reader_index));
-    std::static_pointer_cast<JitSegmentReader>(context.inputs[reader_index])->read_value(context);
-  }
-
-  void increment(JitRuntimeContext& context) final {
-    DebugAssert(std::dynamic_pointer_cast<JitSegmentReader>(context.inputs[reader_index]), "Different reader type, no " + std::to_string(reader_index));
-    std::static_pointer_cast<JitSegmentReader>(context.inputs[reader_index])->increment();
+    auto tmp = std::static_pointer_cast<JitSegmentReader>(context.inputs[reader_index]);
+    tmp->read_value(context);
+    // context.inputs[reader_index]->read_value(context);
   }
 };
 

@@ -41,9 +41,10 @@ class JitExpression {
   void compute(JitRuntimeContext& context) const;
 
   void set_load_column(const std::shared_ptr<BaseJitSegmentReaderWrapper> input_segment_wrapper) const {
-    auto& non_const_load_column = const_cast<bool&>(_load_column);
-    non_const_load_column = true;
+#if JIT_LAZY_LOAD
+    const_cast<bool&>(_load_column) = true;
     const_cast<std::shared_ptr<BaseJitSegmentReaderWrapper>&>(_input_segment_wrapper) = input_segment_wrapper;
+#endif
   }
 
   void set_expression_type(const JitExpressionType expression_type) const {
@@ -57,8 +58,10 @@ class JitExpression {
   const std::shared_ptr<const JitExpression> _right_child;
   const JitExpressionType _expression_type;
   const JitTupleValue _result_value;
-  const bool _load_column;
+#if JIT_LAZY_LOAD
+  const bool _load_column = false;
   const std::shared_ptr<BaseJitSegmentReaderWrapper> _input_segment_wrapper;
+#endif
 };
 
 }  // namespace opossum

@@ -19,6 +19,7 @@ struct Global {
   bool lazy_load = false;
   bool jit_validate = false;
   bool deep_copy_exists = false;
+  bool interpret = false;
   std::map<OperatorType, OperatorTimes> times;
 };
 

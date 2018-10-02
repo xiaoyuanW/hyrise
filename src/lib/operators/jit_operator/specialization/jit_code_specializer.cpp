@@ -132,6 +132,9 @@ void JitCodeSpecializer::_inline_function_calls(SpecializationContext& context) 
     bool virtual_resolved = false;
     // Resolve indirect (virtual) function calls
     if (call_site.isIndirectCall()) {
+      if (call_site.getCalledFunction()) {
+        std::cout << "inlining v call: " << call_site.getCalledFunction()->getName().str() << std::endl;
+      }
       const auto called_value = call_site.getCalledValue();
       // Get the runtime location of the called function (i.e., the compiled machine code of the function)
       const auto called_runtime_value =
@@ -178,18 +181,20 @@ void JitCodeSpecializer::_inline_function_calls(SpecializationContext& context) 
       }
     }
 
-    constexpr bool print = true;
+    bool print = true;
 
-    if (!call_site.getCalledFunction()) {
+    auto function = call_site.getCalledFunction();
+    if (!function) {
       call_sites.pop();
       continue;
     }
-    auto& function = *call_site.getCalledFunction();
-    auto function_name = function.getName().str();
+    auto function_name = function->getName().str();
 
     // auto function_has_opossum_namespace = boost::contains(function.getName().str(), "opossum");
-    auto function_has_opossum_namespace = boost::starts_with(function.getName().str(), "_ZNK7opossum") ||
-                                          boost::starts_with(function.getName().str(), "_ZN7opossum");
+    auto function_has_opossum_namespace =
+        boost::starts_with(function_name, "_ZNK7opossum") || boost::starts_with(function_name, "_ZN7opossum");
+
+    print = true;  // boost::contains(function_name, "read_value");
 
     // A note about "__clang_call_terminate":
     // __clang_call_terminate is generated / used internally by clang to call the std::terminate function when exception
@@ -201,7 +206,7 @@ void JitCodeSpecializer::_inline_function_calls(SpecializationContext& context) 
     // declaration (without a function body) is created.
     if (!function_has_opossum_namespace && function_name != "__clang_call_terminate") {
       if (print) std::cout << "Func: " << function_name << " ! function_has_opossum_namespace" << std::endl;
-      context.llvm_value_map[&function] = _create_function_declaration(context, function, function.getName());
+      context.llvm_value_map[function] = _create_function_declaration(context, *function, function->getName());
       call_sites.pop();
       continue;
     }
@@ -232,23 +237,23 @@ void JitCodeSpecializer::_inline_function_calls(SpecializationContext& context) 
     context.llvm_value_map.clear();
 
     // Map called functions
-    _visit<const llvm::Function>(function, [&](const auto& fn) {
+    _visit<const llvm::Function>(*function, [&](const auto& fn) {
       if (fn.isDeclaration() && !context.llvm_value_map.count(&fn)) {
         context.llvm_value_map[&fn] = _create_function_declaration(context, fn, fn.getName());
       }
     });
 
     // Map global variables
-    _visit<const llvm::GlobalVariable>(function, [&](auto& global) {
+    _visit<const llvm::GlobalVariable>(*function, [&](auto& global) {
       if (!context.llvm_value_map.count(&global)) {
         context.llvm_value_map[&global] = _clone_global_variable(context, global);
       }
     });
 
     // Map function arguments
-    auto function_arg = function.arg_begin();
+    auto function_arg = function->arg_begin();
     auto call_arg = call_site.arg_begin();
-    for (; function_arg != function.arg_end() && call_arg != call_site.arg_end(); ++function_arg, ++call_arg) {
+    for (; function_arg != function->arg_end() && call_arg != call_site.arg_end(); ++function_arg, ++call_arg) {
       context.llvm_value_map[function_arg] = call_arg->get();
     }
 
@@ -256,7 +261,7 @@ void JitCodeSpecializer::_inline_function_calls(SpecializationContext& context) 
     llvm::InlineFunctionInfo info;
     if (InlineFunction(call_site, info, nullptr, false, nullptr, context)) {
       if (print) std::cout << "Func: " << function_name << " inlined" << std::endl;
-      std::cout << "+++     inlined func: " << function_name << std::endl;
+      // std::cout << "+++     inlined func: " << function_name << std::endl;
       for (const auto& new_call_site : info.InlinedCallSites) {
         call_sites.push(new_call_site);
       }

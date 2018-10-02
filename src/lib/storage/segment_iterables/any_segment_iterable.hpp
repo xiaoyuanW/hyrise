@@ -110,7 +110,7 @@ auto erase_type_from_iterable(const IterableT& iterable) {
 template <typename IterableT>
 decltype(auto) erase_type_from_iterable_if_debug(const IterableT& iterable) {
 #if IS_DEBUG
-  return erase_type_from_iterable(iterable);
+  return iterable;  // erase_type_from_iterable(iterable);
 #else
   return iterable;
 #endif

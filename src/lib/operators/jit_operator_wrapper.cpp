@@ -44,6 +44,8 @@ const std::shared_ptr<AbstractJittableSink> JitOperatorWrapper::_sink() const {
 }
 
 void JitOperatorWrapper::insert_loads(const bool lazy) {
+  if constexpr (!JIT_LAZY_LOAD) return;
+
   const auto input_wrappers = _source()->input_wrappers();
 
   if (!lazy) {
@@ -120,7 +122,9 @@ void JitOperatorWrapper::_choose_execute_func() {
   // We want to perform two specialization passes if the operator chain contains a JitAggregate operator, since the
   // JitAggregate operator contains multiple loops that need unrolling.
   auto two_specialization_passes = static_cast<bool>(std::dynamic_pointer_cast<JitAggregate>(_sink()));
-  switch (JitExecutionMode::Interpret) {  // _execution_mode
+  Global::get().interpret = false;
+  const auto mode = Global::get().interpret ? JitExecutionMode::Interpret : JitExecutionMode::Compile;
+  switch (mode) {  // _execution_mode
     case JitExecutionMode::Compile:
       // this corresponds to "opossum::JitReadTuples::execute(opossum::JitRuntimeContext&) const"
       _execute_func = _module.specialize_and_compile_function<void(const JitReadTuples*, JitRuntimeContext&)>(
@@ -148,6 +152,7 @@ std::shared_ptr<const Table> JitOperatorWrapper::_on_execute() {
   if (in_table->chunk_count() > 0) {
     _choose_execute_func();
 
+    std::cout << "total chunks: " << in_table->chunk_count() << std::endl;
     for (opossum::ChunkID chunk_id{0}; chunk_id < in_table->chunk_count(); ++chunk_id) {
       if (chunk_id + 1 == in_table->chunk_count()) {
         std::cout << "last chunk, chunk no " << chunk_id << std::endl;

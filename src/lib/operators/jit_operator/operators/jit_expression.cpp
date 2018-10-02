@@ -8,18 +8,13 @@
 namespace opossum {
 
 JitExpression::JitExpression(const JitTupleValue& tuple_value)
-    : _expression_type{JitExpressionType::Column},
-      _result_value{tuple_value},
-      _load_column{false},
-      _input_segment_wrapper{} {}
+    : _expression_type{JitExpressionType::Column}, _result_value{tuple_value} {}
 
 JitExpression::JitExpression(const std::shared_ptr<const JitExpression>& child, const JitExpressionType expression_type,
                              const size_t result_tuple_index)
     : _left_child{child},
       _expression_type{expression_type},
-      _result_value{JitTupleValue(_compute_result_type(), result_tuple_index)},
-      _load_column{false},
-      _input_segment_wrapper{} {}
+      _result_value{JitTupleValue(_compute_result_type(), result_tuple_index)} {}
 
 JitExpression::JitExpression(const std::shared_ptr<const JitExpression>& left_child,
                              const JitExpressionType expression_type,
@@ -27,13 +22,16 @@ JitExpression::JitExpression(const std::shared_ptr<const JitExpression>& left_ch
     : _left_child{left_child},
       _right_child{right_child},
       _expression_type{expression_type},
-      _result_value{JitTupleValue(_compute_result_type(), result_tuple_index)},
-      _load_column{false},
-      _input_segment_wrapper{} {}
+      _result_value{JitTupleValue(_compute_result_type(), result_tuple_index)} {}
 
 std::string JitExpression::to_string() const {
   if (_expression_type == JitExpressionType::Column) {
-    std::string load_column = _load_column ? " (Using input reader #" + std::to_string(_input_segment_wrapper->reader_index) + ")" : "";
+    std::string load_column;
+#if JIT_LAZY_LOAD
+    if (_load_column) {
+      load_column = " (Using input reader #" + std::to_string(_input_segment_wrapper->reader_index) + ")";
+    };
+#endif
     return "x" + std::to_string(_result_value.tuple_index()) + load_column;
   }
 
@@ -45,7 +43,9 @@ std::string JitExpression::to_string() const {
 void JitExpression::compute(JitRuntimeContext& context) const {
   // We are dealing with an already computed value here, so there is nothing to do.
   if (_expression_type == JitExpressionType::Column) {
+#if JIT_LAZY_LOAD
     if (_load_column) _input_segment_wrapper->read_value(context);
+#endif
     return;
   }
 
@@ -71,6 +71,7 @@ void JitExpression::compute(JitRuntimeContext& context) const {
   // Check, whether right side can be pruned
   // AND: false and true/false/null = false
   // OR:  true  or  true/false/null = true
+#if JIT_LOGICAL_PRUNING
   if (_expression_type == JitExpressionType::And && !_left_child->result().is_null(context) &&
       !_left_child->result().get<bool>(context)) {
     return jit_and(_left_child->result(), _right_child->result(), _result_value, context, true);
@@ -78,8 +79,35 @@ void JitExpression::compute(JitRuntimeContext& context) const {
              _left_child->result().get<bool>(context)) {
     return jit_or(_left_child->result(), _right_child->result(), _result_value, context, true);
   }
+#endif
 
   _right_child->compute(context);
+
+  if (_left_child->result().data_type() == DataType::String) {
+    switch (_expression_type) {
+      case JitExpressionType::Equals:
+        jit_compute(jit_string_equals, _left_child->result(), _right_child->result(), _result_value, context);
+        return;
+      case JitExpressionType::NotEquals:
+        jit_compute(jit_string_not_equals, _left_child->result(), _right_child->result(), _result_value, context);
+        return;
+      case JitExpressionType::GreaterThan:
+        jit_compute(jit_string_greater_than, _left_child->result(), _right_child->result(), _result_value, context);
+        return;
+      case JitExpressionType::GreaterThanEquals:
+        jit_compute(jit_string_greater_than_equals, _left_child->result(), _right_child->result(), _result_value,
+                    context);
+        return;
+      case JitExpressionType::LessThan:
+        jit_compute(jit_string_less_than, _left_child->result(), _right_child->result(), _result_value, context);
+        return;
+      case JitExpressionType::LessThanEquals:
+        jit_compute(jit_string_less_than_equals, _left_child->result(), _right_child->result(), _result_value, context);
+        return;
+      default:
+        break;
+    }
+  }
 
   switch (_expression_type) {
     case JitExpressionType::Addition:
@@ -127,10 +155,18 @@ void JitExpression::compute(JitRuntimeContext& context) const {
       break;
 
     case JitExpressionType::And:
+#if JIT_LOGICAL_PRUNING
       jit_and(_left_child->result(), _right_child->result(), _result_value, context, false);
+#else
+      jit_and(_left_child->result(), _right_child->result(), _result_value, context);
+#endif
       break;
     case JitExpressionType::Or:
+#if JIT_LOGICAL_PRUNING
       jit_or(_left_child->result(), _right_child->result(), _result_value, context, false);
+#else
+      jit_or(_left_child->result(), _right_child->result(), _result_value, context);
+#endif
       break;
     default:
       Fail("Expression type is not supported.");

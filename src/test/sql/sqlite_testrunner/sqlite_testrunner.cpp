@@ -40,7 +40,6 @@ class SQLiteTestRunner : public BaseTestWithParam<TestConfiguration> {
     StorageManager::get().reset();
     _sqlite = std::make_unique<SQLiteWrapper>();
     auto& global = Global::get();
-    global.jit = true;
     global.lazy_load = true;
     global.jit_validate = true;
 
@@ -77,7 +76,6 @@ class SQLiteTestRunner : public BaseTestWithParam<TestConfiguration> {
 
   void TearDown() override {
     auto& global = Global::get();
-    global.jit = false;
     global.lazy_load = false;
     global.jit_validate = false;
   }

@@ -89,7 +89,7 @@ TableType input_table_type(const std::shared_ptr<AbstractLQPNode>& node) {
 
 std::shared_ptr<AbstractOperator> JitAwareLQPTranslator::translate_node(
     const std::shared_ptr<AbstractLQPNode>& node) const {
-  const auto jit_operator = _try_translate_sub_plan_to_jit_operators(node);
+  const auto jit_operator = _try_translate_sub_plan_to_jit_operators(node, false);
   return jit_operator ? jit_operator : LQPTranslator::translate_node(node);
 }
 
@@ -158,15 +158,17 @@ std::shared_ptr<JitOperatorWrapper> JitAwareLQPTranslator::_try_translate_sub_pl
   // If we can reach the input node without encountering a UnionNode or PredicateNode,
   // there is no need to filter any tuples
   if (filter_node != input_node) {
-    const auto boolean_expression = lqp_subplan_to_boolean_expression(
-        filter_node, [&](const std::shared_ptr<AbstractLQPNode>& lqp) { return _node_is_jittable(lqp, use_value_id, false, false); });
+    const auto boolean_expression =
+        lqp_subplan_to_boolean_expression(filter_node, [&](const std::shared_ptr<AbstractLQPNode>& lqp) {
+          return _node_is_jittable(lqp, use_value_id, false, false);
+        });
     if (!boolean_expression) return nullptr;
 
     const auto jit_boolean_expression =
         _try_translate_expression_to_jit_expression(*boolean_expression, *read_tuples, input_node);
     if (!jit_boolean_expression) {
       // retry jitting current node without using value ids, i.e. without strings
-      if (use_value_id) return _try_translate_sub_plan_to_jit_operators(node, false);
+      // if (use_value_id) return _try_translate_sub_plan_to_jit_operators(node, false);
       return nullptr;
     }
 
@@ -372,9 +374,11 @@ std::shared_ptr<const JitExpression> JitAwareLQPTranslator::_try_translate_expre
             _try_translate_expression_to_jit_expression(*argument, jit_source, input_node, use_value_id);
         if (!jit_expression) return nullptr;
         jit_expression_arguments.emplace_back(jit_expression);
+        /*
         if (!use_value_id && jit_expression->result().data_type() == DataType::String) {
           return nullptr;  // string not supported without value ids
         }
+        */
       }
 
       const auto jit_expression_type = _expression_to_jit_expression_type(expression);
@@ -443,15 +447,19 @@ bool _expressions_are_jittable(const std::vector<std::shared_ptr<AbstractExpress
           default:
             break;
         }
-        return _expressions_are_jittable(
-            expression->arguments, can_translate_predicate_to_predicate_value_id_expression(*expression, nullptr));
+        return _expressions_are_jittable(expression->arguments);
+        // , can_translate_predicate_to_predicate_value_id_expression(*expression, nullptr));
       }
       case ExpressionType::Arithmetic:
       case ExpressionType::Logical:
         return _expressions_are_jittable(expression->arguments);
       case ExpressionType::Value: {
         const auto value_expression = std::static_pointer_cast<const ValueExpression>(expression);
-        if (!allow_string && data_type_from_all_type_variant(value_expression->value) == DataType::String) return false;
+        /*
+        if (!allow_string && data_type_from_all_type_variant(value_expression->value) == DataType::String) {
+          return false;
+        }
+        */
         break;
       }
       case ExpressionType::Parameter: {
@@ -465,7 +473,7 @@ bool _expressions_are_jittable(const std::vector<std::shared_ptr<AbstractExpress
       case ExpressionType::LQPColumn: {
         const auto column = std::dynamic_pointer_cast<const LQPColumnExpression>(expression);
         // Filter or computation on string columns is expensive
-        if (!allow_string && column->data_type() == DataType::String) return false;
+        // if (!allow_string && column->data_type() == DataType::String) return false;
         break;
       }
       default:
@@ -505,7 +513,8 @@ bool JitAwareLQPTranslator::_node_is_jittable(const std::shared_ptr<AbstractLQPN
     }
     if (predicate_expression->arguments.size() == 2 &&
         !_expressions_are_jittable({predicate_expression->arguments[1]},
-                                   use_value_id && can_translate_predicate_to_predicate_value_id_expression(*predicate_node->predicate, nullptr))) {
+                                   use_value_id && can_translate_predicate_to_predicate_value_id_expression(
+                                                       *predicate_node->predicate, nullptr))) {
       return false;
     }
     return predicate_node->scan_type == ScanType::TableScan;
