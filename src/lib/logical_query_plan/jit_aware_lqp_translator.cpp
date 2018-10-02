@@ -35,6 +35,7 @@
 #include "resolve_type.hpp"
 #include "storage/storage_manager.hpp"
 #include "types.hpp"
+#include "statistics/table_statistics.hpp"
 
 using namespace std::string_literals;  // NOLINT
 
@@ -156,6 +157,11 @@ std::shared_ptr<JitOperatorWrapper> JitAwareLQPTranslator::_try_translate_sub_pl
     filter_node = filter_node->left_input();
   }
 
+  float selectivity = 0;
+  if (const auto input_row_count = input_node->get_statistics()->row_count()) {
+    selectivity = filter_node->get_statistics()->row_count() / input_row_count;
+  }
+
   // If we can reach the input node without encountering a UnionNode or PredicateNode,
   // there is no need to filter any tuples
   if (filter_node != input_node) {
@@ -250,7 +256,7 @@ std::shared_ptr<JitOperatorWrapper> JitAwareLQPTranslator::_try_translate_sub_pl
       }
       jit_operator->add_jit_operator(write_table);
     } else {
-      auto write_table = std::make_shared<JitWriteOffset>();
+      auto write_table = std::make_shared<JitWriteOffset>(selectivity);
 
       for (const auto& column : node->column_expressions()) {
         const auto column_id = input_node->find_column_id(*column);

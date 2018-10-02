@@ -81,6 +81,8 @@ void JitWriteOffset::after_chunk(const std::shared_ptr<const Table>& in_table, T
     out_table.append_chunk(out_segments);
     // check if current chunk is last
     if (context.chunk_id + 1 < in_table->chunk_count()) {
+      _selectivity = static_cast<float>(context.output_pos_list->size()) /
+              in_table->get_chunk(ChunkID(context.chunk_id))->size();
       _create_output_chunk(context, in_table->get_chunk(ChunkID(context.chunk_id + 1))->size());
     }
   }
@@ -101,7 +103,8 @@ void JitWriteOffset::_consume(JitRuntimeContext& context) const {
 
 void JitWriteOffset::_create_output_chunk(JitRuntimeContext& context, const uint32_t in_chunk_size) const {
   context.output_pos_list = std::make_shared<PosList>();
-  context.output_pos_list->reserve(in_chunk_size);
+  const float reserve_more_than_predicted = std::min(_selectivity * 1.1f, 1.f);
+  context.output_pos_list->reserve(in_chunk_size * reserve_more_than_predicted);
 }
 
 }  // namespace opossum
