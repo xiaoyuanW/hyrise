@@ -1,3 +1,5 @@
+#if HYRISE_JIT_SUPPORT
+
 #include <json.hpp>
 
 #include <papi.h>
@@ -261,3 +263,7 @@ int main(int argc, char* argv[]) {
   std::cout << "]" << std::endl << "}" << std::endl;
   std::cerr << "Done" << std::endl;
 }
+
+#else
+int main() {}
+#endif

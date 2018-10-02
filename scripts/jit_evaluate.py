@@ -60,7 +60,7 @@ for experiment in data['results']:
 	summary, runtimes = combine_results(experiment['results'])
 	summary.sort(key=lambda x: x['name'])
 	compile_time, execution_time, optimize_time, total_time = runtimes
-	print('Query: ' + experiment['experiment']['query_id'] + ', Engine: ' + experiment['experiment']['engine'] + (', Specialize:' + str(experiment['experiment']['jit_use_jit']) if 'jit_use_jit' in experiment['experiment'] else ''))
+	print('Query: ' + experiment['experiment']['query_id'] + ', Engine: ' + experiment['experiment']['engine'] + (', Specialize: ' + str(experiment['experiment']['jit_use_jit']) if 'jit_use_jit' in experiment['experiment'] else ''))
 	print('compile time: %.0f' % compile_time+ ', execution time: %.0f' % execution_time + ', optimize time: %.0f' % optimize_time + ', total time: %.0f' % total_time + ' (micro s)')
 	prepare, execute = calc_sum(summary)
 	total = prepare + execute
@@ -89,8 +89,7 @@ for experiment in data['results']:
 for key, query in d.iteritems():
 	pipeline_runtimes, operator_runtimes, jit_wrapper_times = query['jit']
 	jit_spez_time, jit_execute_time = jit_wrapper_times
-	intepret_time = query['interpreted'][2][1]
-	print('Query: ' + key + ', Specialization time ' + "{:,.0f}".format(jit_spez_time) + ' Jit execute time ' + "{:,.0f}".format(jit_execute_time) + ' Interpret time: ' +  "{:,.0f}".format(intepret_time))
+	print('Query: ' + key + ', Specialization time ' + "{:,.0f}".format(jit_spez_time) + ' Jit execute time ' + "{:,.0f}".format(jit_execute_time))
 
 	table_data = []
 	table_data.append(['Time (micro s)', 'Opossum', 'Jit', 'Diff', '%', 'Diff %'])
@@ -108,20 +107,19 @@ for key, query in d.iteritems():
 
 	print(table.table)
 
-	if len(sys.argv) > 2 and str2bool(sys.argv[2]):
-		print("Generating diagram (interpeated pipeline: "+ "{:,.0f}".format(query['interpreted'][0][3]) + ")")
-		N = 3
+	if str2bool(sys.argv[-1]):
+		filename = key.replace(' ', '_') + '.svg'
+		print("Generating diagram " + filename)
+		N = 2
 		opossum_total_pipeline = query['opossum'][0][3] / 1000000.
 		jit_total_pipeline = query['jit'][0][3] / 1000000.
-		interpreted_total_pipeline = query['interpreted'][0][3] / 1000000.
 		jit_spez_time = jit_spez_time /1000000.
 		jit_execute_time = jit_execute_time / 1000000.
-		intepret_execute_time = query['interpreted'][2][1] / 1000000.
 		common_time = jit_total_pipeline - jit_spez_time - jit_execute_time
-		hyrise_only = (opossum_total_pipeline, 0, 0)
-		pipeline_execition = (0, interpreted_total_pipeline, jit_total_pipeline)
-		pipeline_spez = (0, 0, jit_spez_time+common_time)
-		common_operators = (common_time, common_time, common_time)
+		hyrise_only = (opossum_total_pipeline, 0)
+		pipeline_execition = (0, jit_total_pipeline)
+		pipeline_spez = (0, jit_spez_time+common_time)
+		common_operators = (common_time, common_time)
 		ind = np.arange(N)    # the x locations for the groups
 		width = 0.35       # the width of the bars: can also be len(x) sequence
 
@@ -134,13 +132,13 @@ for key, query in d.iteritems():
 
 		plt.ylabel('Runtime (s)')
 		plt.title(key.replace('TPCH', 'TPC-H '))
-		plt.xticks(ind, ('Hyrise', 'Interpreted', 'Specialized'))
+		plt.xticks(ind, ('Hyrise', 'Jit'))
 		#plt.yticks(np.arange(0, 81, 10))
-		if key == 'TPCH1':
+		if str2bool(sys.argv[-2]):
 			plt.legend((p1[0], p2[0], p3[0], p4[0]), ('Hyrise Only Operators', 'Pipeline Execution', 'Pipeline Specialization', 'Common Operators'))
 
 		#plt.show()
-		plt.savefig(key.replace('TPCH', 'TPC-H_') + '.svg', transparent=True)
+		plt.savefig(filename, transparent=True)
 		plt.gcf().clear()
 
 	print("")

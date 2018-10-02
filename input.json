@@ -119,6 +119,56 @@
   "experiments": [
     {
       "engine": "jit",
+      "query_id": "Q-K",
+      "repetitions": 1,
+      "task": "run"
+    },
+    {
+      "engine": "opossum",
+      "query_id": "Q-K",
+      "repetitions": 1,
+      "task": "run"
+    },
+    {
+      "engine": "jit",
+      "query_id": "Q-K",
+      "pqp_file": "Q-K_pqp_jit",
+      "task": "pqp"
+    },
+    {
+      "engine": "opossum",
+      "query_id": "Q-K",
+      "pqp_file": "Q-K_pqp_opossum",
+      "task": "pqp"
+    }
+  ],
+  "_experiments": [
+    {
+      "engine": "jit",
+      "query_id": "Q-D",
+      "repetitions": 1,
+      "task": "run"
+    },
+    {
+      "engine": "opossum",
+      "query_id": "Q-D",
+      "repetitions": 1,
+      "task": "run"
+    },
+    {
+      "engine": "jit",
+      "query_id": "Q-D",
+      "pqp_file": "Q-D_pqp_jit",
+      "task": "pqp"
+    },
+    {
+      "engine": "opossum",
+      "query_id": "Q-D",
+      "pqp_file": "Q-D_pqp_opossum",
+      "task": "pqp"
+    },
+    {
+      "engine": "jit",
       "query_id": "TYPE_Int",
       "repetitions": 50,
       "task": "run"
