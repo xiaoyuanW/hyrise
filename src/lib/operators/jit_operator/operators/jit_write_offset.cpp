@@ -37,8 +37,9 @@ void JitWriteOffset::before_query(const Table& in_table, Table& out_table, JitRu
 
 void JitWriteOffset::after_chunk(const std::shared_ptr<const Table>& in_table, Table& out_table,
                                  JitRuntimeContext& context) const {
-  if (context.output_pos_list->size() > 0) {
+  if (context.output_pos_list.size() > 0) {
     Segments out_segments;
+
     out_segments.reserve(_output_columns.size());
     if (in_table->type() == TableType::References) {
       const auto chunk_in = in_table->get_chunk(context.chunk_id);
@@ -60,9 +61,9 @@ void JitWriteOffset::after_chunk(const std::shared_ptr<const Table>& in_table, T
 
         if (!filtered_pos_list) {
           filtered_pos_list = std::make_shared<PosList>();
-          filtered_pos_list->reserve(context.output_pos_list->size());
+          filtered_pos_list->reserve(context.output_pos_list.size());
 
-          for (const auto& match : *context.output_pos_list) {
+          for (const auto& match : context.output_pos_list) {
             const auto row_id = (*pos_list_in)[match.chunk_offset];
             filtered_pos_list->push_back(row_id);
           }
@@ -72,16 +73,19 @@ void JitWriteOffset::after_chunk(const std::shared_ptr<const Table>& in_table, T
         out_segments.push_back(ref_segment_out);
       }
     } else {
+      auto output_pos_list = std::make_shared<PosList>();
+      output_pos_list->resize(context.output_pos_list.size());
+      std::copy(context.output_pos_list.cbegin(), context.output_pos_list.cend(), output_pos_list->begin());
       for (const auto& output_colum : _output_columns) {
         auto ref_segment_out =
-            std::make_shared<ReferenceSegment>(in_table, output_colum.referenced_column_id, context.output_pos_list);
+            std::make_shared<ReferenceSegment>(in_table, output_colum.referenced_column_id, output_pos_list);
         out_segments.push_back(ref_segment_out);
       }
     }
     out_table.append_chunk(out_segments);
     // check if current chunk is last
     if (context.chunk_id + 1 < in_table->chunk_count()) {
-      _selectivity = static_cast<float>(context.output_pos_list->size()) /
+      _selectivity = static_cast<float>(context.output_pos_list.size()) /
               in_table->get_chunk(ChunkID(context.chunk_id))->size();
       _create_output_chunk(context, in_table->get_chunk(ChunkID(context.chunk_id + 1))->size());
     }
@@ -95,16 +99,16 @@ void JitWriteOffset::add_output_column(const JitOutputReferenceColumn& output_co
 std::vector<JitOutputReferenceColumn> JitWriteOffset::output_columns() const { return _output_columns; }
 
 void JitWriteOffset::_consume(JitRuntimeContext& context) const {
-  context.output_pos_list->emplace_back(context.chunk_id, context.chunk_offset);
+  context.output_pos_list.emplace_back(context.chunk_id, context.chunk_offset);
 #if JIT_MEASURE
   _end(context);
 #endif
 }
 
 void JitWriteOffset::_create_output_chunk(JitRuntimeContext& context, const uint32_t in_chunk_size) const {
-  context.output_pos_list = std::make_shared<PosList>();
+  context.output_pos_list.clear();  // = std::make_shared<PosList>();
   const float reserve_more_than_predicted = std::min(_selectivity * 1.1f, 1.f);
-  context.output_pos_list->reserve(in_chunk_size * reserve_more_than_predicted);
+  context.output_pos_list.reserve(in_chunk_size * reserve_more_than_predicted);
 }
 
 }  // namespace opossum
