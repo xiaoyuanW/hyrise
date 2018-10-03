@@ -237,6 +237,7 @@ void jit_and(const JitTupleValue& lhs, const JitTupleValue& rhs, const JitTupleV
 void jit_or(const JitTupleValue& lhs, const JitTupleValue& rhs, const JitTupleValue& result,
             JitRuntimeContext& context);
 #endif
+
 void jit_is_null(const JitTupleValue& lhs, const JitTupleValue& result, JitRuntimeContext& context);
 void jit_is_not_null(const JitTupleValue& lhs, const JitTupleValue& result, JitRuntimeContext& context);
 

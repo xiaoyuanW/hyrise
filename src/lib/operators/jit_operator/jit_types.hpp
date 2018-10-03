@@ -2,6 +2,8 @@
 
 #include <boost/preprocessor/seq/for_each.hpp>
 
+#include <chrono>
+
 #include "all_type_variant.hpp"
 #include "storage/base_value_segment.hpp"
 #include "storage/chunk.hpp"
@@ -22,6 +24,9 @@ namespace opossum {
 
 #define JIT_VARIANT_VECTOR_MEMBER(r, d, type) \
   std::vector<BOOST_PP_TUPLE_ELEM(3, 0, type)> BOOST_PP_TUPLE_ELEM(3, 1, type);
+
+#define JIT_MEASURE 0
+
 #ifndef JIT_LAZY_LOAD
 #define JIT_LAZY_LOAD 1
 #endif
@@ -134,6 +139,19 @@ struct JitRuntimeHashmap {
   std::vector<JitVariantVector> columns;
 };
 
+enum JitOperatorType {
+  Read = 0,
+  Write = 1,
+  Aggregate = 2,
+  Filter = 3,
+  Compute = 4,
+  Validate = 5,
+  Limit = 6,
+  ReadValue = 7,
+  WriteOffset = 8,
+  Size = 9
+};
+
 // The structure encapsulates all data available to the JitOperatorWrapper at runtime,
 // but NOT during code specialization.
 struct JitRuntimeContext {
@@ -151,7 +169,11 @@ struct JitRuntimeContext {
   CommitID snapshot_commit_id;
   int64_t limit_rows;  // signed integer used to allow decrementing below 0
   ChunkID chunk_id;
-  std::shared_ptr<PosList> output_pos_list;
+  std::vector<RowID> output_pos_list;  // std::shared_ptr<PosList>
+#if JIT_MEASURE
+  std::chrono::nanoseconds times[JitOperatorType::Size];
+  std::chrono::time_point<std::chrono::high_resolution_clock> begin_operator;
+#endif
 };
 
 // The JitTupleValue represents a value in the runtime tuple.

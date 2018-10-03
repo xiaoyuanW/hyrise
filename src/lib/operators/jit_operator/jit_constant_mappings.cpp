@@ -33,4 +33,15 @@ const boost::bimap<JitExpressionType, std::string> jit_expression_type_to_string
                                                 {JitExpressionType::IsNull, "IS NULL"},
                                                 {JitExpressionType::IsNotNull, "IS NOT NULL"}});
 
+const boost::bimap<JitOperatorType, std::string> jit_operator_type_to_string =
+    make_bimap<JitOperatorType, std::string>({{JitOperatorType::Read, "JitRead"},
+                                              {JitOperatorType::Write, "JitWrite"},
+                                              {JitOperatorType::Aggregate, "JitAggregate"},
+                                              {JitOperatorType::Filter, "JitFilter"},
+                                              {JitOperatorType::Compute, "JitCompute"},
+                                              {JitOperatorType::Validate, "JitValidate"},
+                                              {JitOperatorType::Limit, "JitLimit"},
+                                              {JitOperatorType::WriteOffset, "WriteOffset"},
+                                              {JitOperatorType::ReadValue, "JitReadValue"}});
+
 }  // namespace opossum

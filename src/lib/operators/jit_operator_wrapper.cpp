@@ -2,10 +2,14 @@
 
 #include "expression/expression_utils.hpp"
 #include "global.hpp"
+#include "operators/jit_operator/jit_constant_mappings.hpp"
 #include "operators/jit_operator/operators/jit_aggregate.hpp"
 #include "operators/jit_operator/operators/jit_compute.hpp"
 #include "operators/jit_operator/operators/jit_read_value.hpp"
 #include "operators/jit_operator/operators/jit_validate.hpp"
+#include "utils/timer.hpp"
+
+#include "jit_evaluation_helper.hpp"
 
 namespace opossum {
 
@@ -17,7 +21,12 @@ JitOperatorWrapper::JitOperatorWrapper(
       _execution_mode{execution_mode},
       _jit_operators{jit_operators},
       _insert_loads{insert_loads},
-      _execute_func{execute_func} {}
+      _execute_func{execute_func} {
+  if (JitEvaluationHelper::get().experiment().count("jit_use_jit")) {
+    _execution_mode = JitEvaluationHelper::get().experiment().at("jit_use_jit") ? JitExecutionMode::Compile
+                                                                                : JitExecutionMode::Interpret;
+  }
+}
 
 const std::string JitOperatorWrapper::name() const { return "JitOperatorWrapper"; }
 
@@ -117,23 +126,22 @@ void JitOperatorWrapper::_choose_execute_func() {
     (*it)->set_next_operator(*(next));
   }
 
-  // std::cout << description(DescriptionMode::MultiLine) << std::endl;
+  // std::cerr << description(DescriptionMode::MultiLine) << std::endl;
 
   // We want to perform two specialization passes if the operator chain contains a JitAggregate operator, since the
   // JitAggregate operator contains multiple loops that need unrolling.
   auto two_specialization_passes = static_cast<bool>(std::dynamic_pointer_cast<JitAggregate>(_sink()));
-  Global::get().interpret = false;
-  const auto mode = Global::get().interpret ? JitExecutionMode::Interpret : JitExecutionMode::Compile;
-  switch (mode) {  // _execution_mode
-    case JitExecutionMode::Compile:
-      // this corresponds to "opossum::JitReadTuples::execute(opossum::JitRuntimeContext&) const"
-      _execute_func = _module.specialize_and_compile_function<void(const JitReadTuples*, JitRuntimeContext&)>(
-          "_ZNK7opossum13JitReadTuples7executeERNS_17JitRuntimeContextE",
-          std::make_shared<JitConstantRuntimePointer>(_source().get()), two_specialization_passes);
-      break;
-    case JitExecutionMode::Interpret:
-      _execute_func = &JitReadTuples::execute;
-      break;
+  bool specialize = !Global::get().interpret;
+  if (JitEvaluationHelper::get().experiment().count("jit_use_jit")) {
+    specialize = JitEvaluationHelper::get().experiment().at("jit_use_jit");
+  }
+  if (specialize) {
+    // this corresponds to "opossum::JitReadTuples::execute(opossum::JitRuntimeContext&) const"
+    _execute_func = _module.specialize_and_compile_function<void(const JitReadTuples*, JitRuntimeContext&)>(
+        "_ZNK7opossum13JitReadTuples7executeERNS_17JitRuntimeContextE",
+        std::make_shared<JitConstantRuntimePointer>(_source().get()), two_specialization_passes);
+  } else {
+    _execute_func = &JitReadTuples::execute;
   }
 }
 
@@ -146,28 +154,59 @@ std::shared_ptr<const Table> JitOperatorWrapper::_on_execute() {
     context.transaction_id = transaction_context()->transaction_id();
     context.snapshot_commit_id = transaction_context()->snapshot_commit_id();
   }
+
+  std::chrono::nanoseconds before_chunk_time{0};
+  std::chrono::nanoseconds after_chunk_time{0};
+  std::chrono::nanoseconds function_time{0};
+
+  Timer timer;
   _source()->before_query(*in_table, context);
   _sink()->before_query(*in_table, *out_table, context);
+  auto before_query_time = timer.lap();
 
-  if (in_table->chunk_count() > 0) {
-    _choose_execute_func();
-
-    std::cout << "total chunks: " << in_table->chunk_count() << std::endl;
-    for (opossum::ChunkID chunk_id{0}; chunk_id < in_table->chunk_count(); ++chunk_id) {
-      if (chunk_id + 1 == in_table->chunk_count()) {
-        std::cout << "last chunk, chunk no " << chunk_id << std::endl;
-      } else {
+  std::cout << "total chunks: " << in_table->chunk_count() << std::endl;
+  for (opossum::ChunkID chunk_id{0}; chunk_id < in_table->chunk_count(); ++chunk_id) {
+    if (chunk_id + 1 == in_table->chunk_count()) {
+      std::cout << "last chunk, chunk no " << chunk_id << std::endl;
+    } else {
       std::cout << "chunk no " << chunk_id << std::endl;
-      }
-      _source()->before_chunk(*in_table, chunk_id, context);
-      _execute_func(_source().get(), context);
-      _sink()->after_chunk(in_table, *out_table, context);
-      // break, if limit is reached
-      if (context.chunk_offset == std::numeric_limits<ChunkOffset>::max()) break;
     }
+    _source()->before_chunk(*in_table, chunk_id, context);
+    before_chunk_time += timer.lap();
+    _execute_func(_source().get(), context);
+    function_time += timer.lap();
+    _sink()->after_chunk(in_table, *out_table, context);
+    after_chunk_time += timer.lap();
+    // break, if limit is reached
+    if (context.chunk_offset == std::numeric_limits<ChunkOffset>::max()) break;
   }
 
   _sink()->after_query(*out_table, context);
+  auto after_query_time = timer.lap();
+
+  auto& operators = JitEvaluationHelper::get().result()["operators"];
+  auto add_time = [&operators](const std::string& name, const auto& time) {
+    const auto micro_s = std::chrono::duration_cast<std::chrono::microseconds>(time).count();
+    if (micro_s > 0) {
+      nlohmann::json jit_op = {{"name", name}, {"prepare", false}, {"walltime", micro_s}};
+      operators.push_back(jit_op);
+    }
+  };
+
+  add_time("_JitBeforeQuery", before_query_time);
+  add_time("_JitAfterQuery", after_query_time);
+  add_time("_JitBeforChunk", before_chunk_time);
+  add_time("_JitAfterChunk", after_chunk_time);
+  add_time("_Function", function_time);
+
+#if JIT_MEASURE
+  std::chrono::nanoseconds operator_total_time{0};
+  for (size_t index = 0; index < JitOperatorType::Size; ++index) {
+    add_time("_" + jit_operator_type_to_string.left.at(static_cast<JitOperatorType>(index)), context.times[index]);
+    operator_total_time += context.times[index];
+  }
+  add_time("_Jit_OperatorsTotal", operator_total_time);
+#endif
 
   return out_table;
 }

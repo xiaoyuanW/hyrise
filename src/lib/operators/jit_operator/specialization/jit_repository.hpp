@@ -43,6 +43,8 @@ class JitRepository : private Noncopyable {
   std::shared_ptr<llvm::Module> module() const;
   std::mutex& specialization_mutex();
 
+  void dump(std::ostream& os) const;
+
  private:
   JitRepository();
 

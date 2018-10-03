@@ -16,6 +16,7 @@ namespace opossum {
  */
 class AbstractJittableSink : public AbstractJittable {
  public:
+  explicit AbstractJittableSink(const JitOperatorType type) : AbstractJittable(type) {}
   virtual ~AbstractJittableSink() = default;
 
   // This function is responsible to create the output table with appropriate column definitions.

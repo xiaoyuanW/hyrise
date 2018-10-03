@@ -575,6 +575,8 @@ if (${ENABLE_JIT_SUPPORT})
     embed_llvm(LLVM_BUNDLE_FILE jit_llvm_bundle ${JIT_EMBEDDED_SOURCES})
     set(
         SOURCES
+        jit_evaluation_helper.cpp
+        jit_evaluation_helper.hpp
         operators/jit_operator/jit_utils.cpp
         operators/jit_operator/jit_utils.hpp
         logical_query_plan/jit_aware_lqp_translator.cpp
@@ -621,5 +623,5 @@ set(SOURCES ${SOURCES} ${CMAKE_BINARY_DIR}/provider.hpp)
 
 # Configure the regular hyrise library used for tests/server/playground...
 add_library(hyrise STATIC ${SOURCES})
-target_link_libraries(hyrise ${LIBRARIES})
-target_include_directories(hyrise PUBLIC ${CMAKE_BINARY_DIR})
+target_link_libraries(hyrise ${LIBRARIES} ${PAPI_LIBRARIES})
+target_include_directories(hyrise PUBLIC ${CMAKE_BINARY_DIR} ${PAPI_INCLUDE_DIRS})

@@ -60,6 +60,8 @@ class JitWriteTuples : public AbstractJittableSink {
   };
 
  public:
+  JitWriteTuples() : AbstractJittableSink(JitOperatorType::Write) {}
+
   std::string description() const final;
 
   std::shared_ptr<Table> create_output_table(const ChunkOffset input_table_chunk_size) const final;

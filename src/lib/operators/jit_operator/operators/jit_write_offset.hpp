@@ -19,6 +19,8 @@ struct JitOutputReferenceColumn {
  */
 class JitWriteOffset : public AbstractJittableSink {
  public:
+  JitWriteOffset(float selectivity) : AbstractJittableSink(JitOperatorType::WriteOffset), _selectivity(selectivity) {}
+
   std::string description() const final;
 
   std::shared_ptr<Table> create_output_table(const ChunkOffset input_table_chunk_size) const final;
@@ -36,6 +38,7 @@ class JitWriteOffset : public AbstractJittableSink {
   void _create_output_chunk(JitRuntimeContext& context, const uint32_t in_chunk_size) const;
 
   std::vector<JitOutputReferenceColumn> _output_columns;
+  mutable float _selectivity;
 };
 
 }  // namespace opossum

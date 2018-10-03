@@ -34,7 +34,7 @@ class JitCodeSpecializer {
   std::shared_ptr<llvm::Module> specialize_function(
       const std::string& root_function_name,
       const std::shared_ptr<const JitRuntimePointer>& runtime_this = std::make_shared<JitRuntimePointer>(),
-      const bool two_passes = false);
+      bool two_passes = false);
 
   // Specializes and compiles the given function with the provided runtime information.
   // The root_function_name must be the mangled name of the function to be specialized. This function must exist in the

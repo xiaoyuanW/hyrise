@@ -86,6 +86,8 @@ find_package(Curses REQUIRED)
 find_package(Sqlite3 REQUIRED)
 find_package(PQ REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system thread)
+set(PAPI_PREFIX "${CMAKE_SOURCE_DIR}/../papi")
+find_package(PAPI REQUIRED)
 
 add_definitions(-DBOOST_THREAD_VERSION=5)
 

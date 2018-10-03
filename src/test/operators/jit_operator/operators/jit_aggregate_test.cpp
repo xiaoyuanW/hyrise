@@ -9,6 +9,8 @@ namespace opossum {
 // This operator is used as the tuple source in this test.
 class MockSource : public AbstractJittable {
  public:
+  MockSource() : AbstractJittable(JitOperatorType::Read) {}
+
   std::string description() const final { return "MockOperator"; }
 
   void emit(JitRuntimeContext& context) { _emit(context); }

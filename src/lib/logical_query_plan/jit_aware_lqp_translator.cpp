@@ -16,6 +16,7 @@
 #include "expression/parameter_expression.hpp"
 #include "expression/value_expression.hpp"
 #include "global.hpp"
+#include "jit_evaluation_helper.hpp"
 #include "logical_query_plan/aggregate_node.hpp"
 #include "logical_query_plan/limit_node.hpp"
 #include "logical_query_plan/lqp_utils.hpp"
@@ -34,6 +35,7 @@
 #include "resolve_type.hpp"
 #include "storage/storage_manager.hpp"
 #include "types.hpp"
+#include "statistics/table_statistics.hpp"
 
 using namespace std::string_literals;  // NOLINT
 
@@ -155,6 +157,11 @@ std::shared_ptr<JitOperatorWrapper> JitAwareLQPTranslator::_try_translate_sub_pl
     filter_node = filter_node->left_input();
   }
 
+  float selectivity = 0;
+  if (const auto input_row_count = input_node->get_statistics()->row_count()) {
+    selectivity = filter_node->get_statistics()->row_count() / input_row_count;
+  }
+
   // If we can reach the input node without encountering a UnionNode or PredicateNode,
   // there is no need to filter any tuples
   if (filter_node != input_node) {
@@ -249,7 +256,7 @@ std::shared_ptr<JitOperatorWrapper> JitAwareLQPTranslator::_try_translate_sub_pl
       }
       jit_operator->add_jit_operator(write_table);
     } else {
-      auto write_table = std::make_shared<JitWriteOffset>();
+      auto write_table = std::make_shared<JitWriteOffset>(selectivity);
 
       for (const auto& column : node->column_expressions()) {
         const auto column_id = input_node->find_column_id(*column);
@@ -486,6 +493,11 @@ bool _expressions_are_jittable(const std::vector<std::shared_ptr<AbstractExpress
 
 bool JitAwareLQPTranslator::_node_is_jittable(const std::shared_ptr<AbstractLQPNode>& node, const bool use_value_id,
                                               const bool allow_aggregate_node, const bool allow_limit_node) const {
+  bool jit_predicate = true;
+  if (JitEvaluationHelper::get().experiment().count("jit_predicate")) {
+    jit_predicate = JitEvaluationHelper::get().experiment()["jit_predicate"];
+  }
+
   if (node->type == LQPNodeType::Aggregate) {
     // We do not support the count distinct function yet and thus need to check all aggregate expressions.
     auto aggregate_node = std::static_pointer_cast<AggregateNode>(node);
@@ -537,7 +549,7 @@ bool JitAwareLQPTranslator::_node_is_jittable(const std::shared_ptr<AbstractLQPN
     return true;
   }
 
-  return node->type == LQPNodeType::Union;
+  return node->type == LQPNodeType::Union && jit_predicate;
 }
 
 void JitAwareLQPTranslator::_visit(const std::shared_ptr<AbstractLQPNode>& node,

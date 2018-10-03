@@ -19,6 +19,9 @@ set(
     tpch/tpch_db_generator.cpp
     tpch/tpch_db_generator.hpp
 
+    jit/jit_table_generator.cpp
+    jit/jit_table_generator.hpp
+
     table_generator.cpp
     table_generator.hpp
 

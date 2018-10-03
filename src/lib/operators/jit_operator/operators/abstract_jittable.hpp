@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "../jit_utils.hpp"
 #include "operators/jit_operator/jit_types.hpp"
 
 namespace opossum {
@@ -15,6 +16,7 @@ namespace opossum {
  */
 class AbstractJittable {
  public:
+  explicit AbstractJittable(const JitOperatorType type) : jit_operator_type(type) {}
   virtual ~AbstractJittable() = default;
 
   void set_next_operator(const std::shared_ptr<AbstractJittable>& next_operator) { _next_operator = next_operator; }
@@ -26,9 +28,25 @@ class AbstractJittable {
   // if bool is true, it means that loading the value can be pushed into the operator
   virtual std::map<size_t, bool> accessed_column_ids() const { return std::map<size_t, bool>(); }
 
+  const JitOperatorType jit_operator_type;
+
  protected:
   // inlined during compilation to reduce the number of functions inlined during specialization
-  __attribute__((always_inline)) void _emit(JitRuntimeContext& context) const { _next_operator->_consume(context); }
+  __attribute__((always_inline)) void _emit(JitRuntimeContext& context) const {
+#if JIT_MEASURE
+    const auto end_operator = std::chrono::high_resolution_clock::now();
+    context.times[jit_operator_type] += end_operator - context.begin_operator;
+    context.begin_operator = end_operator;
+#endif
+    _next_operator->_consume(context);
+  }
+#if JIT_MEASURE
+  __attribute__((always_inline)) void _end(JitRuntimeContext& context) const {
+    const auto end_operator = std::chrono::high_resolution_clock::now();
+    context.times[jit_operator_type] += end_operator - context.begin_operator;
+    context.begin_operator = end_operator;
+  }
+#endif
 
  private:
   virtual void _consume(JitRuntimeContext& context) const = 0;

@@ -1,0 +1,287 @@
+{
+  "globals": {
+    "dictionary_compress": true,
+    "_papi_events": [
+      "PAPI_TOT_INS",
+      "PAPI_LD_INS",
+      "PAPI_BR_INS",
+      "PAPI_SR_INS"
+    ],
+    "papi_events": [],
+    "scale_factor": 1,
+    "use_other_tables": true,
+    "use_tpch_tables": false
+  },
+  "queries": {
+    "0": {
+      "query": "SELECT l_returnflag, l_linestatus, SUM(l_quantity) as sum_qty, SUM(l_extendedprice) as sum_base_price, SUM(l_extendedprice*(1.0-l_discount)) as sum_disc_price, SUM(l_extendedprice*(1.0-l_discount)*(1.0+l_tax)) as sum_charge, AVG(l_quantity) as avg_qty, AVG(l_extendedprice) as avg_price, AVG(l_discount) as avg_disc, COUNT(*) as count_order FROM lineitem WHERE l_shipdate <= '1998-12-01' GROUP BY l_returnflag, l_linestatus ORDER BY l_returnflag, l_linestatus;",
+      "tables": [
+        "lineitem"
+      ]
+    },
+    "Q-D": {
+      "query": "SELECT X100 FROM TABLE_AGGREGATE WHERE A > 5 AND B > 5 AND C > 5 AND D > 5;",
+      "tables": [
+        "TABLE_AGGREGATE"
+      ]
+    },
+    "Q-E": {
+      "query": "SELECT A + B + C + D + E + F FROM TABLE_AGGREGATE WHERE (A + B + C + D + E + F) > X1",
+      "tables": [
+        "TABLE_AGGREGATE"
+      ]
+    },
+    "Q-F": {
+      "query": "SELECT C, SUM(A), SUM(B) FROM TABLE_AGGREGATE WHERE A > 2 GROUP BY C, D, E;",
+      "tables": [
+        "TABLE_AGGREGATE"
+      ]
+    },
+    "Q-G": {
+      "query": "SELECT SUM(A), SUM(B), SUM(C), SUM(D), SUM(E), SUM(F) FROM TABLE_AGGREGATE GROUP BY X100;",
+      "tables": [
+        "TABLE_AGGREGATE"
+      ]
+    },
+    "Q-H": {
+      "query": "SELECT X100, SUM(A), SUM(B), SUM(C), SUM(D), SUM(F) FROM TABLE_AGGREGATE GROUP BY X100;",
+      "tables": [
+        "TABLE_AGGREGATE"
+      ]
+    },
+    "Q-I": {
+      "query": "SELECT X100, SUM(A) FROM TABLE_AGGREGATE GROUP BY X100;",
+      "tables": [
+        "TABLE_AGGREGATE"
+      ]
+    },
+    "Q-J": {
+      "query": "SELECT A, B, C, D, E, SUM(F) FROM TABLE_AGGREGATE GROUP BY A, B, C, D, E;",
+      "tables": [
+        "TABLE_AGGREGATE"
+      ]
+    },
+    "Q-K": {
+      "query": "SELECT A + B + C + D + E FROM TABLE_AGGREGATE WHERE (A + B + C + D + E) > X10;",
+      "tables": [
+        "TABLE_AGGREGATE"
+      ]
+    },
+    "TPCH1": {
+      "query": "SELECT l_returnflag, l_linestatus, SUM(l_quantity) as sum_qty, SUM(l_extendedprice) as sum_base_price, SUM(l_extendedprice*(1-l_discount)) as sum_disc_price, SUM(l_extendedprice*(1-l_discount)*(1+l_tax)) as sum_charge, AVG(l_quantity) as avg_qty, AVG(l_extendedprice) as avg_price, AVG(l_discount) as avg_disc, COUNT(*) as count_order FROM lineitem WHERE l_shipdate <= '1998-12-01' GROUP BY l_returnflag, l_linestatus ORDER BY l_returnflag, l_linestatus;",
+      "tables": [
+        "lineitem"
+      ]
+    },
+    "TPCH6": {
+      "query": "SELECT sum(l_extendedprice*l_discount) AS REVENUE FROM lineitem WHERE l_shipdate >= '1994-01-01' AND l_shipdate < '1995-01-01' AND l_discount BETWEEN .06 - 0.01 AND .06 + 0.01001 AND l_quantity < 24;",
+      "tables": [
+        "lineitem"
+      ]
+    },
+    "TPCH10": {
+      "query": "SELECT c_custkey, c_name, SUM(l_extendedprice * (1 - l_discount)) as revenue, c_acctbal, n_name, c_address, c_phone, c_comment FROM customer, orders, lineitem, nation WHERE c_custkey = o_custkey AND l_orderkey = o_orderkey AND o_orderdate >= '1993-10-01' AND o_orderdate < '1994-01-01' AND l_returnflag = 'R' AND c_nationkey = n_nationkey GROUP BY c_custkey, c_name, c_acctbal, c_phone, n_name, c_address, c_comment ORDER BY revenue DESC;",
+      "tables": [
+        "customer", "orders", "lineitem", "nation"
+      ]
+    },
+    "TYPE_Int": {
+      "query": "SELECT L1 FROM TABLE_TYPES WHERE I1 = 5 AND I2 = 5;",
+      "tables": [
+        "TABLE_TYPES"
+      ]
+    },
+    "TYPE_Long": {
+      "query": "SELECT I1 FROM TABLE_TYPES WHERE L1 = 5 AND L2 = 5;",
+      "tables": [
+        "TABLE_TYPES"
+      ]
+    },
+    "TYPE_Float": {
+      "query": "SELECT I1 FROM TABLE_TYPES WHERE F1 = 5 AND F2 = 5;",
+      "tables": [
+        "TABLE_TYPES"
+      ]
+    },
+    "TYPE_Double": {
+      "query": "SELECT I1 FROM TABLE_TYPES WHERE D1 = 5 AND D2 = 5;",
+      "tables": [
+        "TABLE_TYPES"
+      ]
+    },
+    "TYPE_String": {
+      "query": "SELECT I1 FROM TABLE_TYPES WHERE S1 = 'A' AND S2 = 'A';",
+      "tables": [
+        "TABLE_TYPES"
+      ]
+    }
+  },
+  "experiments": [
+    {
+      "engine": "jit",
+      "query_id": "Q-K",
+      "repetitions": 1,
+      "task": "run"
+    },
+    {
+      "engine": "opossum",
+      "query_id": "Q-K",
+      "repetitions": 1,
+      "task": "run"
+    },
+    {
+      "engine": "jit",
+      "query_id": "Q-K",
+      "pqp_file": "Q-K_pqp_jit",
+      "task": "pqp"
+    },
+    {
+      "engine": "opossum",
+      "query_id": "Q-K",
+      "pqp_file": "Q-K_pqp_opossum",
+      "task": "pqp"
+    }
+  ],
+  "_experiments": [
+    {
+      "engine": "jit",
+      "query_id": "Q-D",
+      "repetitions": 1,
+      "task": "run"
+    },
+    {
+      "engine": "opossum",
+      "query_id": "Q-D",
+      "repetitions": 1,
+      "task": "run"
+    },
+    {
+      "engine": "jit",
+      "query_id": "Q-D",
+      "pqp_file": "Q-D_pqp_jit",
+      "task": "pqp"
+    },
+    {
+      "engine": "opossum",
+      "query_id": "Q-D",
+      "pqp_file": "Q-D_pqp_opossum",
+      "task": "pqp"
+    },
+    {
+      "engine": "jit",
+      "query_id": "TYPE_Int",
+      "repetitions": 50,
+      "task": "run"
+    },
+    {
+      "engine": "jit",
+      "query_id": "TYPE_Long",
+      "repetitions": 50,
+      "task": "run"
+    },
+    {
+      "engine": "jit",
+      "query_id": "TYPE_Float",
+      "repetitions": 50,
+      "task": "run"
+    },
+    {
+      "engine": "jit",
+      "query_id": "TYPE_Double",
+      "repetitions": 50,
+      "task": "run"
+    },
+    {
+      "engine": "jit",
+      "query_id": "TYPE_String",
+      "repetitions": 50,
+      "task": "run"
+    },
+    {
+      "engine": "opossum",
+      "query_id": "TYPE_Int",
+      "repetitions": 50,
+      "task": "run"
+    },
+    {
+      "engine": "opossum",
+      "query_id": "TYPE_Long",
+      "repetitions": 50,
+      "task": "run"
+    },
+    {
+      "engine": "opossum",
+      "query_id": "TYPE_Float",
+      "repetitions": 50,
+      "task": "run"
+    },
+    {
+      "engine": "opossum",
+      "query_id": "TYPE_Double",
+      "repetitions": 50,
+      "task": "run"
+    },
+    {
+      "engine": "opossum",
+      "query_id": "TYPE_String",
+      "repetitions": 50,
+      "task": "run"
+    }
+  ],
+  "_experiments": [
+    {
+      "engine": "jit",
+      "lqp_file": "TPCH1-lqp",
+      "query_id": "TPCH1",
+      "task": "lqp"
+    },
+    {
+      "engine": "jit",
+      "pqp_file": "TPCH1-pqp",
+      "query_id": "TPCH1",
+      "task": "pqp"
+    },
+    {
+      "engine": "opossum",
+      "pqp_file": "TPCH1-pqp-opossum",
+      "query_id": "TPCH1",
+      "task": "pqp"
+    },
+    {
+      "engine": "jit",
+      "lqp_file": "TPCH6-lqp",
+      "query_id": "TPCH6",
+      "task": "lqp"
+    },
+    {
+      "engine": "jit",
+      "pqp_file": "TPCH6-pqp",
+      "query_id": "TPCH6",
+      "task": "pqp"
+    },
+    {
+      "engine": "opossum",
+      "pqp_file": "TPCH6-pqp-opossum",
+      "query_id": "TPCH6",
+      "task": "pqp"
+    },
+    {
+      "engine": "jit",
+      "lqp_file": "TPCH10-lqp",
+      "query_id": "TPCH10",
+      "task": "lqp"
+    },
+    {
+      "engine": "jit",
+      "pqp_file": "TPCH10-pqp",
+      "query_id": "TPCH10",
+      "task": "pqp"
+    },
+    {
+      "engine": "opossum",
+      "pqp_file": "TPCH10-pqp-opossum",
+      "query_id": "TPCH10",
+      "task": "pqp"
+    }
+  ]
+}

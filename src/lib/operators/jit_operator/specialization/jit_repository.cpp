@@ -72,4 +72,25 @@ JitRepository::JitRepository(const std::string& module_string)
   }
 }
 
+void JitRepository::dump(std::ostream& os) const {
+  os << "IR Repository" << std::endl;
+  os << "--- functions ---" << std::endl;
+  for (const auto& fn : _functions) {
+    os << fn.first << std::endl;
+  }
+
+  os << std::endl << "--- vtables ---" << std::endl;
+  for (const auto& vtable : _vtables) {
+    os << vtable.first << std::endl;
+    for (const auto& function : vtable.second) {
+      if (function) {
+        os << "  " << function->getName().str() << std::endl;
+      } else {
+        os << "  -" << std::endl;
+      }
+    }
+    os << std::endl;
+  }
+}
+
 }  // namespace opossum

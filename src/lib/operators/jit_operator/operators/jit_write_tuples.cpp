@@ -61,6 +61,9 @@ void JitWriteTuples::_consume(JitRuntimeContext& context) const {
   for (const auto& output : context.outputs) {
     output->write_value(context);
   }
+#if JIT_MEASURE
+  _end(context);
+#endif
 }
 
 void JitWriteTuples::_create_output_chunk(JitRuntimeContext& context) const {

@@ -33,6 +33,7 @@ void jit_not(const JitTupleValue& lhs, const JitTupleValue& result, JitRuntimeCo
   result.set<bool>(!lhs.get<bool>(context), context);
   result.set_is_null(lhs.is_null(context), context);
 }
+
 #if JIT_LOGICAL_PRUNING
 void jit_and(const JitTupleValue& lhs, const JitTupleValue& rhs, const JitTupleValue& result,
              JitRuntimeContext& context, const bool prune_right_side) {
@@ -75,6 +76,7 @@ void jit_or(const JitTupleValue& lhs, const JitTupleValue& rhs, const JitTupleVa
     result.set_is_null(rhs.is_null(context), context);
   }
 }
+
 #else
 void jit_and(const JitTupleValue& lhs, const JitTupleValue& rhs, const JitTupleValue& result,
              JitRuntimeContext& context) {

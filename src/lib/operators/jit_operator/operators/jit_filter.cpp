@@ -2,7 +2,8 @@
 
 namespace opossum {
 
-JitFilter::JitFilter(const JitTupleValue& condition) : _condition{condition} {
+JitFilter::JitFilter(const JitTupleValue& condition)
+    : AbstractJittable(JitOperatorType::Filter), _condition{condition} {
   DebugAssert(condition.data_type() == DataType::Bool || condition.data_type() == DataTypeBool,
               "Filter condition must be a boolean");
 }
@@ -14,6 +15,10 @@ JitTupleValue JitFilter::condition() { return _condition; }
 void JitFilter::_consume(JitRuntimeContext& context) const {
   if (!_condition.is_null(context) && _condition.get<bool>(context)) {
     _emit(context);
+  } else {
+#if JIT_MEASURE
+    _end(context);
+#endif
   }
 }
 

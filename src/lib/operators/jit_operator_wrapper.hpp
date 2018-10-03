@@ -51,7 +51,7 @@ class JitOperatorWrapper : public AbstractReadOnlyOperator {
   void insert_loads(const bool lazy);
   void _choose_execute_func();
 
-  const JitExecutionMode _execution_mode;
+  JitExecutionMode _execution_mode;
   JitCodeSpecializer _module;
   std::list<std::shared_ptr<AbstractJittable>> _jit_operators;
   bool _insert_loads;
