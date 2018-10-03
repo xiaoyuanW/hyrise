@@ -99,6 +99,7 @@ void JitReadTuples::before_query(const Table& in_table, JitRuntimeContext& conte
 }
 
 void JitReadTuples::create_default_input_wrappers() {
+  PerformanceWarning("Jit uses virtual function calls to read attribute values.");
   for (size_t i = 0; i < _input_columns.size(); ++i) {
     _input_wrappers.push_back(std::make_shared<BaseJitSegmentReaderWrapper>(i));
   }

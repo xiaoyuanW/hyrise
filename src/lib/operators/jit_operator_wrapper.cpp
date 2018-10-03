@@ -107,8 +107,6 @@ void JitOperatorWrapper::insert_loads(const bool lazy) {
 void JitOperatorWrapper::_prepare() {
   Assert(_source(), "JitOperatorWrapper does not have a valid source node.");
   Assert(_sink(), "JitOperatorWrapper does not have a valid sink node.");
-
-  _choose_execute_func();
 }
 
 void JitOperatorWrapper::_choose_execute_func() {
@@ -164,6 +162,8 @@ std::shared_ptr<const Table> JitOperatorWrapper::_on_execute() {
   _source()->before_query(*in_table, context);
   _sink()->before_query(*in_table, *out_table, context);
   auto before_query_time = timer.lap();
+
+  _choose_execute_func();
 
   // std::cout << "total chunks: " << in_table->chunk_count() << std::endl;
   for (opossum::ChunkID chunk_id{0}; chunk_id < in_table->chunk_count(); ++chunk_id) {

@@ -20,8 +20,8 @@ class BaseJitSegmentReaderWrapper {
   BaseJitSegmentReaderWrapper(size_t reader_index) : reader_index(reader_index) {}
   virtual ~BaseJitSegmentReaderWrapper() = default;
   virtual void read_value(JitRuntimeContext& context) const {
-    Fail("Should not be executed.");
-    // context.inputs[reader_index]->read_value(context);
+    // Fail("Should not be executed.");
+    context.inputs[reader_index]->read_value(context);
   }
 
   const size_t reader_index;
