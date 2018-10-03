@@ -12,7 +12,7 @@ namespace opossum {
 class BaseJitSegmentReader {
  public:
   virtual ~BaseJitSegmentReader() = default;
-  virtual void read_value(JitRuntimeContext& context) = 0;
+  // virtual void read_value(JitRuntimeContext& context) = 0;
 };
 
 class BaseJitSegmentReaderWrapper {
@@ -20,7 +20,8 @@ class BaseJitSegmentReaderWrapper {
   BaseJitSegmentReaderWrapper(size_t reader_index) : reader_index(reader_index) {}
   virtual ~BaseJitSegmentReaderWrapper() = default;
   virtual void read_value(JitRuntimeContext& context) const {
-    context.inputs[reader_index]->read_value(context);
+    Fail("Should not be executed.");
+    // context.inputs[reader_index]->read_value(context);
   }
 
   const size_t reader_index;
@@ -52,11 +53,11 @@ class JitSegmentReader : public BaseJitSegmentReader {
   using ITERATOR = Iterator;
   JitSegmentReader(const Iterator& iterator, const JitTupleValue& tuple_value)
       : _iterator{iterator}, _tuple_index{tuple_value.tuple_index()} {
-    std::cout << "";
+    // std::cout << "";
   }
 
   // Reads a value from the _iterator into the _tuple_value and increments the _iterator.
-  void read_value(JitRuntimeContext& context) final {
+  __attribute__((always_inline)) void read_value(JitRuntimeContext& context) {  // final
 #if JIT_LAZY_LOAD
     const size_t current_offset = context.chunk_offset;
     _iterator += current_offset - _chunk_offset;
@@ -89,17 +90,18 @@ class JitSegmentReader : public BaseJitSegmentReader {
 template <typename JitSegmentReader>
 class JitSegmentReaderWrapper : public BaseJitSegmentReaderWrapper {
  public:
-  // using BaseJitSegmentReaderWrapper::BaseJitSegmentReaderWrapper;
+  using BaseJitSegmentReaderWrapper::BaseJitSegmentReaderWrapper;
+  /*
   JitSegmentReaderWrapper(size_t reader_index)
   : BaseJitSegmentReaderWrapper(reader_index) {
     std::cout << "";
   }
+   */
 
   // Reads a value from the _iterator into the _tuple_value and increments the _iterator.
   void read_value(JitRuntimeContext& context) const final {
     DebugAssert(std::dynamic_pointer_cast<JitSegmentReader>(context.inputs[reader_index]), "Different reader type, no " + std::to_string(reader_index));
-    auto tmp = std::static_pointer_cast<JitSegmentReader>(context.inputs[reader_index]);
-    tmp->read_value(context);
+    std::static_pointer_cast<JitSegmentReader>(context.inputs[reader_index])->read_value(context);
     // context.inputs[reader_index]->read_value(context);
   }
 };
