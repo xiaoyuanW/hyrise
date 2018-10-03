@@ -85,6 +85,8 @@ class JitReadTuples : public AbstractJittable {
 
   std::shared_ptr<AbstractExpression> row_count_expression() const;
 
+  void add_input_segment_iterators(JitRuntimeContext& context, const Table& in_table, const Chunk& in_chunk, const bool prepare_wrapper);
+
  protected:
   uint32_t _num_tuple_values{0};
   std::vector<std::shared_ptr<BaseJitSegmentReaderWrapper>> _input_wrappers;
@@ -98,7 +100,6 @@ class JitReadTuples : public AbstractJittable {
   void _consume(JitRuntimeContext& context) const final {}
   const bool _has_validate;
   const std::shared_ptr<AbstractExpression> _row_count_expression;
-  void add_input_segment_iterators(JitRuntimeContext& context, const Table& in_table, const Chunk& in_chunk, const bool prepare_wrapper);
 };
 
 }  // namespace opossum

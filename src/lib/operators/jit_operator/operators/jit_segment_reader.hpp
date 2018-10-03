@@ -57,7 +57,8 @@ class JitSegmentReader : public BaseJitSegmentReader {
   }
 
   // Reads a value from the _iterator into the _tuple_value and increments the _iterator.
-  __attribute__((always_inline)) void read_value(JitRuntimeContext& context) final {  // final
+  // __attribute__((always_inline))
+  void read_value(JitRuntimeContext& context) final {  // final
 #if JIT_LAZY_LOAD
     const size_t current_offset = context.chunk_offset;
     _iterator += current_offset - _chunk_offset;

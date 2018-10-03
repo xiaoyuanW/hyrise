@@ -107,6 +107,15 @@ void JitOperatorWrapper::insert_loads(const bool lazy) {
 void JitOperatorWrapper::_prepare() {
   Assert(_source(), "JitOperatorWrapper does not have a valid source node.");
   Assert(_sink(), "JitOperatorWrapper does not have a valid sink node.");
+
+  const auto& in_table = *input_left()->get_output();
+
+  if (in_table.chunk_count() > 0 && _source()->input_wrappers().empty()) {
+    JitRuntimeContext context;
+    _source()->add_input_segment_iterators(context, in_table, *in_table.get_chunk(ChunkID(0)), true);
+  }
+
+  _choose_execute_func();
 }
 
 void JitOperatorWrapper::_choose_execute_func() {
@@ -133,7 +142,7 @@ void JitOperatorWrapper::_choose_execute_func() {
   if (JitEvaluationHelper::get().experiment().count("jit_use_jit")) {
     specialize = JitEvaluationHelper::get().experiment().at("jit_use_jit");
   }
-  // specialize = true;
+  specialize = true;
   if (specialize) {
     // this corresponds to "opossum::JitReadTuples::execute(opossum::JitRuntimeContext&) const"
     _execute_func = _module.specialize_and_compile_function<void(const JitReadTuples*, JitRuntimeContext&)>(
@@ -159,11 +168,10 @@ std::shared_ptr<const Table> JitOperatorWrapper::_on_execute() {
   std::chrono::nanoseconds function_time{0};
 
   Timer timer;
+
   _source()->before_query(*in_table, context);
   _sink()->before_query(*in_table, *out_table, context);
   auto before_query_time = timer.lap();
-
-  _choose_execute_func();
 
   // std::cout << "total chunks: " << in_table->chunk_count() << std::endl;
   for (opossum::ChunkID chunk_id{0}; chunk_id < in_table->chunk_count(); ++chunk_id) {

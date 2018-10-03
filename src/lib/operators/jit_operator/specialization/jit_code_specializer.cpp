@@ -140,6 +140,8 @@ void JitCodeSpecializer::_inline_function_calls(SpecializationContext& context) 
   while (!call_sites.empty()) {
     auto& call_site = call_sites.front();
 
+    std::string class_name;
+
     bool virtual_resolved = false;
     // Resolve indirect (virtual) function calls
     if (call_site.isIndirectCall()) {
@@ -174,7 +176,7 @@ void JitCodeSpecializer::_inline_function_calls(SpecializationContext& context) 
         const auto vtable_index =
             called_runtime_value->up().total_offset() / context.module->getDataLayout().getPointerSize();
         const auto instance = reinterpret_cast<JitRTTIHelper*>(called_runtime_value->up().up().base().address());
-        const auto class_name = typeid(*instance).name();
+        class_name = typeid(*instance).name();
 
         // If the called function can be located in the repository, the virtual call is replaced by a direct call to
         // that function.
@@ -280,7 +282,7 @@ void JitCodeSpecializer::_inline_function_calls(SpecializationContext& context) 
       if (Global::get().jit_evaluate)
         JitEvaluationHelper::get().result()["inlined_functions"] =
             JitEvaluationHelper::get().result()["inlined_functions"].get<int32_t>() + 1;
-      if (print) std::cerr << "Func: " << function_name << " inlined" << std::endl;
+      if (print) std::cerr << "Func: " << function_name << " inlined - class name " << class_name << std::endl;
       // std::cout << "+++     inlined func: " << function_name << std::endl;
       for (const auto& new_call_site : info.InlinedCallSites) {
         call_sites.push(new_call_site);
