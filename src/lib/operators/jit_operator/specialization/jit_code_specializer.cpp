@@ -144,7 +144,7 @@ void JitCodeSpecializer::_inline_function_calls(SpecializationContext& context) 
     // Resolve indirect (virtual) function calls
     if (call_site.isIndirectCall()) {
       if (call_site.getCalledFunction()) {
-        std::cout << "inlining v call: " << call_site.getCalledFunction()->getName().str() << std::endl;
+        std::cerr << "inlining v call: " << call_site.getCalledFunction()->getName().str() << std::endl;
       }
       const auto called_value = call_site.getCalledValue();
       // Get the runtime location of the called function (i.e., the compiled machine code of the function)
@@ -187,7 +187,7 @@ void JitCodeSpecializer::_inline_function_calls(SpecializationContext& context) 
         }
       } else {
         if (call_site.getCalledFunction()) {
-          std::cout << "could not inline v call: " << call_site.getCalledFunction()->getName().str() << std::endl;
+          std::cerr << "could not inline v call: " << call_site.getCalledFunction()->getName().str() << std::endl;
         }
         // The virtual call could not be resolved. There is nothing we can inline so we move on.
         if (Global::get().jit_evaluate)
@@ -222,7 +222,7 @@ void JitCodeSpecializer::_inline_function_calls(SpecializationContext& context) 
     // All function that are not in the opossum:: namespace are not considered for inlining. Instead, a function
     // declaration (without a function body) is created.
     if (!function_has_opossum_namespace && function_name != "__clang_call_terminate") {
-      if (print) std::cout << "Func: " << function_name << " ! function_has_opossum_namespace" << std::endl;
+      if (print) std::cerr << "Func: " << function_name << " ! function_has_opossum_namespace" << std::endl;
       context.llvm_value_map[function] = _create_function_declaration(context, *function, function->getName());
       call_sites.pop();
       continue;
