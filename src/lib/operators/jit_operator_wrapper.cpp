@@ -108,7 +108,7 @@ void JitOperatorWrapper::_prepare() {
   Assert(_source(), "JitOperatorWrapper does not have a valid source node.");
   Assert(_sink(), "JitOperatorWrapper does not have a valid sink node.");
 
-  // _choose_execute_func();
+  _choose_execute_func();
 }
 
 void JitOperatorWrapper::_choose_execute_func() {
@@ -135,6 +135,7 @@ void JitOperatorWrapper::_choose_execute_func() {
   if (JitEvaluationHelper::get().experiment().count("jit_use_jit")) {
     specialize = JitEvaluationHelper::get().experiment().at("jit_use_jit");
   }
+  // specialize = true;
   if (specialize) {
     // this corresponds to "opossum::JitReadTuples::execute(opossum::JitRuntimeContext&) const"
     _execute_func = _module.specialize_and_compile_function<void(const JitReadTuples*, JitRuntimeContext&)>(
