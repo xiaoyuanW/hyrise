@@ -142,7 +142,7 @@ void JitOperatorWrapper::_choose_execute_func() {
   if (JitEvaluationHelper::get().experiment().count("jit_use_jit")) {
     specialize = JitEvaluationHelper::get().experiment().at("jit_use_jit");
   }
-  specialize = false;
+  specialize = true;
   if (specialize) {
     // this corresponds to "opossum::JitReadTuples::execute(opossum::JitRuntimeContext&) const"
     _execute_func = _module.specialize_and_compile_function<void(const JitReadTuples*, JitRuntimeContext&)>(

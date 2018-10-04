@@ -247,9 +247,10 @@ void JitReadTuples::execute(JitRuntimeContext& context) const {
     */
 #else
     // DTRACE_PROBE1(HYRISE, JIT_OPERATOR_STARTED, std::string("ReadTuple").c_str());
-    for (const auto& input : context.inputs) {
+    for (const auto& input : _input_wrappers /* context.inputs */ ) {
       input->read_value(context);
     }
+
     // DTRACE_PROBE1(HYRISE, JIT_OPERATOR_EXECUTED, std::string("ReadTuple").c_str());
     _emit(context);
 #endif
