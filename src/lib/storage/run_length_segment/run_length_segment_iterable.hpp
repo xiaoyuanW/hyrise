@@ -53,6 +53,8 @@ class RunLengthSegmentIterable : public PointAccessibleSegmentIterable<RunLength
           _end_position_it{end_position_it},
           _current_position{start_position} {}
 
+    static constexpr bool IsVectorizable = false;  // increment is not trivial
+
    private:
     friend class boost::iterator_core_access;  // grants the boost::iterator_facade access to the private interface
 
@@ -67,6 +69,7 @@ class RunLengthSegmentIterable : public PointAccessibleSegmentIterable<RunLength
     }
 
     void advance(std::ptrdiff_t n) {
+      // The easy way for now
       for (std::ptrdiff_t i = 0; i < n; ++i) {
         increment();
       }
@@ -112,6 +115,8 @@ class RunLengthSegmentIterable : public PointAccessibleSegmentIterable<RunLength
           _end_positions{end_positions},
           _prev_chunk_offset{end_positions.back() + 1u},
           _prev_index{end_positions.size()} {}
+
+    static constexpr bool IsVectorizable = false;  // dereference is not trivial
 
    private:
     friend class boost::iterator_core_access;  // grants the boost::iterator_facade access to the private interface

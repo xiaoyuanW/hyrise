@@ -42,6 +42,8 @@ class NullValueVectorIterable : public PointAccessibleSegmentIterable<NullValueV
     explicit Iterator(const NullValueIterator& begin_null_value_it, const NullValueIterator& null_value_it)
         : _begin_null_value_it{begin_null_value_it}, _null_value_it{null_value_it} {}
 
+    static constexpr bool IsVectorizable = true;
+
    private:
     friend class boost::iterator_core_access;  // grants the boost::iterator_facade access to the private interface
 

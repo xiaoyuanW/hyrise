@@ -65,6 +65,8 @@ class FrameOfReferenceIterable : public PointAccessibleSegmentIterable<FrameOfRe
           _index_within_frame{0u},
           _chunk_offset{0u} {}
 
+    static constexpr bool IsVectorizable = false;  // increment is not trivial
+
     // End iterator
     explicit Iterator(OffsetValueIteratorT offset_value_it) : Iterator{{}, offset_value_it, {}} {}
 
@@ -123,6 +125,8 @@ class FrameOfReferenceIterable : public PointAccessibleSegmentIterable<FrameOfRe
     // End Iterator
     explicit PointAccessIterator(ChunkOffsetsIterator chunk_offsets_it)
         : PointAccessIterator{nullptr, nullptr, nullptr, chunk_offsets_it} {}
+
+    static constexpr bool IsVectorizable = false;  // increment is not trivial
 
    private:
     friend class boost::iterator_core_access;  // grants the boost::iterator_facade access to the private interface

@@ -48,6 +48,8 @@ class ReferenceSegmentIterable : public SegmentIterable<ReferenceSegmentIterable
           _pos_list_it{pos_list_it},
           _accessors{_table->chunk_count()} {}
 
+    static constexpr bool IsVectorizable = false;  // The indirection through references makes vectorization difficult
+
    private:
     friend class boost::iterator_core_access;  // grants the boost::iterator_facade access to the private interface
 
