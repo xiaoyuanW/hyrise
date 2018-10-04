@@ -17,14 +17,18 @@ class BaseJitSegmentReader {
 
 class BaseJitSegmentReaderWrapper {
  public:
-  BaseJitSegmentReaderWrapper(size_t reader_index) : reader_index(reader_index) {}
+  BaseJitSegmentReaderWrapper(size_t reader_index) : reader_index(reader_index), use_cast(true) {}
   virtual ~BaseJitSegmentReaderWrapper() = default;
   virtual void read_value(JitRuntimeContext& context) const {
     // Fail("Should not be executed.");
     context.inputs[reader_index]->read_value(context);
   }
+  virtual bool same_type(JitRuntimeContext& context) {
+    return true;
+  }
 
   const size_t reader_index;
+  bool use_cast;
 };
 
 /* JitSegmentReaders wrap the segment iterable interface used by most operators and makes it accessible
@@ -101,9 +105,18 @@ class JitSegmentReaderWrapper : public BaseJitSegmentReaderWrapper {
 
   // Reads a value from the _iterator into the _tuple_value and increments the _iterator.
   void read_value(JitRuntimeContext& context) const final {
-    DebugAssert(std::dynamic_pointer_cast<JitSegmentReader>(context.inputs[reader_index]), "Different reader type, no " + std::to_string(reader_index));
-    std::static_pointer_cast<JitSegmentReader>(context.inputs[reader_index])->read_value(context);
-    // context.inputs[reader_index]->read_value(context);
+    // DebugAssert(std::dynamic_pointer_cast<JitSegmentReader>(context.inputs[reader_index]), "Different reader type, no " + std::to_string(reader_index));
+    if (use_cast) {
+      // std::static_pointer_cast<JitSegmentReader>(context.inputs[reader_index])->read_value(context);
+      context.inputs[reader_index]->read_value(context);
+    } else {
+      context.inputs[reader_index]->read_value(context);
+    }
+  }
+
+  bool same_type(JitRuntimeContext& context) final {
+    use_cast = static_cast<bool>(std::dynamic_pointer_cast<JitSegmentReader>(context.inputs[reader_index]));
+    return use_cast;
   }
 };
 

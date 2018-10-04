@@ -157,7 +157,7 @@ void JitReadTuples::add_input_segment_iterators(JitRuntimeContext& context, cons
   }
 }
 
-void JitReadTuples::before_chunk(const Table& in_table, const ChunkID chunk_id, JitRuntimeContext& context) {
+bool JitReadTuples::before_chunk(const Table& in_table, const ChunkID chunk_id, JitRuntimeContext& context) {
   const auto& in_chunk = *in_table.get_chunk(chunk_id);
   context.inputs.clear();
   context.chunk_offset = 0;
@@ -224,6 +224,12 @@ void JitReadTuples::before_chunk(const Table& in_table, const ChunkID chunk_id, 
     }
     context.tuple.set<JitValueID>(tuple_index, value_id);
   }
+
+  bool same_type = true;
+  for (const auto wrapper : _input_wrappers) {
+    same_type &= wrapper->same_type(context);
+  }
+  return same_type;
 }
 
 void JitReadTuples::execute(JitRuntimeContext& context) const {

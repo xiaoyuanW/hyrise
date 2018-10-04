@@ -58,7 +58,7 @@ class JitReadTuples : public AbstractJittable {
   std::string description() const final;
 
   virtual void before_query(const Table& in_table, JitRuntimeContext& context);
-  virtual void before_chunk(const Table& in_table, const ChunkID chunk_id, JitRuntimeContext& context);
+  virtual bool before_chunk(const Table& in_table, const ChunkID chunk_id, JitRuntimeContext& context);
 
   void create_default_input_wrappers();
 

@@ -142,7 +142,7 @@ void JitOperatorWrapper::_choose_execute_func() {
   if (JitEvaluationHelper::get().experiment().count("jit_use_jit")) {
     specialize = JitEvaluationHelper::get().experiment().at("jit_use_jit");
   }
-  specialize = true;
+  specialize = false;
   if (specialize) {
     // this corresponds to "opossum::JitReadTuples::execute(opossum::JitRuntimeContext&) const"
     _execute_func = _module.specialize_and_compile_function<void(const JitReadTuples*, JitRuntimeContext&)>(
@@ -182,9 +182,14 @@ std::shared_ptr<const Table> JitOperatorWrapper::_on_execute() {
       std::cout << "chunk no " << chunk_id << std::endl;
     }
      */
-    _source()->before_chunk(*in_table, chunk_id, context);
+    const bool same_type = _source()->before_chunk(*in_table, chunk_id, context);
     before_chunk_time += timer.lap();
-    _execute_func(_source().get(), context);
+    if (same_type) {
+      _execute_func(_source().get(), context);
+    } else {
+      PerformanceWarning("Jit is interpreted as input reader types mismatch.")
+      _source()->execute(context);
+    }
     function_time += timer.lap();
     _sink()->after_chunk(in_table, *out_table, context);
     after_chunk_time += timer.lap();
