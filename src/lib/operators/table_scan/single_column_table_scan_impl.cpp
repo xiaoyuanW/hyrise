@@ -48,13 +48,20 @@ void SingleColumnTableScanImpl::handle_segment(const BaseValueSegment& base_segm
     using ColumnDataType = typename decltype(type)::type;
 
     auto& left_segment = static_cast<const ValueSegment<ColumnDataType>&>(base_segment);
-
     auto left_segment_iterable = create_iterable_from_segment(left_segment);
 
-    left_segment_iterable.with_iterators(mapped_chunk_offsets.get(), [&](auto left_it, auto left_end) {
-      with_comparator(_predicate_condition, [&](auto comparator) {
-        _unary_scan_with_value(comparator, left_it, left_end, type_cast<ColumnDataType>(_right_value), chunk_id,
-                               matches_out);
+    auto typed_right_value = type_cast<ColumnDataType>(_right_value);
+
+    with_comparator(_predicate_condition, [&](auto comparator) {
+      auto comparator_with_value = [comparator, typed_right_value](auto value) {
+        return comparator(value, typed_right_value);
+      };
+      left_segment_iterable.with_iterators(mapped_chunk_offsets.get(), [&](auto left_it, auto left_end) {
+        if (left_segment.is_nullable()) {
+          _scan<true>(comparator_with_value, left_it, left_end, chunk_id, matches_out, true);
+        } else {
+          _scan<false>(comparator_with_value, left_it, left_end, chunk_id, matches_out, true);
+        }
       });
     });
   });
@@ -70,14 +77,19 @@ void SingleColumnTableScanImpl::handle_segment(const BaseEncodedSegment& base_se
   const auto left_column_type = _in_table->column_data_type(_left_column_id);
 
   resolve_data_type(left_column_type, [&](auto type) {
-    using Type = typename decltype(type)::type;
+    using ColumnDataType = typename decltype(type)::type;
 
-    resolve_encoded_segment_type<Type>(base_segment, [&](const auto& typed_segment) {
+    resolve_encoded_segment_type<ColumnDataType>(base_segment, [&](const auto& typed_segment) {
       auto left_segment_iterable = create_iterable_from_segment(typed_segment);
 
-      left_segment_iterable.with_iterators(mapped_chunk_offsets.get(), [&](auto left_it, auto left_end) {
-        with_comparator(_predicate_condition, [&](auto comparator) {
-          _unary_scan_with_value(comparator, left_it, left_end, type_cast<Type>(_right_value), chunk_id, matches_out);
+      auto typed_right_value = type_cast<ColumnDataType>(_right_value);
+
+      with_comparator(_predicate_condition, [&](auto comparator) {
+        auto comparator_with_value = [comparator, typed_right_value](auto value) {
+          return comparator(value, typed_right_value);
+        };
+        left_segment_iterable.with_iterators(mapped_chunk_offsets.get(), [&](auto left_it, auto left_end) {
+          _scan<true>(comparator_with_value, left_it, left_end, chunk_id, matches_out, true);
         });
       });
     });
@@ -125,7 +137,7 @@ void SingleColumnTableScanImpl::handle_segment(const BaseDictionarySegment& base
   if (_right_value_matches_all(base_segment, search_value_id)) {
     left_iterable.with_iterators(mapped_chunk_offsets.get(), [&](auto left_it, auto left_end) {
       static const auto always_true = [](const auto&) { return true; };
-      this->_unary_scan(always_true, left_it, left_end, chunk_id, matches_out);
+      this->_scan<false>(always_true, left_it, left_end, chunk_id, matches_out, true);
     });
 
     return;
@@ -135,9 +147,20 @@ void SingleColumnTableScanImpl::handle_segment(const BaseDictionarySegment& base
     return;
   }
 
-  left_iterable.with_iterators(mapped_chunk_offsets.get(), [&](auto left_it, auto left_end) {
-    this->_with_operator_for_dict_segment_scan(_predicate_condition, [&](auto comparator) {
-      this->_unary_scan_with_value(comparator, left_it, left_end, search_value_id, chunk_id, matches_out);
+  this->_with_operator_for_dict_segment_scan(_predicate_condition, [&](auto comparator) {
+    auto comparator_with_value = [comparator, search_value_id](auto value) {
+      return comparator(value, search_value_id);
+    };
+    left_iterable.with_iterators(mapped_chunk_offsets.get(), [&](auto left_it, auto left_end) {
+      if (_predicate_condition == PredicateCondition::GreaterThan ||
+          _predicate_condition == PredicateCondition::GreaterThanEquals) {
+        // For GreaterThan(Equals), INVALID_VALUE_ID would compare greater than the search_value_id, even though the
+        // value is NULL. Thus, we need to check for is_null as well.
+        this->_scan<true>(comparator_with_value, left_it, left_end, chunk_id, matches_out, true);
+      } else {
+        // No need for NULL checks here, because INVALID_VALUE_ID is always greater.
+        this->_scan<false>(comparator_with_value, left_it, left_end, chunk_id, matches_out, true);
+      }
     });
   });
 }

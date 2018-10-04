@@ -80,7 +80,7 @@ class OperatorsTableScanTest : public BaseTest, public ::testing::WithParamInter
     return table_wrapper;
   }
 
-  std::shared_ptr<TableWrapper> get_table_op_with_n_dict_entries(const int num_entries) {
+  std::shared_ptr<TableWrapper> get_table_op_with_n_entries(const int num_entries, bool encode) {
     // Set up dictionary encoded table with a dictionary consisting of num_entries entries.
     TableColumnDefinitions table_column_definitions;
     table_column_definitions.emplace_back("a", DataType::Int);
@@ -91,7 +91,7 @@ class OperatorsTableScanTest : public BaseTest, public ::testing::WithParamInter
       table->append({i});
     }
 
-    ChunkEncoder::encode_chunks(table, {ChunkID{0}}, {_encoding_type});
+    if (encode) ChunkEncoder::encode_chunks(table, {ChunkID{0}}, {_encoding_type});
 
     auto table_wrapper = std::make_shared<opossum::TableWrapper>(std::move(table));
     table_wrapper->execute();
@@ -478,9 +478,19 @@ TEST_P(OperatorsTableScanTest, ScanWithEmptyInput) {
   EXPECT_EQ(scan_2->get_output()->row_count(), static_cast<size_t>(0));
 }
 
+TEST_P(OperatorsTableScanTest, ScanOnWideUnencodedSegment) {
+  // Scan a big table to make sure that SIMD optimizations are used
+  const auto table_wrapper_dict_32 = get_table_op_with_n_entries((1 << 16) + 1, false);
+  auto scan_2 = std::make_shared<TableScan>(table_wrapper_dict_32,
+                                            OperatorScanPredicate{ColumnID{0}, PredicateCondition::GreaterThan, 65500});
+  scan_2->execute();
+
+  EXPECT_EQ(scan_2->get_output()->row_count(), static_cast<size_t>(37));
+}
+
 TEST_P(OperatorsTableScanTest, ScanOnWideDictionarySegment) {
   // 2**8 + 1 values require a data type of 16bit.
-  const auto table_wrapper_dict_16 = get_table_op_with_n_dict_entries((1 << 8) + 1);
+  const auto table_wrapper_dict_16 = get_table_op_with_n_entries((1 << 8) + 1, true);
   auto scan_1 = std::make_shared<TableScan>(table_wrapper_dict_16,
                                             OperatorScanPredicate{ColumnID{0}, PredicateCondition::GreaterThan, 200});
   scan_1->execute();
@@ -488,7 +498,7 @@ TEST_P(OperatorsTableScanTest, ScanOnWideDictionarySegment) {
   EXPECT_EQ(scan_1->get_output()->row_count(), static_cast<size_t>(57));
 
   // 2**16 + 1 values require a data type of 32bit.
-  const auto table_wrapper_dict_32 = get_table_op_with_n_dict_entries((1 << 16) + 1);
+  const auto table_wrapper_dict_32 = get_table_op_with_n_entries((1 << 16) + 1, true);
   auto scan_2 = std::make_shared<TableScan>(table_wrapper_dict_32,
                                             OperatorScanPredicate{ColumnID{0}, PredicateCondition::GreaterThan, 65500});
   scan_2->execute();

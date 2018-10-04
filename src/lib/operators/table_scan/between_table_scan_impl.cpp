@@ -41,9 +41,14 @@ void BetweenTableScanImpl::handle_segment(const BaseValueSegment& base_segment,
 
     auto left_segment_iterable = create_iterable_from_segment(left_segment);
 
+    auto typed_left_value = type_cast<ColumnDataType>(_left_value);
+    auto typed_right_value = type_cast<ColumnDataType>(_right_value);
+    auto comparator_with_values = [typed_left_value, typed_right_value](auto value) {
+      return value >= typed_left_value && value <= typed_right_value;
+    };
+
     left_segment_iterable.with_iterators(mapped_chunk_offsets.get(), [&](auto left_it, auto left_end) {
-      _between_scan_with_value<true>(left_it, left_end, type_cast<ColumnDataType>(_left_value),
-                                     type_cast<ColumnDataType>(_right_value), chunk_id, matches_out);
+      _scan<true>(comparator_with_values, left_it, left_end, chunk_id, matches_out, true);
     });
   });
 }
@@ -58,14 +63,19 @@ void BetweenTableScanImpl::handle_segment(const BaseEncodedSegment& base_segment
   const auto left_column_type = _in_table->column_data_type(_left_column_id);
 
   resolve_data_type(left_column_type, [&](auto type) {
-    using Type = typename decltype(type)::type;
+    using ColumnDataType = typename decltype(type)::type;
 
-    resolve_encoded_segment_type<Type>(base_segment, [&](const auto& typed_segment) {
+    auto typed_left_value = type_cast<ColumnDataType>(_left_value);
+    auto typed_right_value = type_cast<ColumnDataType>(_right_value);
+    auto comparator_with_values = [typed_left_value, typed_right_value](auto value) {
+      return value >= typed_left_value && value <= typed_right_value;
+    };
+
+    resolve_encoded_segment_type<ColumnDataType>(base_segment, [&](const auto& typed_segment) {
       auto left_segment_iterable = create_iterable_from_segment(typed_segment);
 
       left_segment_iterable.with_iterators(mapped_chunk_offsets.get(), [&](auto left_it, auto left_end) {
-        _between_scan_with_value<true>(left_it, left_end, type_cast<Type>(_left_value), type_cast<Type>(_right_value),
-                                       chunk_id, matches_out);
+        _scan<true>(comparator_with_values, left_it, left_end, chunk_id, matches_out, true);
       });
     });
   });
@@ -88,7 +98,7 @@ void BetweenTableScanImpl::handle_segment(const BaseDictionarySegment& base_segm
     // all values match
     column_iterable.with_iterators(mapped_chunk_offsets.get(), [&](auto left_it, auto left_end) {
       static const auto always_true = [](const auto&) { return true; };
-      this->_unary_scan(always_true, left_it, left_end, chunk_id, matches_out);
+      this->_scan<false>(always_true, left_it, left_end, chunk_id, matches_out, true);
     });
 
     return;
@@ -99,8 +109,13 @@ void BetweenTableScanImpl::handle_segment(const BaseDictionarySegment& base_segm
     return;
   }
 
+  auto comparator_with_values = [left_value_id, right_value_id](auto value) {
+    // Using < here because the right value id is the upper_bound
+    return value >= left_value_id && value < right_value_id;
+  };
+
   column_iterable.with_iterators(mapped_chunk_offsets.get(), [&](auto left_it, auto left_end) {
-    this->_between_scan_with_value<false>(left_it, left_end, left_value_id, right_value_id, chunk_id, matches_out);
+    this->_scan<true>(comparator_with_values, left_it, left_end, chunk_id, matches_out, true);
   });
 }
 

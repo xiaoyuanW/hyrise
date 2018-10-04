@@ -54,6 +54,8 @@ class ValueSegmentIterable : public PointAccessibleSegmentIterable<ValueSegmentI
     explicit NonNullIterator(const ValueIterator begin_value_it, const ValueIterator value_it)
         : _value_it{value_it}, _chunk_offset{static_cast<ChunkOffset>(std::distance(begin_value_it, value_it))} {}
 
+    static constexpr bool IsVectorizable = false;  // tbb::concurrent_vector does not use contiguous storage
+
    private:
     friend class boost::iterator_core_access;  // grants the boost::iterator_facade access to the private interface
 
@@ -61,7 +63,15 @@ class ValueSegmentIterable : public PointAccessibleSegmentIterable<ValueSegmentI
       ++_value_it;
       ++_chunk_offset;
     }
+
+    void advance(std::ptrdiff_t n) {
+      _value_it += n;
+      _chunk_offset += n;
+    }
+
     bool equal(const NonNullIterator& other) const { return _value_it == other._value_it; }
+
+    std::ptrdiff_t distance_to(const NonNullIterator& other) const { return other._value_it - _value_it; }
 
     NonNullSegmentIteratorValue<T> dereference() const {
       return NonNullSegmentIteratorValue<T>{*_value_it, _chunk_offset};
@@ -84,6 +94,8 @@ class ValueSegmentIterable : public PointAccessibleSegmentIterable<ValueSegmentI
           _null_value_it{null_value_it},
           _chunk_offset{static_cast<ChunkOffset>(std::distance(begin_value_it, value_it))} {}
 
+    static constexpr bool IsVectorizable = false;  // tbb::concurrent_vector does not use contiguous storage
+
    private:
     friend class boost::iterator_core_access;  // grants the boost::iterator_facade access to the private interface
 
@@ -93,7 +105,15 @@ class ValueSegmentIterable : public PointAccessibleSegmentIterable<ValueSegmentI
       ++_chunk_offset;
     }
 
+    void advance(std::ptrdiff_t n) {
+      _value_it += n;
+      _null_value_it += n;
+      _chunk_offset += n;
+    }
+
     bool equal(const Iterator& other) const { return _value_it == other._value_it; }
+
+    std::ptrdiff_t distance_to(const Iterator& other) const { return other._value_it - _value_it; }
 
     SegmentIteratorValue<T> dereference() const {
       return SegmentIteratorValue<T>{*_value_it, *_null_value_it, _chunk_offset};
@@ -114,6 +134,8 @@ class ValueSegmentIterable : public PointAccessibleSegmentIterable<ValueSegmentI
     explicit NonNullPointAccessIterator(const ValueVector& values, const ChunkOffsetsIterator& chunk_offsets_it)
         : BasePointAccessSegmentIterator<NonNullPointAccessIterator, SegmentIteratorValue<T>>{chunk_offsets_it},
           _values{values} {}
+
+    static constexpr bool IsVectorizable = false;  // tbb::concurrent_vector does not use contiguous storage
 
    private:
     friend class boost::iterator_core_access;  // grants the boost::iterator_facade access to the private interface
@@ -139,6 +161,8 @@ class ValueSegmentIterable : public PointAccessibleSegmentIterable<ValueSegmentI
         : BasePointAccessSegmentIterator<PointAccessIterator, SegmentIteratorValue<T>>{chunk_offsets_it},
           _values{values},
           _null_values{null_values} {}
+
+    static constexpr bool IsVectorizable = false;  // tbb::concurrent_vector does not use contiguous storage
 
    private:
     friend class boost::iterator_core_access;  // grants the boost::iterator_facade access to the private interface

@@ -65,6 +65,8 @@ class FrameOfReferenceIterable : public PointAccessibleSegmentIterable<FrameOfRe
           _index_within_frame{0u},
           _chunk_offset{0u} {}
 
+    static constexpr bool IsVectorizable = false;  // increment is not trivial
+
     // End iterator
     explicit Iterator(OffsetValueIteratorT offset_value_it) : Iterator{{}, offset_value_it, {}} {}
 
@@ -83,7 +85,16 @@ class FrameOfReferenceIterable : public PointAccessibleSegmentIterable<FrameOfRe
       }
     }
 
+    void advance(std::ptrdiff_t n) {
+      // For now, the lazy approach
+      for (std::ptrdiff_t i = 0; i < n; ++i) {
+        increment();
+      }
+    }
+
     bool equal(const Iterator& other) const { return _offset_value_it == other._offset_value_it; }
+
+    std::ptrdiff_t distance_to(const Iterator& other) const { return other._offset_value_it - _offset_value_it; }
 
     SegmentIteratorValue<T> dereference() const {
       const auto value = static_cast<T>(*_offset_value_it) + *_block_minimum_it;
@@ -114,6 +125,8 @@ class FrameOfReferenceIterable : public PointAccessibleSegmentIterable<FrameOfRe
     // End Iterator
     explicit PointAccessIterator(ChunkOffsetsIterator chunk_offsets_it)
         : PointAccessIterator{nullptr, nullptr, nullptr, chunk_offsets_it} {}
+
+    static constexpr bool IsVectorizable = false;  // increment is not trivial
 
    private:
     friend class boost::iterator_core_access;  // grants the boost::iterator_facade access to the private interface
