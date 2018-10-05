@@ -42,6 +42,8 @@ class AnySegmentIteratorWrapper : public AnySegmentIteratorWrapperBase<T> {
  public:
   explicit AnySegmentIteratorWrapper(const Iterator& iterator) : _iterator{iterator} {}
 
+  static constexpr bool IsVectorizable = false;  // Because of the virtual method calls
+
   void increment() final { ++_iterator; }
 
   void advance(std::ptrdiff_t n) final { _iterator += n; }
@@ -113,6 +115,8 @@ class AnySegmentIterator : public BaseSegmentIterator<AnySegmentIterator<T>, Seg
 
  public:
   AnySegmentIterator(const AnySegmentIterator& other) : _wrapper{other._wrapper->clone()} {}
+
+  static constexpr bool IsVectorizable = false;  // Because of the virtual method calls
 
  private:
   friend class boost::iterator_core_access;  // grants the boost::iterator_facade access to the private interface
