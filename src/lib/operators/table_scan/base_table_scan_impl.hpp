@@ -99,7 +99,7 @@ class BaseTableScanImpl {
         auto buffer_index = 0l;
         while (match_positions) {
           if (match_positions & 1) {
-            matches_out.emplace_back(RowID{chunk_id, buffer[buffer_index] - 1});
+            matches_out.emplace_back(RowID{chunk_id, buffer[buffer_index]});
           }
           match_positions >>= 1;
           buffer_index++;
