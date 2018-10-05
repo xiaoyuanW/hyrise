@@ -53,8 +53,9 @@ void SingleColumnTableScanImpl::handle_segment(const BaseValueSegment& base_segm
 
     left_segment_iterable.with_iterators(mapped_chunk_offsets.get(), [&](auto left_it, auto left_end) {
       with_comparator(_predicate_condition, [&](auto comparator) {
-        _unary_scan_with_value(comparator, left_it, left_end, type_cast<ColumnDataType>(_right_value), chunk_id,
-                               matches_out);
+        // TODO(anyone): Check if there are cases where we don't need to check for NULL
+        _unary_scan_with_value<true>(comparator, left_it, left_end, type_cast<ColumnDataType>(_right_value), chunk_id,
+                                     matches_out);
       });
     });
   });
@@ -77,7 +78,9 @@ void SingleColumnTableScanImpl::handle_segment(const BaseEncodedSegment& base_se
 
       left_segment_iterable.with_iterators(mapped_chunk_offsets.get(), [&](auto left_it, auto left_end) {
         with_comparator(_predicate_condition, [&](auto comparator) {
-          _unary_scan_with_value(comparator, left_it, left_end, type_cast<Type>(_right_value), chunk_id, matches_out);
+          // TODO(anyone): Check if there are cases where we don't need to check for NULL
+          _unary_scan_with_value<true>(comparator, left_it, left_end, type_cast<Type>(_right_value), chunk_id,
+                                       matches_out);
         });
       });
     });
@@ -137,7 +140,15 @@ void SingleColumnTableScanImpl::handle_segment(const BaseDictionarySegment& base
 
   left_iterable.with_iterators(mapped_chunk_offsets.get(), [&](auto left_it, auto left_end) {
     this->_with_operator_for_dict_segment_scan(_predicate_condition, [&](auto comparator) {
-      this->_unary_scan_with_value(comparator, left_it, left_end, search_value_id, chunk_id, matches_out);
+      if (_predicate_condition == PredicateCondition::GreaterThan ||
+          _predicate_condition == PredicateCondition::GreaterThanEquals) {
+        // For GreaterThan(Equals), INVALID_VALUE_ID would compare greater than the search_value_id, even though the
+        // value is NULL. Thus, we need to check for is_null as well.
+        this->_unary_scan_with_value<true>(comparator, left_it, left_end, search_value_id, chunk_id, matches_out);
+      } else {
+        // No need for NULL checks here, because INVALID_VALUE_ID is always greater.
+        this->_unary_scan_with_value<false>(comparator, left_it, left_end, search_value_id, chunk_id, matches_out);
+      }
     });
   });
 }
