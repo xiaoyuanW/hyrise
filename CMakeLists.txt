@@ -86,8 +86,18 @@ find_package(Curses REQUIRED)
 find_package(Sqlite3 REQUIRED)
 find_package(PQ REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system thread)
-set(PAPI_PREFIX "${CMAKE_SOURCE_DIR}/../papi")
-find_package(PAPI REQUIRED)
+
+# Provide PAPI_SUPPORT option and automatically enable PAPI
+option(PAPI_SUPPORT "Build with PAPI" OFF)
+if (${PAPI_SUPPORT})
+    set(PAPI_PREFIX "${CMAKE_SOURCE_DIR}/../papi")
+    find_package(PAPI REQUIRED)
+    add_definitions(-DPAPI_SUPPORT=1)
+    MESSAGE(STATUS "Building with PAPI")
+else()
+    add_definitions(-DPAPI_SUPPORT=0)
+    MESSAGE(STATUS "Building without PAPI")
+endif()
 
 add_definitions(-DBOOST_THREAD_VERSION=5)
 

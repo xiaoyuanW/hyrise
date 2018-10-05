@@ -2,7 +2,9 @@
 
 #include <json.hpp>
 
+#if PAPI_SUPPORT
 #include <papi.h>
+#endif
 
 #include <iostream>
 
@@ -239,9 +241,11 @@ int main(int argc, char* argv[]) {
   std::cerr << "Initializing JIT repository" << std::endl;
   opossum::JitRepository::get();
 
+#if PAPI_SUPPORT
   std::cerr << "Initializing PAPI" << std::endl;
   if (PAPI_library_init(PAPI_VER_CURRENT) < 0) throw std::logic_error("PAPI error");
   std::cerr << "  supports " << PAPI_num_counters() << " event counters" << std::endl;
+#endif
   nlohmann::json file_output{{"results", nlohmann::json::array()}};
 
   const size_t num_experiments = config["experiments"].size();
