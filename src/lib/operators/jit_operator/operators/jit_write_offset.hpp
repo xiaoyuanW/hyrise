@@ -19,7 +19,7 @@ struct JitOutputReferenceColumn {
  */
 class JitWriteOffset : public AbstractJittableSink {
  public:
-  JitWriteOffset(float selectivity = 1.f)
+  explicit JitWriteOffset(float selectivity = 1.f)
       : AbstractJittableSink(JitOperatorType::WriteOffset), _selectivity(selectivity) {}
 
   std::string description() const final;
