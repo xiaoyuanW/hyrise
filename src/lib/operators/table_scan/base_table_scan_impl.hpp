@@ -52,7 +52,7 @@ class BaseTableScanImpl {
   // with_comparator.
   template <bool LeftIsNullable, typename BinaryFunctor, typename LeftIterator, typename RightValue>
   void __attribute__((noinline))
-  _unary_scan_with_value(const BinaryFunctor& func, LeftIterator left_it, LeftIterator left_end, RightValue right_value,
+  _unary_scan_with_value(const BinaryFunctor& func, LeftIterator left_it, LeftIterator left_end, const RightValue right_value,
                          const ChunkID chunk_id, PosList& matches_out) {
     // This entire if-block is an optimization. If you are looking at _unary_scan_with_value for the first time,
     // continue below. The method works even if this block is removed. Because it has no benefit for iterators that
@@ -65,41 +65,47 @@ class BaseTableScanImpl {
       // block, iterate over the input data and write the chunk offsets of matching rows into the buffer. This can be
       // parallelized using auto-vectorization/SIMD. After each block, collect the matches and add them to the result
       // vector.
-      constexpr long BUFFER_SIZE = 64 / sizeof(ValueID);  // Assuming a maximum SIMD register size of 512 bit
+      constexpr long SIMD_SIZE = 64;  // Assuming a maximum SIMD register size of 512 bit
+      constexpr long BUFFER_SIZE = SIMD_SIZE / sizeof(ValueID);
 
       while (left_end - left_it > BUFFER_SIZE) {
-        std::array<ChunkOffset, BUFFER_SIZE> buffer;
-        size_t match_positions = 0;
-        static_assert(sizeof(match_positions) >= BUFFER_SIZE / 8, "Can't store enough flags in match_positions");
+        alignas(SIMD_SIZE) std::array<ChunkOffset, BUFFER_SIZE> buffer;
+
+        // {unsigned int dummy; __rdtscp(&dummy);}
 
         // This promises to the compiler that there are no data dependencies within the loop. If you run into any issues
         // with the optimization, make sure that you only have only set IsVectorizable on iterators that use linear
         // storage and where the access methods do not change any state.
         //
         // Also, when using clang, this causes an error to be thrown if the loop could not be vectorized. This, however
-        // does not guarantee that every instruction in the loop is using SIMD. It is possible that the loop is
-        // vectorized only partially. To demonstrate this, replace the bit conditions | and & with || and && in the
-        // calculation of `matches`.
-        #pragma clang loop vectorize(assume_safety)
+        // does not guarantee that every instruction in the loop is using SIMD.
         #pragma GCC ivdep
+        #pragma clang loop vectorize(assume_safety)
         // clang-format on
         for (auto i = 0l; i < BUFFER_SIZE; ++i) {
-          const auto left = *left_it;
+          const auto& left = *left_it;
 
           const auto matches = (!LeftIsNullable | !left.is_null()) & func(left.value(), right_value);
-          buffer[i] = left.chunk_offset();
-          match_positions |= matches << i;
+          buffer[i] = matches * (left.chunk_offset() + 1);
 
           ++left_it;
         }
 
+        // {unsigned int dummy; __rdtscp(&dummy);}
         // We have filled `buffer` with the offsets of the matching rows above. Now iterate over it sequentially and
         // add the matches to `matches_out`.
+
+        size_t match_positions = 0;
+        static_assert(sizeof(match_positions) >= BUFFER_SIZE / 8, "Can't store enough flags in match_positions");
+
+        for (auto i = 0l; i < BUFFER_SIZE; ++i) {
+          match_positions |= static_cast<bool>(buffer[i]) << i;
+        }
 
         auto buffer_index = 0l;
         while (match_positions) {
           if (match_positions & 1) {
-            matches_out.emplace_back(RowID{chunk_id, buffer[buffer_index]});
+            matches_out.emplace_back(RowID{chunk_id, buffer[buffer_index] - 1});
           }
           match_positions >>= 1;
           buffer_index++;
