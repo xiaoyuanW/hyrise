@@ -89,7 +89,7 @@ find_package(Boost REQUIRED COMPONENTS system thread)
 
 # Provide PAPI_SUPPORT option and automatically enable PAPI
 option(PAPI_SUPPORT "Build with PAPI" OFF)
-if (${PAPI_SUPPORT})
+if(${PAPI_SUPPORT})
     set(PAPI_PREFIX "${CMAKE_SOURCE_DIR}/../papi")
     find_package(PAPI REQUIRED)
     add_definitions(-DPAPI_SUPPORT=1)
@@ -97,6 +97,21 @@ if (${PAPI_SUPPORT})
 else()
     add_definitions(-DPAPI_SUPPORT=0)
     MESSAGE(STATUS "Building without PAPI")
+endif()
+
+OPTION(JIT_LAZY_LOAD "Option description" ON)
+if(JIT_LAZY_LOAD)
+    add_definitions(-DJIT_LAZY_LOAD=1)
+endif()
+
+OPTION(JIT_OLD_LAZY_LOAD "Option description" OFF)
+if(JIT_OLD_LAZY_LOAD)
+    add_definitions(-DJIT_OLD_LAZY_LOAD=1)
+endif()
+
+OPTION(JIT_LOGICAL_PRUNING "Option description" ON)
+if(JIT_LOGICAL_PRUNING)
+    add_definitions(-DJIT_LOGICAL_PRUNING=1)
 endif()
 
 add_definitions(-DBOOST_THREAD_VERSION=5)
