@@ -64,11 +64,11 @@ class BaseTableScanImpl {
       // be parallelized using auto-vectorization/SIMD. After each block, collect the matches and add them to the
       // result vector.
       constexpr long BUFFER_SIZE = 64 / sizeof(ValueID);  // Assuming a maximum SIMD register size of 512 bit
-      std::array<ChunkOffset, BUFFER_SIZE> buffer;
-      buffer.fill(ChunkOffset{0});
 
       while (left_end - left_it > BUFFER_SIZE) {
-        bool any_matches = false;
+        std::array<ChunkOffset, BUFFER_SIZE> buffer;
+        size_t any_matches = 0;
+        static_assert(sizeof(any_matches) >= BUFFER_SIZE / 8, "Can't store enough flags in any_matches");
 
         // This promises to the compiler that there are no data dependencies within the loop. If you run into any
         // issues with the optimization, make sure that you only have only set IsVectorizable on iterators that use
@@ -90,7 +90,7 @@ class BaseTableScanImpl {
           const auto matches = (!LeftIsNullable | !left.is_null()) & func(left.value(), right_value);
           buffer[i] = matches * (left.chunk_offset() + 1);
 
-          any_matches = matches;
+          any_matches |= matches << i;
 
           ++left_it;
         }
