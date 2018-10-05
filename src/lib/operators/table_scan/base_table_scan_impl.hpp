@@ -4,6 +4,8 @@
 #include <functional>
 #include <memory>
 
+#include <x86intrin.h> // TODO remove
+
 #include "storage/segment_iterables.hpp"
 #include "types.hpp"
 #include "utils/assert.hpp"
@@ -62,36 +64,45 @@ class BaseTableScanImpl {
       // be parallelized using auto-vectorization/SIMD. After each block, collect the matches and add them to the
       // result vector.
       constexpr long BUFFER_SIZE = 64 / sizeof(ValueID);  // Assuming a maximum SIMD register size of 512 bit
+      std::array<ChunkOffset, BUFFER_SIZE> buffer;
+      buffer.fill(ChunkOffset{0});
 
       while (left_end - left_it > BUFFER_SIZE) {
-        std::array<ChunkOffset, BUFFER_SIZE> buffer;
-        size_t matches = 0;
-        static_assert(sizeof(matches) >= BUFFER_SIZE / 8, "Can't fit all bools into `matches`");  // clang-format off
+        bool any_matches = false;
 
-        // When using clang, this causes an error to be thrown if the loop could not be vectorized. Also, it promises
-        // to the compiler that there are no data dependencies within the loop. If you run into any issues with the
-        // vectorization code, make sure that you only have only set IsVectorizable on iterators that are safe.
+        // This promises to the compiler that there are no data dependencies within the loop. If you run into any
+        // issues with the optimization, make sure that you only have only set IsVectorizable on iterators that use
+        // linear storage and where the access methods do not change any state.
+        // Also, when using clang, this causes an error to be thrown if the loop could not be vectorized. This, however
+        // does not guarantee that every instruction in the loop is using SIMD. It is possible that the loop is
+        // vectorized only partially. To demonstrate this, replace the bit conditions | and & with || and && in
+        // the calculation of `matches`. 
         #pragma clang loop vectorize(assume_safety)
         #pragma GCC ivdep
         // clang-format on
         for (auto i = 0l; i < BUFFER_SIZE; ++i) {
           const auto left = *left_it;
 
-          if ((!LeftIsNullable || !left.is_null()) && func(left.value(), right_value)) {
-            buffer[i] = left.chunk_offset();
-            matches |= 1 << i;
-          }
+          // Conditionally write to buffer without using a branch. We multiply the bool `matches` with the ChunkOffset
+          // of a potential match, meaning that the offset only remains if `matches == true`. To cover the case where
+          // the ChunkOffset is 0, we increment all offsets by 1. This is possible because the last ChunkOffset is
+          // INVALID_CHUNK_OFFSET, which, in turn, gets wrapped around to 0.
+          const auto matches = (!LeftIsNullable | !left.is_null()) & func(left.value(), right_value);
+          buffer[i] = matches * (left.chunk_offset() + 1);
+
+          any_matches = matches;
 
           ++left_it;
         }
 
-        // We have filled buffer with the offsets of the matching rows above. Now iterate over it sequentially and add
-        // the matches to `matches_out`.
-        if (matches) {
-          for (auto i = 0l; i < BUFFER_SIZE; ++i) {
-            if (matches & 1 << i) {
-              matches_out.emplace_back(RowID{chunk_id, buffer[i]});
-            }
+        if (!any_matches) continue;
+
+        // We have filled `buffer` with the offsets of the matching rows above. Now iterate over it sequentially and
+        // add the matches to `matches_out`.
+
+        for (auto buffer_index = 0l; buffer_index < BUFFER_SIZE; ++buffer_index) {
+          if (buffer[buffer_index]) {
+            matches_out.emplace_back(RowID{chunk_id, buffer[buffer_index] - 1});
           }
         }
       }
