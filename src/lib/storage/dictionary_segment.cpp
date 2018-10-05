@@ -112,7 +112,7 @@ std::shared_ptr<const BaseCompressedVector> DictionarySegment<T>::attribute_vect
 }
 
 template <typename T>
-const ValueID DictionarySegment<T>::null_value_id() const {
+ValueID DictionarySegment<T>::null_value_id() const {
   return _null_value_id;
 }
 

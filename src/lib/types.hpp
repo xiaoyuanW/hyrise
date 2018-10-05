@@ -29,6 +29,10 @@
  * therefore need to be trivially copyable. That's currently not possible with
  * the strong typedef (as far as I know).
  *
+ * Warning: For types that are stored en mass in a vector, this might hinder
+ * vectorization efforts. For that reason, ValueID is NOT a strong typedef
+ * (anymore).
+ *
  * TODO(anyone): Also, strongly typing ChunkOffset causes a lot of errors in
  * the group key and adaptive radix tree implementations. Unfortunately, I
  * wasn’t able to properly resolve these issues because I am not familiar with
@@ -37,7 +41,7 @@
 
 STRONG_TYPEDEF(uint32_t, ChunkID);
 STRONG_TYPEDEF(uint16_t, ColumnID);
-STRONG_TYPEDEF(uint32_t, ValueID);  // Cannot be larger than ChunkOffset
+using ValueID = uint32_t;  // Cannot be larger than ChunkOffset
 STRONG_TYPEDEF(uint32_t, NodeID);
 STRONG_TYPEDEF(uint32_t, CpuID);
 STRONG_TYPEDEF(uint16_t, ValuePlaceholderID);
@@ -150,9 +154,9 @@ constexpr NodeID CURRENT_NODE_ID{std::numeric_limits<NodeID::base_type>::max() -
 const RowID NULL_ROW_ID = RowID{INVALID_CHUNK_ID, INVALID_CHUNK_OFFSET};  // TODO(anyone): Couldn’t use constexpr here
 
 // ... in DictionarySegments
-constexpr ValueID NULL_VALUE_ID{std::numeric_limits<ValueID::base_type>::max()};
+constexpr ValueID NULL_VALUE_ID{std::numeric_limits<ValueID>::max()};
 
-constexpr ValueID INVALID_VALUE_ID{std::numeric_limits<ValueID::base_type>::max()};
+constexpr ValueID INVALID_VALUE_ID{std::numeric_limits<ValueID>::max()};
 
 // The Scheduler currently supports just these 3 priorities, subject to change.
 enum class SchedulePriority {
