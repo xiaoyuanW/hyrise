@@ -163,15 +163,45 @@ void run() {
   opossum::Global::get().jit_evaluate = false;
 }
 
+nlohmann::json generate_input_different_selectivity(const bool use_jit) {
+  nlohmann::json globals{{"scale_factor", 10}, {"use_other_tables", true}, {"use_tpch_tables", false}, {"dictionary_compress", false}};
+  nlohmann::json queries;
+  nlohmann::json experiments = nlohmann::json::array();
+  const int repetitions = 50;
+  const std::string table_name = "TABLE_SCAN";
+  const std::vector<std::string> column_names{"A", "B", "C", "D", "E", "F"};
+  for (size_t filter_value = 0; filter_value <= 10; ++filter_value) {
+    for (size_t no_columns = 1; no_columns <= column_names.size(); ++no_columns) {
+      std::string sql = "SELECT ID FROM TABLE_SCAN WHERE";
+      for (size_t index = 0; index < no_columns; ++index) {
+        if (index > 0) sql += " AND";
+        sql += " " + column_names[index] + " >= " + std::to_string(filter_value);
+      }
+      sql += ";";
+      std::string query_id = table_name + "_FILTER_VAL_" + std::to_string(filter_value) + "_NO_COL_" + std::to_string(no_columns);
+      nlohmann::json query{{"query", sql}, {"tables", nlohmann::json::array()}};
+      query["tables"].push_back(table_name);
+      queries[query_id] = query;
+      experiments.push_back({{"engine", use_jit ? "jit" : "opossum"}, {"repetitions", repetitions}, {"task", "run"}, {"query_id", query_id}});
+    }
+  }
+  return {{"globals", globals}, {"queries", queries}, {"experiments", experiments}};
+}
+
 int main(int argc, char* argv[]) {
   std::cerr << "Starting the JIT benchmarking suite" << std::endl;
 
   const std::string output_file_name = (argc <= 1) ? "output.json" : argv[1];
   const std::string input_file_name = (argc <= 2) ? "input.json" : argv[2];
 
-  std::ifstream input_file{input_file_name};
   nlohmann::json config;
-  input_file >> config;
+  if (argc <= 3) {
+    std::ifstream input_file{input_file_name};
+    input_file >> config;
+  } else {
+    bool no_jit = argc >= 5 && (std::string(argv[4]) == "opossum");
+    config = generate_input_different_selectivity(!no_jit);
+  }
   opossum::JitEvaluationHelper::get().queries() = config["queries"];
   opossum::JitEvaluationHelper::get().globals() = config["globals"];
 
