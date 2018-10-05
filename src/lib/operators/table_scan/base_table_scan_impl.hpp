@@ -65,11 +65,14 @@ class BaseTableScanImpl {
       // block, iterate over the input data and write the chunk offsets of matching rows into the buffer. This can be
       // parallelized using auto-vectorization/SIMD. After each block, collect the matches and add them to the result
       // vector.
-      constexpr long SIMD_SIZE = 64;  // Assuming a maximum SIMD register size of 512 bit
+      constexpr long SIMD_SIZE = 32;  // Assuming a maximum SIMD register size of 256 bit
       constexpr long BUFFER_SIZE = SIMD_SIZE / sizeof(ValueID);
 
       while (left_end - left_it > BUFFER_SIZE) {
-        alignas(SIMD_SIZE) std::array<ChunkOffset, BUFFER_SIZE> buffer;
+        size_t match_positions = 0;
+        static_assert(sizeof(match_positions) >= BUFFER_SIZE / 8, "Can't store enough flags in match_positions");
+        alignas(SIMD_SIZE) ChunkOffset all_offsets[SIMD_SIZE / sizeof(ChunkOffset)];
+        alignas(SIMD_SIZE) ChunkOffset match_offsets[SIMD_SIZE / sizeof(ChunkOffset)];
 
         // {unsigned int dummy; __rdtscp(&dummy);}
 
@@ -85,31 +88,27 @@ class BaseTableScanImpl {
         for (auto i = 0l; i < BUFFER_SIZE; ++i) {
           const auto& left = *left_it;
 
+          all_offsets[i] = left.chunk_offset();
+
           const auto matches = (!LeftIsNullable | !left.is_null()) & func(left.value(), right_value);
-          buffer[i] = matches * (left.chunk_offset() + 1);
+          match_positions |= matches << i;
 
           ++left_it;
         }
 
-        // {unsigned int dummy; __rdtscp(&dummy);}
-        // We have filled `buffer` with the offsets of the matching rows above. Now iterate over it sequentially and
-        // add the matches to `matches_out`.
+        if (!match_positions) continue;
 
-        size_t match_positions = 0;
-        static_assert(sizeof(match_positions) >= BUFFER_SIZE / 8, "Can't store enough flags in match_positions");
-
-        for (auto i = 0l; i < BUFFER_SIZE; ++i) {
-          match_positions |= static_cast<bool>(buffer[i]) << i;
-        }
-
-        auto buffer_index = 0l;
-        while (match_positions) {
-          if (match_positions & 1) {
-            matches_out.emplace_back(RowID{chunk_id, buffer[buffer_index] - 1});
+#ifdef __AVX512VL__
+        _mm256_mask_compress_epi32(*(__m256i*)&all_offsets, match_positions, *(__m256i*)&match_offsets);
+        const auto num_matches = __builtin_popcount(match_positions);
+        for (auto i = 0; i < num_matches; ++i) matches_out.emplace_back(RowID{chunk_id, match_offsets[i]});
+#else
+        for (auto i = 0; i < BUFFER_SIZE; ++i) {
+          if (match_positions & 1 << i) {
+            matches_out.emplace_back(RowID{chunk_id, match_offsets[i]});
           }
-          match_positions >>= 1;
-          buffer_index++;
         }
+#endif
       }
     }
 
