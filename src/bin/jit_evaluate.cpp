@@ -166,7 +166,8 @@ void run() {
 }
 
 nlohmann::json generate_input_different_selectivity(const bool use_jit) {
-  nlohmann::json globals{{"scale_factor", 10}, {"use_other_tables", true}, {"use_tpch_tables", false}, {"dictionary_compress", false}};
+  nlohmann::json globals{
+      {"scale_factor", 10}, {"use_other_tables", true}, {"use_tpch_tables", false}, {"dictionary_compress", false}};
   nlohmann::json queries;
   nlohmann::json experiments = nlohmann::json::array();
   const int repetitions = 50;
@@ -180,11 +181,15 @@ nlohmann::json generate_input_different_selectivity(const bool use_jit) {
         sql += " " + column_names[index] + " >= " + std::to_string(filter_value);
       }
       sql += ";";
-      std::string query_id = table_name + "_FILTER_VAL_" + std::to_string(filter_value) + "_NO_COL_" + std::to_string(no_columns);
+      std::string query_id =
+          table_name + "_FILTER_VAL_" + std::to_string(filter_value) + "_NO_COL_" + std::to_string(no_columns);
       nlohmann::json query{{"query", sql}, {"tables", nlohmann::json::array()}};
       query["tables"].push_back(table_name);
       queries[query_id] = query;
-      experiments.push_back({{"engine", use_jit ? "jit" : "opossum"}, {"repetitions", repetitions}, {"task", "run"}, {"query_id", query_id}});
+      experiments.push_back({{"engine", use_jit ? "jit" : "opossum"},
+                             {"repetitions", repetitions},
+                             {"task", "run"},
+                             {"query_id", query_id}});
     }
   }
   return {{"globals", globals}, {"queries", queries}, {"experiments", experiments}};

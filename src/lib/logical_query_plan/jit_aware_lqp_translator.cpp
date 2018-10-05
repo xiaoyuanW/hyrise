@@ -33,9 +33,9 @@
 #include "operators/jit_operator/operators/jit_write_tuples.hpp"
 #include "operators/operator_scan_predicate.hpp"
 #include "resolve_type.hpp"
+#include "statistics/table_statistics.hpp"
 #include "storage/storage_manager.hpp"
 #include "types.hpp"
-#include "statistics/table_statistics.hpp"
 
 using namespace std::string_literals;  // NOLINT
 

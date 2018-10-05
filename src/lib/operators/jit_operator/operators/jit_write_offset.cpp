@@ -85,8 +85,8 @@ void JitWriteOffset::after_chunk(const std::shared_ptr<const Table>& in_table, T
     out_table.append_chunk(out_segments);
     // check if current chunk is last
     if (context.chunk_id + 1 < in_table->chunk_count()) {
-      _selectivity = static_cast<float>(context.output_pos_list.size()) /
-              in_table->get_chunk(ChunkID(context.chunk_id))->size();
+      _selectivity =
+          static_cast<float>(context.output_pos_list.size()) / in_table->get_chunk(ChunkID(context.chunk_id))->size();
       _create_output_chunk(context, in_table->get_chunk(ChunkID(context.chunk_id + 1))->size());
     }
   }

@@ -211,11 +211,11 @@ void JitReadTuples::execute(JitRuntimeContext& context) const {
 #if JIT_LAZY_LOAD
     _emit(context);
     // We advance all segment iterators, after processing the tuple with the next operators.
-    /*
+#if JIT_OLD_LAZY_LOAD
     for (const auto& input : context.inputs) {
       input->increment();
     }
-    */
+#endif
 #else
     // DTRACE_PROBE1(HYRISE, JIT_OPERATOR_STARTED, std::string("ReadTuple").c_str());
     for (const auto& input : context.inputs) {

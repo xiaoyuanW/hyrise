@@ -18,7 +18,12 @@ class JitExpression;
 class BaseJitSegmentReader {
  public:
   virtual ~BaseJitSegmentReader() = default;
+#if JIT_OLD_LAZY_LOAD
+  virtual void increment() = 0;
+  virtual void read_value(JitRuntimeContext& context) const = 0;
+#else
   virtual void read_value(JitRuntimeContext& context) = 0;
+#endif
 };
 
 // data_type and tuple_value._data_type are different for value id columns as data_type describes the actual type of the
@@ -84,14 +89,19 @@ class JitReadTuples : public AbstractJittable {
   class JitSegmentReader : public BaseJitSegmentReader {
    public:
     JitSegmentReader(const Iterator& iterator, const JitTupleValue& tuple_value)
-        : _iterator{iterator}, _tuple_index{tuple_value.tuple_index()}, _chunk_offset{0} {}
+        : _iterator{iterator}, _tuple_index{tuple_value.tuple_index()} {}
 
     // Reads a value from the _iterator into the _tuple_value and increments the _iterator.
+#if JIT_OLD_LAZY_LOAD
+    void increment() final { ++_iterator; }
+    void read_value(JitRuntimeContext& context) const final {
+#else
     void read_value(JitRuntimeContext& context) final {
-#if JIT_LAZY_LOAD
+#if JIT_LAZY_LOAD && !JIT_OLD_LAZY_LOAD
       const size_t current_offset = context.chunk_offset;
       _iterator += current_offset - _chunk_offset;
       _chunk_offset = current_offset;
+#endif
 #endif
       const auto& value = *_iterator;
       // clang-format off
@@ -106,14 +116,15 @@ class JitReadTuples : public AbstractJittable {
       // clang-format on
 #if !JIT_LAZY_LOAD
       ++_iterator;
-      ++_chunk_offset;
 #endif
     }
 
    private:
     Iterator _iterator;
     const size_t _tuple_index;
-    size_t _chunk_offset;
+#if JIT_LAZY_LOAD && !JIT_OLD_LAZY_LOAD
+    size_t _chunk_offset = 0;
+#endif
   };
 
  public:
