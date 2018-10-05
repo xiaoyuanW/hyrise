@@ -71,7 +71,7 @@ class BaseTableScanImpl {
       while (left_end - left_it > BUFFER_SIZE) {
         size_t match_positions = 0;
         static_assert(sizeof(match_positions) >= BUFFER_SIZE / 8, "Can't store enough flags in match_positions");
-        alignas(SIMD_SIZE) ChunkOffset all_offsets[SIMD_SIZE / sizeof(ChunkOffset)];
+        alignas(SIMD_SIZE) std::array<ChunkOffset, SIMD_SIZE / sizeof(ChunkOffset)> all_offsets;
 
         // {unsigned int dummy; __rdtscp(&dummy);}
 
@@ -100,7 +100,7 @@ class BaseTableScanImpl {
 #ifdef __AVX512VL__
         // Do not use 512-bit registers for now because they lead to downclocking (TODO Link). Clang does not use them
         // yet either.
-        alignas(SIMD_SIZE) ChunkOffset matching_offsets[SIMD_SIZE / sizeof(ChunkOffset)];
+        alignas(SIMD_SIZE) std::array<ChunkOffset, SIMD_SIZE / sizeof(ChunkOffset)> matching_offsets;
         matching_offsets.fill(ChunkOffset{0});
         _mm256_mask_compress_epi32(*(__m256i*)&all_offsets, match_positions, *(__m256i*)&matching_offsets);
         const auto num_matches = __builtin_popcount(match_positions);
