@@ -66,12 +66,13 @@ class BaseTableScanImpl {
       while (left_end - left_it > BUFFER_SIZE) {
         std::array<ChunkOffset, BUFFER_SIZE> buffer;
         size_t matches = 0;
-        static_assert(sizeof(matches) >= BUFFER_SIZE * 8, "Can't fit all bools into `matches`");  // clang-format off
+        static_assert(sizeof(matches) >= BUFFER_SIZE / 8, "Can't fit all bools into `matches`");  // clang-format off
 
-        // When using clang, this causes an error to be thrown if the loop could not be vectorized. Also, it guarantees
-        // that there are no data dependencies within the loop. If you run into any issues with the vectorization code,
-        // make sure that you only have only set IsVectorizable on iterators that are safe.
+        // When using clang, this causes an error to be thrown if the loop could not be vectorized. Also, it promises
+        // to the compiler that there are no data dependencies within the loop. If you run into any issues with the
+        // vectorization code, make sure that you only have only set IsVectorizable on iterators that are safe.
         #pragma clang loop vectorize(assume_safety)
+        #pragma GCC ivdep
         // clang-format on
         for (auto i = 0l; i < BUFFER_SIZE; ++i) {
           const auto left = *left_it;
