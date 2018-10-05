@@ -32,6 +32,10 @@ void GetTable::set_excluded_chunk_ids(const std::vector<ChunkID>& excluded_chunk
   _excluded_chunk_ids = excluded_chunk_ids;
 }
 
+void GetTable::set_excluded_column_ids(const std::set<ColumnID>& excluded_column_ids) {
+  _excluded_column_ids = excluded_column_ids;
+}
+
 std::shared_ptr<AbstractOperator> GetTable::_on_deep_copy(
     const std::shared_ptr<AbstractOperator>& copied_input_left,
     const std::shared_ptr<AbstractOperator>& copied_input_right) const {
@@ -44,7 +48,8 @@ void GetTable::_on_set_parameters(const std::unordered_map<ParameterID, AllTypeV
 
 std::shared_ptr<const Table> GetTable::_on_execute() {
   auto original_table = StorageManager::get().get_table(_name);
-  if (_excluded_chunk_ids.empty()) {
+
+  if (_excluded_chunk_ids.empty() && _excluded_column_ids.empty()) {
     return original_table;
   }
 
@@ -54,9 +59,22 @@ std::shared_ptr<const Table> GetTable::_on_execute() {
   const auto excluded_chunks_set =
       std::unordered_set<ChunkID>(_excluded_chunk_ids.cbegin(), _excluded_chunk_ids.cend());
   for (ChunkID chunk_id{0}; chunk_id < original_table->chunk_count(); ++chunk_id) {
-    if (excluded_chunks_set.find(chunk_id) == excluded_chunks_set.end()) {
-      pruned_table->append_chunk(original_table->get_chunk(chunk_id));
+    if (excluded_chunks_set.find(chunk_id) != excluded_chunks_set.end()) continue;
+
+    const auto input_chunk = original_table->get_chunk(chunk_id);
+
+    Segments output_segments{};
+    output_segments.reserve(input_chunk->column_count() - _excluded_column_ids.size());
+
+    for (ColumnID column_id{0}; column_id < input_chunk->column_count(); ++column_id) {
+      if (_excluded_column_ids.find(column_id) != _excluded_column_ids.end()) continue;
+
+      output_segments.emplace_back(input_chunk->get_segment(column_id));
     }
+
+    const auto output_chunk = std::make_shared<Chunk>(output_segments, input_chunk->mvcc_data(), input_chunk->get_allocator(), input_chunk->access_counter());
+
+    pruned_table->append_chunk(output_chunk);
   }
 
   return pruned_table;

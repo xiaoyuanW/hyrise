@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -20,6 +21,7 @@ class GetTable : public AbstractReadOnlyOperator {
   const std::string& table_name() const;
 
   void set_excluded_chunk_ids(const std::vector<ChunkID>& excluded_chunk_ids);
+  void set_excluded_column_ids(const std::set<ColumnID>& excluded_column_ids);
 
   std::shared_ptr<AbstractOperator> _on_deep_copy(
       const std::shared_ptr<AbstractOperator>& copied_input_left,
@@ -32,5 +34,6 @@ class GetTable : public AbstractReadOnlyOperator {
   // name of the table to retrieve
   const std::string _name;
   std::vector<ChunkID> _excluded_chunk_ids;
+  std::set<ColumnID> _excluded_column_ids;
 };
 }  // namespace opossum

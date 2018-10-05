@@ -19,6 +19,15 @@ void StoredTableNode::set_excluded_chunk_ids(const std::vector<ChunkID>& chunks)
 
 const std::vector<ChunkID>& StoredTableNode::excluded_chunk_ids() const { return _excluded_chunk_ids; }
 
+void StoredTableNode::set_excluded_column_ids(const std::set<ColumnID>& excluded_column_ids) {
+  _expressions.reset();
+  _excluded_column_ids = excluded_column_ids;
+}
+
+const std::set<ColumnID>&  StoredTableNode::excluded_column_ids() const {
+  return _excluded_column_ids;
+}
+
 std::string StoredTableNode::description() const { return "[StoredTable] Name: '" + table_name + "'"; }
 
 const std::vector<std::shared_ptr<AbstractExpression>>& StoredTableNode::column_expressions() const {
@@ -27,10 +36,13 @@ const std::vector<std::shared_ptr<AbstractExpression>>& StoredTableNode::column_
   if (!_expressions) {
     const auto table = StorageManager::get().get_table(table_name);
 
-    _expressions.emplace(table->column_count());
+    _expressions.emplace();
+    _expressions->reserve(table->column_count() - _excluded_column_ids.size());
     for (auto column_id = ColumnID{0}; column_id < table->column_count(); ++column_id) {
-      (*_expressions)[column_id] =
-          std::make_shared<LQPColumnExpression>(LQPColumnReference{shared_from_this(), column_id});
+      if (_excluded_column_ids.count(column_id) > 0) continue;
+
+      (*_expressions).emplace_back(
+          std::make_shared<LQPColumnExpression>(LQPColumnReference{shared_from_this(), column_id}));
     }
   }
 

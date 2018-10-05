@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optional>
+#include <set>
 #include <vector>
 
 #include "abstract_lqp_node.hpp"
@@ -20,6 +21,9 @@ class StoredTableNode : public EnableMakeForLQPNode<StoredTableNode>, public Abs
   void set_excluded_chunk_ids(const std::vector<ChunkID>& chunks);
   const std::vector<ChunkID>& excluded_chunk_ids() const;
 
+  void set_excluded_column_ids(const std::set<ColumnID>& excluded_column_ids);
+  const std::set<ColumnID>& excluded_column_ids() const;
+
   std::string description() const override;
   const std::vector<std::shared_ptr<AbstractExpression>>& column_expressions() const override;
   std::shared_ptr<TableStatistics> derive_statistics_from(
@@ -35,6 +39,7 @@ class StoredTableNode : public EnableMakeForLQPNode<StoredTableNode>, public Abs
  private:
   mutable std::optional<std::vector<std::shared_ptr<AbstractExpression>>> _expressions;
   std::vector<ChunkID> _excluded_chunk_ids;
+  std::set<ColumnID> _excluded_column_ids;
 };
 
 }  // namespace opossum
