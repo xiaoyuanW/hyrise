@@ -60,18 +60,19 @@ class BaseTableScanImpl {
     // std::vector (currently used by FixedSizeByteAlignedVector). Also, the AnySegmentIterator is not vectorizable
     // because it relies on virtual method calls. While the check for `IS_DEBUG` is redudant, it makes people aware of
     // this.
-    if constexpr (!IS_DEBUG && LeftIterator::IsVectorizable) {
+    if constexpr (/*!IS_DEBUG && */LeftIterator::IsVectorizable) {
+      auto matches_out_index = matches_out.size();
       // Concept: Partition the vector into blocks of BUFFER_SIZE entries. The remainder is handled below. For each
       // block, iterate over the input data and write the chunk offsets of matching rows into the buffer. This can be
       // parallelized using auto-vectorization/SIMD. After each block, collect the matches and add them to the result
       // vector.
-      constexpr long SIMD_SIZE = 32;  // Assuming a maximum SIMD register size of 256 bit
+      constexpr long SIMD_SIZE = 64;  // Assuming a SIMD register size of 512 bit
       constexpr long BUFFER_SIZE = SIMD_SIZE / sizeof(ValueID);
 
       while (left_end - left_it > BUFFER_SIZE) {
         size_t match_positions = 0;
         static_assert(sizeof(match_positions) >= BUFFER_SIZE / 8, "Can't store enough flags in match_positions");
-        alignas(SIMD_SIZE) std::array<ChunkOffset, SIMD_SIZE / sizeof(ChunkOffset)> all_offsets;
+        alignas(SIMD_SIZE) std::array<ChunkOffset, SIMD_SIZE / sizeof(ChunkOffset)> offsets;
 
         // {unsigned int dummy; __rdtscp(&dummy);}
 
@@ -87,7 +88,7 @@ class BaseTableScanImpl {
         for (auto i = 0l; i < BUFFER_SIZE; ++i) {
           const auto& left = *left_it;
 
-          all_offsets[i] = left.chunk_offset();
+          offsets[i] = left.chunk_offset();
 
           const auto matches = (!LeftIsNullable | !left.is_null()) & func(left.value(), right_value);
           match_positions |= matches << i;
@@ -97,26 +98,27 @@ class BaseTableScanImpl {
 
         if (!match_positions) continue;
 
+        if (matches_out_index + BUFFER_SIZE >= matches_out.size()) {
+          matches_out.resize((BUFFER_SIZE + matches_out.size()) * 3, RowID{chunk_id, 0});
+        }
+
 #ifdef __AVX512VL__
         // Do not use 512-bit registers for now because they lead to downclocking (TODO Link). Clang does not use them
         // yet either.
-        alignas(SIMD_SIZE) std::array<ChunkOffset, SIMD_SIZE / sizeof(ChunkOffset)> matching_offsets;
-        matching_offsets.fill(ChunkOffset{0});
-        _mm256_mask_compress_epi32(*(__m256i*)&all_offsets, match_positions, *(__m256i*)&matching_offsets);
+        _mm512_maskz_compress_epi32(match_positions, *(__m512i*)&offsets);
         const auto num_matches = __builtin_popcount(match_positions);
         for (auto i = 0; i < num_matches; ++i) {
-          std::cout << "emplace " << matching_offsets[i] << std::endl;
-          matches_out.emplace_back(RowID{chunk_id, matching_offsets[i]});
+          matches_out[matches_out_index++].chunk_offset = offsets[i];
         }
 #else
         for (auto i = 0; i < BUFFER_SIZE; ++i) {
           if (match_positions & 1 << i) {
-            std::cout << "emplace " << all_offsets[i] << std::endl;
-            matches_out.emplace_back(RowID{chunk_id, all_offsets[i]});
+            matches_out[matches_out_index++].chunk_offset = offsets[i];
           }
         }
 #endif
       }
+      matches_out.resize(matches_out_index);
     }
 
     // Do the remainder the easy way. If we did not use the optimization above, left_it was not yet touched, so we
