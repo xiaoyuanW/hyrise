@@ -48,9 +48,7 @@ class AttributeVectorIterable : public PointAccessibleSegmentIterable<AttributeV
         : _null_value_id{null_value_id}, _attribute_it{attribute_it}, _chunk_offset{chunk_offset} {}
 
     // Only FixedSizeByteAligned is vectorizable. Since we can't modify its iterator, we need to compare the type
-    static constexpr bool IsVectorizable =
-        std::is_same_v<ZsIteratorType,
-                       typename std::vector<std::decay_t<decltype(*std::declval<ZsIteratorType>())>>::const_iterator>;
+    static constexpr bool IsVectorizable = !std::is_same_v<ZsIteratorType, SimdBp128Iterator> && !std::is_same_v<decltype(*std::declval<ZsIteratorType>()), uint8_t>;
 
    private:
     friend class boost::iterator_core_access;  // grants the boost::iterator_facade access to the private interface

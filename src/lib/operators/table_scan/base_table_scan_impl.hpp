@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <bitset>  // TODO remove
 #include <functional>
 #include <memory>
 
@@ -70,8 +71,10 @@ class BaseTableScanImpl {
       constexpr long BUFFER_SIZE = SIMD_SIZE / sizeof(ValueID);
 
       while (left_end - left_it > BUFFER_SIZE) {
-        size_t match_positions = 0;
-        static_assert(sizeof(match_positions) >= BUFFER_SIZE / 8, "Can't store enough flags in match_positions");
+        if (matches_out_index + BUFFER_SIZE >= matches_out.size()) {
+          matches_out.resize((BUFFER_SIZE + matches_out.size()) * 3, RowID{chunk_id, 0});
+        }
+
         alignas(SIMD_SIZE) std::array<ChunkOffset, SIMD_SIZE / sizeof(ChunkOffset)> offsets;
 
         // {unsigned int dummy; __rdtscp(&dummy);}
@@ -88,35 +91,38 @@ class BaseTableScanImpl {
         for (auto i = 0l; i < BUFFER_SIZE; ++i) {
           const auto& left = *left_it;
 
-          offsets[i] = left.chunk_offset();
-
           const auto matches = (!LeftIsNullable | !left.is_null()) & func(left.value(), right_value);
-          match_positions |= matches << i;
+          offsets[i] = matches * (left.chunk_offset() + 1);
 
           ++left_it;
         }
 
-        if (!match_positions) continue;
-
-        if (matches_out_index + BUFFER_SIZE >= matches_out.size()) {
-          matches_out.resize((BUFFER_SIZE + matches_out.size()) * 3, RowID{chunk_id, 0});
-        }
+        // {unsigned int dummy; __rdtscp(&dummy);}
 
 #ifdef __AVX512VL__
         // Do not use 512-bit registers for now because they lead to downclocking (TODO Link). Clang does not use them
         // yet either.
-        _mm512_maskz_compress_epi32(match_positions, *(__m512i*)&offsets);
-        const auto num_matches = __builtin_popcount(match_positions);
-        for (auto i = 0; i < num_matches; ++i) {
-          matches_out[matches_out_index++].chunk_offset = offsets[i];
+        const auto mask = _mm512_cmpneq_epu32_mask(*(__m512i*)&offsets, __m512i{});
+        *(__m512i*) &offsets = _mm512_maskz_compress_epi32(mask, *(__m512i*)&offsets);
+
+        // {unsigned int dummy; __rdtscp(&dummy);}
+
+        for (auto i = 0; i < BUFFER_SIZE; ++i) {
+          // std::cout << "SIMD writing offset " << offsets[i] - 1 << std::endl;
+          matches_out[matches_out_index + i].chunk_offset = offsets[i] - 1;
         }
+
+        matches_out_index += __builtin_popcount(mask);
 #else
         for (auto i = 0; i < BUFFER_SIZE; ++i) {
-          if (match_positions & 1 << i) {
-            matches_out[matches_out_index++].chunk_offset = offsets[i];
+          if (offsets[i]) {
+            matches_out[matches_out_index++].chunk_offset = offsets[i] - 1;
           }
         }
 #endif
+
+        // {unsigned int dummy; __rdtscp(&dummy);}
+
       }
       matches_out.resize(matches_out_index);
     }
