@@ -93,17 +93,17 @@ std::map<std::string, std::shared_ptr<opossum::Table>> JitTableGenerator::genera
     add_column<int32_t>(columns_by_chunk, column_definitions, "ID", cardinalities,
                         [&](std::vector<size_t> indices) { return indices[0]; });
     add_column<int32_t>(columns_by_chunk, column_definitions, "A", cardinalities,
-                        [&](std::vector<size_t> indices) { return generator.random_number(0, 10); });
+                        [&](std::vector<size_t> indices) { return generator.random_number(0, 9); });  // 10
     add_column<int32_t>(columns_by_chunk, column_definitions, "B", cardinalities,
-                        [&](std::vector<size_t> indices) { return generator.random_number(0, 10); });
+                        [&](std::vector<size_t> indices) { return generator.random_number(0, 9); });  // 10
     add_column<int32_t>(columns_by_chunk, column_definitions, "C", cardinalities,
-                        [&](std::vector<size_t> indices) { return generator.random_number(0, 10); });
+                        [&](std::vector<size_t> indices) { return generator.random_number(0, 9); });  // 10
     add_column<int32_t>(columns_by_chunk, column_definitions, "D", cardinalities,
-                        [&](std::vector<size_t> indices) { return generator.random_number(0, 10); });
+                        [&](std::vector<size_t> indices) { return generator.random_number(0, 9); });  // 10
     add_column<int32_t>(columns_by_chunk, column_definitions, "E", cardinalities,
-                        [&](std::vector<size_t> indices) { return generator.random_number(0, 10); });
+                        [&](std::vector<size_t> indices) { return generator.random_number(0, 9); });  // 10
     add_column<int32_t>(columns_by_chunk, column_definitions, "F", cardinalities,
-                        [&](std::vector<size_t> indices) { return generator.random_number(0, 10); });
+                        [&](std::vector<size_t> indices) { return generator.random_number(0, 9); });  // 10
     add_column<int32_t>(columns_by_chunk, column_definitions, "X1", cardinalities,
                         [&](std::vector<size_t> indices) { return generator.random_number(0, 0); });
     add_column<int32_t>(columns_by_chunk, column_definitions, "X10", cardinalities,
