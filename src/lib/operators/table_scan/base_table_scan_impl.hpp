@@ -100,13 +100,17 @@ class BaseTableScanImpl {
 #ifdef __AVX512VL__
         // Do not use 512-bit registers for now because they lead to downclocking (TODO Link). Clang does not use them
         // yet either.
-        alignas(SIMD_SIZE) ChunkOffset match_offsets[SIMD_SIZE / sizeof(ChunkOffset)];
-        _mm256_mask_compress_epi32(*(__m256i*)&all_offsets, match_positions, *(__m256i*)&match_offsets);
+        alignas(SIMD_SIZE) ChunkOffset matching_offsets[SIMD_SIZE / sizeof(ChunkOffset)];
+        _mm256_mask_compress_epi32(*(__m256i*)&all_offsets, match_positions, *(__m256i*)&matching_offsets);
         const auto num_matches = __builtin_popcount(match_positions);
-        for (auto i = 0; i < num_matches; ++i) matches_out.emplace_back(RowID{chunk_id, match_offsets[i]});
+        for (auto i = 0; i < num_matches; ++i) {
+          std::cout << "emplace " << matching_offsets[i] << std::endl;
+          matches_out.emplace_back(RowID{chunk_id, matching_offsets[i]});
+        }
 #else
         for (auto i = 0; i < BUFFER_SIZE; ++i) {
           if (match_positions & 1 << i) {
+            std::cout << "emplace " << all_offsets[i] << std::endl;
             matches_out.emplace_back(RowID{chunk_id, all_offsets[i]});
           }
         }
