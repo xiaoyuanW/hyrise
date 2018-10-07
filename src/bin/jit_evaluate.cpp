@@ -171,11 +171,11 @@ nlohmann::json generate_input_different_selectivity(const bool use_jit) {
   nlohmann::json queries;
   nlohmann::json experiments = nlohmann::json::array();
   const int repetitions = 50;
-  const std::string table_name = "TABLE_SCAN";
+  const std::string table_name = "TABLE_AGGREGATE";
   const std::vector<std::string> column_names{"A", "B", "C", "D", "E", "F"};
   for (size_t filter_value = 0; filter_value <= 10; ++filter_value) {
     for (size_t no_columns = 1; no_columns <= column_names.size(); ++no_columns) {
-      std::string sql = "SELECT ID FROM TABLE_SCAN WHERE";
+      std::string sql = "SELECT ID FROM " + table_name + " WHERE";
       for (size_t index = 0; index < no_columns; ++index) {
         if (index > 0) sql += " AND";
         sql += " " + column_names[index] + " >= " + std::to_string(filter_value);
