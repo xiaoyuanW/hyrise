@@ -46,6 +46,35 @@ class IsNullTableScanImpl : public BaseSingleColumnTableScanImpl {
 
   /**@}*/
 
+ private:
+  template <typename Functor>
+  void _resolve_predicate_condition(const Functor& func) {
+    switch (_predicate_condition) {
+      case PredicateCondition::IsNull:
+        return func([](const bool is_null) { return is_null; });
+
+      case PredicateCondition::IsNotNull:
+        return func([](const bool is_null) { return !is_null; });
+
+      default:
+        Fail("Unsupported comparison type encountered");
+    }
+  }
+
+  template <typename Iterator>
+  void _scan(Iterator left_it, Iterator left_end, Context& context) {
+    auto& matches_out = context._matches_out;
+    const auto chunk_id = context._chunk_id;
+
+    _resolve_predicate_condition([&](auto comparator) {
+      for (; left_it != left_end; ++left_it) {
+        const auto left = *left_it;
+
+        if (!comparator(left.is_null())) continue;
+        matches_out.push_back(RowID{chunk_id, left.chunk_offset()});
+      }
+    });
+  }
 };
 
 }  // namespace opossum

@@ -54,11 +54,8 @@ void IsNullTableScanImpl::handle_segment(const BaseValueSegment& base_segment,
 
   auto base_segment_iterable = NullValueVectorIterable{base_segment.null_values()};
 
-  auto& matches_out = context->_matches_out;
-  const auto chunk_id = context->_chunk_id;
-
   base_segment_iterable.with_iterators(mapped_chunk_offsets.get(),
-                                       [&](auto left_it, auto left_end) { this->_scan<true>([](auto&) {return true;}, left_it, left_end, chunk_id, matches_out, true); });
+                                       [&](auto left_it, auto left_end) { this->_scan(left_it, left_end, *context); });
 }
 
 void IsNullTableScanImpl::handle_segment(const BaseDictionarySegment& base_segment,
@@ -68,11 +65,8 @@ void IsNullTableScanImpl::handle_segment(const BaseDictionarySegment& base_segme
 
   auto base_segment_iterable = create_iterable_from_attribute_vector(base_segment);
 
-  auto& matches_out = context->_matches_out;
-  const auto chunk_id = context->_chunk_id;
-
   base_segment_iterable.with_iterators(mapped_chunk_offsets.get(),
-                                       [&](auto left_it, auto left_end) { this->_scan<true>([](auto&) {return true;}, left_it, left_end, chunk_id, matches_out, true); });
+                                       [&](auto left_it, auto left_end) { this->_scan(left_it, left_end, *context); });
 }
 
 void IsNullTableScanImpl::handle_segment(const BaseEncodedSegment& base_segment,
@@ -82,9 +76,6 @@ void IsNullTableScanImpl::handle_segment(const BaseEncodedSegment& base_segment,
 
   const auto base_column_type = _in_table->column_data_type(_left_column_id);
 
-  auto& matches_out = context->_matches_out;
-  const auto chunk_id = context->_chunk_id;
-
   resolve_data_type(base_column_type, [&](auto type) {
     using Type = typename decltype(type)::type;
 
@@ -92,7 +83,7 @@ void IsNullTableScanImpl::handle_segment(const BaseEncodedSegment& base_segment,
       auto base_segment_iterable = create_iterable_from_segment(typed_segment);
 
       base_segment_iterable.with_iterators(
-          mapped_chunk_offsets.get(), [&](auto left_it, auto left_end) { this->_scan<true>([](auto&) {return true;}, left_it, left_end, chunk_id, matches_out, true); });
+          mapped_chunk_offsets.get(), [&](auto left_it, auto left_end) { this->_scan(left_it, left_end, *context); });
     });
   });
 }

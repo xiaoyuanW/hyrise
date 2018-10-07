@@ -51,20 +51,25 @@ class BaseTableScanImpl {
     // Also, the AnySegmentIterator is not vectorizable because it relies on virtual method calls. While the check for
     // `IS_DEBUG` is redudant, it makes people aware of this. Unfortunately, vectorization is only really beneficial
     // when we can use AVX-512VL. However, since this branch is not slower on CPUs without it, we still use it there as
-    // well, as this reduces the divergence across different systems.
-#if !IS_DEBUG
+    // well, as this reduces the divergence across different systems. Finally, we only use the vectorized scan for 
+    // tables with a certain size. This is because firing up the AVX units has some cost on current CPUs. Using 1000
+    // as the boundary is just an educated guess - a machine-dependent fine-tuning could find better values, but as
+    // long as scans with a handful of results are not vectorized, the benefits of fine-tuning should not be too big.
+
+    #if !IS_DEBUG
     if constexpr (LeftIterator::IsVectorizable) {
       if (functor_is_vectorizable && left_end - left_it > 1000) {
         _simd_scan<CheckForNull>(func, left_it, left_end, chunk_id, matches_out, right_it);
       }
     }
-#endif
+    #endif
 
     // Do the remainder the easy way. If we did not use the optimization above, left_it was not yet touched, so we
     // iterate over the entire input data.
     for (; left_it != left_end; ++left_it) {
       if constexpr (std::is_same_v<RightIterator, std::false_type>) {
         const auto left = *left_it;
+
         if ((!CheckForNull || !left.is_null()) && func(left.value())) {
           matches_out.emplace_back(RowID{chunk_id, left.chunk_offset()});
         }
@@ -135,6 +140,8 @@ class BaseTableScanImpl {
 #ifdef __AVX512VL__
       // Build a mask where a bit indicates if the row in `offsets` matched the criterion.
       const auto mask = _mm512_cmpneq_epu32_mask(*(__m512i*)&offsets, __m512i{});
+
+      if(!mask) continue;
 
       // Compress `offsets`, that is move all values where the mask is set to 1 to the front. This is essentially
       // std::remove(offsets.begin(), offsets.end(), ChunkOffset{0});
