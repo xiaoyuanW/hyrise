@@ -38,7 +38,7 @@ class BaseTableScanImpl {
                                        const ChunkID chunk_id, PosList& matches_out, bool functor_is_vectorizable) {
     // Can't use a default argument for this because default arguments are non-type deduced contexts
     auto false_type = std::false_type{};
-    _scan<CheckForNull>(func, left_it, left_end, chunk_id, matches_out, false_type, functor_is_vectorizable);
+    _scan<CheckForNull>(func, left_it, left_end, chunk_id, matches_out, functor_is_vectorizable, false_type);
   }
 
   template <bool CheckForNull, typename Functor, typename LeftIterator, typename RightIterator>
