@@ -53,7 +53,7 @@ class BaseTableScanImpl {
     // because firing up the register units takes some time
     if constexpr (!IS_DEBUG && LeftIterator::IsVectorizable) {
       if (left_end - left_it > 1000) {
-        _simd_scan(func, left_it, left_end, chunk_id, matches_out, right_it);
+        _simd_scan<CheckForNull>(func, left_it, left_end, chunk_id, matches_out, right_it);
       }
     }
 
