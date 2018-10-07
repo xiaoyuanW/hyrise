@@ -75,7 +75,7 @@ void LikeTableScanImpl::handle_segment(const BaseDictionarySegment& base_segment
   if (match_count == dictionary_matches.size()) {
     attribute_vector_iterable.with_iterators(mapped_chunk_offsets.get(), [&](auto left_it, auto left_end) {
       static const auto always_true = [](const auto&) { return true; };
-      this->_unary_scan(always_true, left_it, left_end, chunk_id, matches_out);
+      this->_scan<false>(always_true, left_it, left_end, chunk_id, matches_out);
     });
 
     return;
@@ -89,7 +89,7 @@ void LikeTableScanImpl::handle_segment(const BaseDictionarySegment& base_segment
   const auto dictionary_lookup = [&dictionary_matches](const ValueID& value) { return dictionary_matches[value]; };
 
   attribute_vector_iterable.with_iterators(mapped_chunk_offsets.get(), [&](auto left_it, auto left_end) {
-    this->_unary_scan(dictionary_lookup, left_it, left_end, chunk_id, matches_out);
+    this->_scan<true>(dictionary_lookup, left_it, left_end, chunk_id, matches_out);
   });
 }
 
@@ -98,7 +98,7 @@ void LikeTableScanImpl::_scan_iterable(const Iterable& iterable, const ChunkID c
                                        const ChunkOffsetsList* const mapped_chunk_offsets) {
   _matcher.resolve(_invert_results, [&](const auto& matcher) {
     iterable.with_iterators(mapped_chunk_offsets, [&](auto left_it, auto left_end) {
-      this->_unary_scan(matcher, left_it, left_end, chunk_id, matches_out);
+      this->_scan<true>(matcher, left_it, left_end, chunk_id, matches_out);
     });
   });
 }
