@@ -25,7 +25,7 @@ enable_language(ASM)
 #
 #    std::string bitcode_string(&opossum::${SYMBOL_NAME}, opossum::${SYMBOL_NAME}_size);
 
-function(EMBED_LLVM OUTPUT_FILE SYMBOL_NAME COMPILE_DEFS)
+function(EMBED_LLVM OUTPUT_FILE SYMBOL_NAME)
     # Parsing all remaining arguments as input files
     cmake_parse_arguments(llvm "" "EXPORT_MACRO" "" ${ARGN})
     set(INPUT_FILES "${llvm_UNPARSED_ARGUMENTS}")
@@ -43,10 +43,10 @@ function(EMBED_LLVM OUTPUT_FILE SYMBOL_NAME COMPILE_DEFS)
     endforeach()
 
     # Step 2: Compiling input files to LLVM-IR
+    get_directory_property(COMPILE_DEFS COMPILE_DEFINITIONS)
     foreach(COMPILE_DEFINITION ${COMPILE_DEFS})
         set(CUSTOM_COMPILE_DEFINITIONS ${CUSTOM_COMPILE_DEFINITIONS} -D${COMPILE_DEFINITION})
     endforeach()
-    message(STATUS " CUSTOM_COMPILE_DEFINITION ${CUSTOM_COMPILE_DEFINITIONS}")
     set(FLAGS -std=c++17 -O3 -fwhole-program-vtables -flto ${CMAKE_CXX_FLAGS} ${CUSTOM_COMPILE_DEFINITIONS})
     add_custom_command(
         OUTPUT ${LLVM_BUNDLE_FILE}
