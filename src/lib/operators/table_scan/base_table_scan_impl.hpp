@@ -45,7 +45,7 @@ class BaseTableScanImpl {
   // noinline reduces compile time drastically
   void __attribute__((noinline))
   _scan(const Functor& func, LeftIterator& left_it, LeftIterator& left_end, const ChunkID chunk_id,
-        PosList& matches_out, bool functor_is_vectorizable, [[maybe_unused]] RightIterator& right_it) {
+        PosList& matches_out, [[maybe_unused]] bool functor_is_vectorizable, [[maybe_unused]] RightIterator& right_it) {
     // SIMD has no benefit for iterators that block vectorization (mostly iterators that do not operate on contiguous
     // storage). Because of that, it is only enabled for std::vector (currently used by FixedSizeByteAlignedVector).
     // Also, the AnySegmentIterator is not vectorizable because it relies on virtual method calls. While the check for
