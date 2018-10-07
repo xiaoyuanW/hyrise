@@ -35,7 +35,7 @@ class BaseTableScanImpl {
 
   template <bool CheckForNull, typename Functor, typename LeftIterator>
   void __attribute__((noinline)) _scan(const Functor& func, LeftIterator& left_it, LeftIterator& left_end,
-                                       const ChunkID chunk_id, PosList& matches_out) {
+                                       const ChunkID chunk_id, PosList& matches_out, bool functor_is_vectorizable) {
     // Can't use a default argument for this because default arguments are non-type deduced contexts
     auto false_type = std::false_type{};
     _scan<CheckForNull>(func, left_it, left_end, chunk_id, matches_out, false_type);
@@ -45,18 +45,20 @@ class BaseTableScanImpl {
   // noinline reduces compile time drastically
   void __attribute__((noinline))
   _scan(const Functor& func, LeftIterator& left_it, LeftIterator& left_end, const ChunkID chunk_id,
-        PosList& matches_out, [[maybe_unused]] RightIterator& right_it) {
+        PosList& matches_out, bool functor_is_vectorizable, [[maybe_unused]] RightIterator& right_it) {
     // SIMD has no benefit for iterators that block vectorization (mostly iterators that do not operate on contiguous
     // storage). Because of that, it is only enabled for std::vector (currently used by FixedSizeByteAlignedVector).
     // Also, the AnySegmentIterator is not vectorizable because it relies on virtual method calls. While the check for
     // `IS_DEBUG` is redudant, it makes people aware of this. Unfortunately, vectorization is only really beneficial
     // when we can use AVX-512VL. However, since this branch is not slower on CPUs without it, we still use it there as
     // well, as this reduces the divergence across different systems.
-    if constexpr (!IS_DEBUG && LeftIterator::IsVectorizable) {
-      if (left_end - left_it > 1000) {
+#if !IS_DEBUG
+    if constexpr (LeftIterator::IsVectorizable) {
+      if (functor_is_vectorizable && left_end - left_it > 1000) {
         _simd_scan<CheckForNull>(func, left_it, left_end, chunk_id, matches_out, right_it);
       }
     }
+#endif
 
     // Do the remainder the easy way. If we did not use the optimization above, left_it was not yet touched, so we
     // iterate over the entire input data.

@@ -48,7 +48,7 @@ void BetweenTableScanImpl::handle_segment(const BaseValueSegment& base_segment,
     };
 
     left_segment_iterable.with_iterators(mapped_chunk_offsets.get(), [&](auto left_it, auto left_end) {
-      _scan<true>(comparator_with_values, left_it, left_end, chunk_id, matches_out);
+      _scan<true>(comparator_with_values, left_it, left_end, chunk_id, matches_out, true);
     });
   });
 }
@@ -75,7 +75,7 @@ void BetweenTableScanImpl::handle_segment(const BaseEncodedSegment& base_segment
       auto left_segment_iterable = create_iterable_from_segment(typed_segment);
 
       left_segment_iterable.with_iterators(mapped_chunk_offsets.get(), [&](auto left_it, auto left_end) {
-        _scan<true>(comparator_with_values, left_it, left_end, chunk_id, matches_out);
+        _scan<true>(comparator_with_values, left_it, left_end, chunk_id, matches_out, true);
       });
     });
   });
@@ -98,7 +98,7 @@ void BetweenTableScanImpl::handle_segment(const BaseDictionarySegment& base_segm
     // all values match
     column_iterable.with_iterators(mapped_chunk_offsets.get(), [&](auto left_it, auto left_end) {
       static const auto always_true = [](const auto&) { return true; };
-      this->_scan<false>(always_true, left_it, left_end, chunk_id, matches_out);
+      this->_scan<false>(always_true, left_it, left_end, chunk_id, matches_out, true);
     });
 
     return;
@@ -115,7 +115,7 @@ void BetweenTableScanImpl::handle_segment(const BaseDictionarySegment& base_segm
   };
 
   column_iterable.with_iterators(mapped_chunk_offsets.get(), [&](auto left_it, auto left_end) {
-    this->_scan<true>(comparator_with_values, left_it, left_end, chunk_id, matches_out);
+    this->_scan<true>(comparator_with_values, left_it, left_end, chunk_id, matches_out, true);
   });
 }
 
