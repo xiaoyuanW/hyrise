@@ -37,7 +37,8 @@ class BaseTableScanImpl {
   void __attribute__((noinline)) _scan(const Functor& func, LeftIterator& left_it, LeftIterator& left_end,
                                        const ChunkID chunk_id, PosList& matches_out) {
     // Can't use a default argument for this because default arguments are non-type deduced contexts
-    _scan<CheckForNull>(func, left_it, left_end, chunk_id, matches_out, std::false_type{});
+    auto false_type = std::false_type{};
+    _scan<CheckForNull>(func, left_it, left_end, chunk_id, matches_out, false_type);
   }
 
   template <bool CheckForNull, typename Functor, typename LeftIterator, typename RightIterator>
@@ -52,7 +53,9 @@ class BaseTableScanImpl {
     // when we can use AVX-512VL. However, since this branch is not slower on CPUs without it, we still use it there as
     // well, as this reduces the divergence across different systems.
     if constexpr (!IS_DEBUG && LeftIterator::IsVectorizable) {
-      _simd_scan<CheckForNull>(func, left_it, left_end, chunk_id, matches_out, right_it);
+      if (left_end - left_it > 1000) {
+        _simd_scan<CheckForNull>(func, left_it, left_end, chunk_id, matches_out, right_it);
+      }
     }
 
     // Do the remainder the easy way. If we did not use the optimization above, left_it was not yet touched, so we
