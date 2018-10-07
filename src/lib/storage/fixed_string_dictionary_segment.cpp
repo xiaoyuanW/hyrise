@@ -117,7 +117,7 @@ std::shared_ptr<const BaseCompressedVector> FixedStringDictionarySegment<T>::att
 }
 
 template <typename T>
-ValueID FixedStringDictionarySegment<T>::null_value_id() const {
+const ValueID FixedStringDictionarySegment<T>::null_value_id() const {
   return _null_value_id;
 }
 

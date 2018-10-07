@@ -62,7 +62,7 @@ class DictionarySegment : public BaseDictionarySegment {
 
   std::shared_ptr<const BaseCompressedVector> attribute_vector() const final;
 
-  ValueID null_value_id() const final;
+  const ValueID null_value_id() const final;
 
   /**@}*/
 
