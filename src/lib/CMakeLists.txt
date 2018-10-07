@@ -1,6 +1,8 @@
 # Sources and libraries shared among the different builds of the lib
 set(
     SOURCES
+    jit_evaluation_helper.cpp
+    jit_evaluation_helper.hpp
     abstract_expression.cpp
     abstract_expression.hpp
     all_parameter_variant.cpp
@@ -392,8 +394,6 @@ if (NOT DISABLE_JIT_SUPPORT)
     embed_llvm(LLVM_BUNDLE_FILE ${JIT_EMBEDDED_SOURCES})
     set(
         SOURCES
-        jit_evaluation_helper.cpp
-        jit_evaluation_helper.hpp
         operators/jit_operator/specialization/utils/my_llvm.cpp
         operators/jit_operator/specialization/utils/my_llvm.hpp
         logical_query_plan/jit_aware_lqp_translator.cpp
