@@ -169,24 +169,29 @@ if (${ENABLE_JIT_SUPPORT})
     # Each line below starting with "embed_llvm(" embeds on of these test files and exposes it as a different symbol
     # name. Each test case can the access the required bitcode using this symbol.
     include(${CMAKE_SOURCE_DIR}/cmake/EmbedLLVM.cmake)
+    get_directory_property(COMPILE_DEFS COMPILE_DEFINITIONS)
     embed_llvm(
         JIT_CODE_SPECIALIZER_TEST_MODULE
         jit_code_specializer_test_module
+        "${COMPILE_DEFS}"
         operators/jit_operator/specialization/modules/jit_code_specializer_test_module.cpp
     )
     embed_llvm(
         JIT_COMPILER_TEST_MODULE
         jit_compiler_test_module
+        "${COMPILE_DEFS}"
         operators/jit_operator/specialization/modules/jit_compiler_test_module.cpp
     )
     embed_llvm(
         JIT_REPOSITORY_TEST_MODULE
         jit_repository_test_module
+        "${COMPILE_DEFS}"
         operators/jit_operator/specialization/modules/jit_repository_test_module.cpp
     )
     embed_llvm(
         RESOLVE_CONDITION_TEST_MODULE
         resolve_condition_test_module
+        "${COMPILE_DEFS}"
         operators/jit_operator/specialization/modules/resolve_condition_test_module.cpp
     )
 
