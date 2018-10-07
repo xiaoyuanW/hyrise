@@ -75,8 +75,7 @@ void BetweenTableScanImpl::handle_segment(const BaseEncodedSegment& base_segment
       auto left_segment_iterable = create_iterable_from_segment(typed_segment);
 
       left_segment_iterable.with_iterators(mapped_chunk_offsets.get(), [&](auto left_it, auto left_end) {
-        _scan<true>(comparator_with_values, left_it, left_end, 
-                                       chunk_id, matches_out);
+        _scan<true>(comparator_with_values, left_it, left_end, chunk_id, matches_out);
       });
     });
   });

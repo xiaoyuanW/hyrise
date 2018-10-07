@@ -34,33 +34,31 @@ class BaseTableScanImpl {
    */
 
   template <bool CheckForNull, typename Functor, typename LeftIterator>
-  void __attribute__((noinline)) _scan(const Functor& func, LeftIterator left_it, LeftIterator left_end,
-                                             const ChunkID chunk_id, PosList& matches_out) {
+  void __attribute__((noinline)) _scan(const Functor& func, LeftIterator& left_it, LeftIterator& left_end,
+                                       const ChunkID chunk_id, PosList& matches_out) {
     // Can't use a default argument for this because default arguments are non-type deduced contexts
     _scan<CheckForNull>(func, left_it, left_end, chunk_id, matches_out, std::false_type{});
   }
 
   template <bool CheckForNull, typename Functor, typename LeftIterator, typename RightIterator>
   // noinline reduces compile time drastically
-  void __attribute__((noinline)) _scan(const Functor& func, LeftIterator left_it, LeftIterator left_end,
-                                             const ChunkID chunk_id, PosList& matches_out, [[maybe_unused]] RightIterator right_it) {
+  void __attribute__((noinline))
+  _scan(const Functor& func, LeftIterator& left_it, LeftIterator& left_end, const ChunkID chunk_id,
+        PosList& matches_out, [[maybe_unused]] RightIterator& right_it) {
     // SIMD has no benefit for iterators that block vectorization (mostly iterators that do not operate on contiguous
     // storage). Because of that, it is only enabled for std::vector (currently used by FixedSizeByteAlignedVector).
     // Also, the AnySegmentIterator is not vectorizable because it relies on virtual method calls. While the check for
     // `IS_DEBUG` is redudant, it makes people aware of this. Unfortunately, vectorization is only really beneficial
     // when we can use AVX-512VL. However, since this branch is not slower on CPUs without it, we still use it there as
-    // well, as this reduces the divergence across different systems. Finally, we do not use SIMD for small input data,
-    // because firing up the register units takes some time
+    // well, as this reduces the divergence across different systems.
     if constexpr (!IS_DEBUG && LeftIterator::IsVectorizable) {
-      if (left_end - left_it > 1000) {
-        _simd_scan<CheckForNull>(func, left_it, left_end, chunk_id, matches_out, right_it);
-      }
+      _simd_scan<CheckForNull>(func, left_it, left_end, chunk_id, matches_out, right_it);
     }
 
     // Do the remainder the easy way. If we did not use the optimization above, left_it was not yet touched, so we
     // iterate over the entire input data.
     for (; left_it != left_end; ++left_it) {
-      if constexpr(std::is_same_v<RightIterator, std::false_type>) {
+      if constexpr (std::is_same_v<RightIterator, std::false_type>) {
         const auto left = *left_it;
         if ((!CheckForNull || !left.is_null()) && func(left.value())) {
           matches_out.emplace_back(RowID{chunk_id, left.chunk_offset()});
@@ -78,8 +76,9 @@ class BaseTableScanImpl {
 
   template <bool CheckForNull, typename Functor, typename LeftIterator, typename RightIterator>
   // noinline reduces compile time drastically
-  void __attribute__((noinline)) _simd_scan(const Functor& func, LeftIterator left_it, LeftIterator left_end,
-                                             const ChunkID chunk_id, PosList& matches_out, [[maybe_unused]] RightIterator right_it) {
+  void __attribute__((noinline))
+  _simd_scan(const Functor& func, LeftIterator& left_it, LeftIterator& left_end, const ChunkID chunk_id,
+             PosList& matches_out, [[maybe_unused]] RightIterator& right_it) {
     // Concept: Partition the vector into blocks of BLOCK_SIZE entries. The remainder is handled outside of this optimization. For each
     // row write 0 to `offsets` if the row does not match, or `chunk_offset + 1` if the row matches. The reason why we need `+1` is given below. This set can be
     // parallelized using auto-vectorization/SIMD. Afterwards, add all matching rows into `matches_out`.
@@ -106,7 +105,7 @@ class BaseTableScanImpl {
         const auto& left = *left_it;
 
         bool matches;
-        if constexpr(std::is_same_v<RightIterator, std::false_type>) {
+        if constexpr (std::is_same_v<RightIterator, std::false_type>) {
           matches = (!CheckForNull | !left.is_null()) & func(left.value());
         } else {
           const auto& right = *left_it;
@@ -119,7 +118,7 @@ class BaseTableScanImpl {
         offsets[i] = matches * (left.chunk_offset() + 1);
 
         ++left_it;
-        if constexpr(!std::is_same_v<RightIterator, std::false_type>) ++right_it;
+        if constexpr (!std::is_same_v<RightIterator, std::false_type>) ++right_it;
       }
 
       // As we write directly into the matches_out vector, make sure that is has enough size
