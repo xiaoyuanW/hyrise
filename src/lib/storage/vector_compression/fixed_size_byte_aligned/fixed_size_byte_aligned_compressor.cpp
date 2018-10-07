@@ -22,7 +22,7 @@ std::unique_ptr<BaseCompressedVector> FixedSizeByteAlignedCompressor::_encode_us
     const PolymorphicAllocator<size_t>& alloc, const pmr_vector<uint32_t>& vector, const uint32_t max_value) {
   if (max_value <= std::numeric_limits<uint8_t>::max()) {
     return _encode_using_uint_type<uint8_t>(alloc, vector);
-  } else { if (max_value <= std::numeric_limits<uint16_t>::max()) {
+  } else if (max_value <= std::numeric_limits<uint16_t>::max()) {
     return _encode_using_uint_type<uint16_t>(alloc, vector);
   } else {
     return _encode_using_uint_type<uint32_t>(alloc, vector);

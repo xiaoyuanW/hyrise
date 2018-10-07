@@ -48,7 +48,7 @@ class BaseTableScanImpl {
   template <bool CheckForNull, typename Functor, typename LeftIterator, typename RightIterator>
   // noinline reduces compile time drastically
   void __attribute__((noinline)) _scan(const Functor& func, LeftIterator left_it, LeftIterator left_end,
-                                             const ChunkID chunk_id, PosList& matches_out, RightIterator right_it) {
+                                             const ChunkID chunk_id, PosList& matches_out, [[maybe_unused]] RightIterator right_it) {
     // This entire if-block is an optimization to enable auto-vectorization/SIMD. If you are looking at the scan for the
     // first time, first read the part below this block. The scan works even if this block is removed. Because it has no
     // benefit for iterators that block vectorization (mostly iterators that do not operate on contiguous storage), it
