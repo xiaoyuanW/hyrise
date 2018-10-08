@@ -17,6 +17,7 @@
 #include "utils/assert.hpp"
 #include "utils/tracing/probes.hpp"
 
+#include "global.hpp"
 #include "jit_evaluation_helper.hpp"
 #include "operators/jit_optimal_operator.hpp"
 
@@ -211,7 +212,7 @@ const std::shared_ptr<SQLQueryPlan>& SQLPipelineStatement::get_query_plan() {
 
     // Reset time to exclude previous pipeline steps
     started = std::chrono::high_resolution_clock::now();
-    if (JitEvaluationHelper::get().experiment().at("hand_written") &&
+    if (Global::get().jit_evaluate && JitEvaluationHelper::get().experiment().at("hand_written") &&
         _sql_string ==
             "SELECT T1.ID AS T1_ID, T2.ID AS T2_ID FROM TABLE_SCAN T1 JOIN TABLE_AGGREGATE T2 ON T1.ID = T2.X100000 "
             "WHERE T1.A < 5000 AND T2.A > 0") {
