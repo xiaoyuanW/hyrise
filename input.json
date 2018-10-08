@@ -1,6 +1,6 @@
 {
   "globals": {
-    "dictionary_compress": true,
+    "dictionary_compress": false,
     "_papi_events": [
       "PAPI_TOT_INS",
       "PAPI_LD_INS",
@@ -8,7 +8,7 @@
       "PAPI_SR_INS"
     ],
     "papi_events": [],
-    "scale_factor": 1,
+    "scale_factor": 10,
     "use_other_tables": true,
     "use_tpch_tables": false
   },
@@ -114,32 +114,60 @@
       "tables": [
         "TABLE_TYPES"
       ]
+    },
+    "JOIN_BENCHMARK": {
+      "query": "SELECT T1.ID AS T1_ID, T2.ID AS T2_ID FROM TABLE_SCAN T1 JOIN TABLE_AGGREGATE T2 ON T1.ID = T2.X100000 WHERE T1.A < 5000 AND T2.A > 0",
+      "tables": [
+        "TABLE_SCAN", "TABLE_AGGREGATE"
+      ]
     }
   },
   "experiments": [
     {
       "engine": "jit",
-      "query_id": "Q-K",
-      "repetitions": 1,
-      "task": "run"
+      "query_id": "JOIN_BENCHMARK",
+      "hand_written": true,
+      "mvcc": true,
+      "pqp_file": "JOIN_BENCHMARK_pqp_jit_hand_written",
+      "task": "pqp"
+    },
+    {
+      "engine": "jit",
+      "query_id": "JOIN_BENCHMARK",
+      "hand_written": false,
+      "mvcc": true,
+      "pqp_file": "JOIN_BENCHMARK_pqp_jit",
+      "task": "pqp"
     },
     {
       "engine": "opossum",
-      "query_id": "Q-K",
-      "repetitions": 1,
+      "query_id": "JOIN_BENCHMARK",
+      "mvcc": true,
+      "pqp_file": "JOIN_BENCHMARK_pqp_opossum",
+      "task": "pqp"
+    },
+    {
+      "engine": "jit",
+      "query_id": "JOIN_BENCHMARK",
+      "hand_written": true,
+      "mvcc": true,
+      "repetitions": 50,
       "task": "run"
     },
     {
       "engine": "jit",
-      "query_id": "Q-K",
-      "pqp_file": "Q-K_pqp_jit",
-      "task": "pqp"
+      "query_id": "JOIN_BENCHMARK",
+      "hand_written": false,
+      "mvcc": true,
+      "repetitions": 50,
+      "task": "run"
     },
     {
       "engine": "opossum",
-      "query_id": "Q-K",
-      "pqp_file": "Q-K_pqp_opossum",
-      "task": "pqp"
+      "query_id": "JOIN_BENCHMARK",
+      "mvcc": true,
+      "repetitions": 50,
+      "task": "run"
     }
   ],
   "_experiments": [

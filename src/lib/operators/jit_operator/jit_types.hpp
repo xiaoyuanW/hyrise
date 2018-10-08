@@ -27,12 +27,11 @@ namespace opossum {
 
 #define JIT_MEASURE 0
 
-/*
 #undef JIT_LAZY_LOAD
-#define JIT_LAZY_LOAD 1
+#define JIT_LAZY_LOAD 0
 #undef JIT_OLD_LAZY_LOAD
-#define JIT_OLD_LAZY_LOAD 1
-*/
+#define JIT_OLD_LAZY_LOAD 0
+
 #ifndef JIT_LOGICAL_PRUNING
 #define JIT_LOGICAL_PRUNING 1
 #endif

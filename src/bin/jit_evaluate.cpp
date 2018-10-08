@@ -258,6 +258,7 @@ int main(int argc, char* argv[]) {
     auto& experiment = config["experiments"][current_experiment];
     if (!experiment.count("mvcc")) experiment["mvcc"] = false;
     if (!experiment.count("optimize")) experiment["optimize"] = true;
+    if (!experiment.count("hand_written")) experiment["hand_written"] = false;
     if (experiment.at("engine") == "opossum") {
       opossum::Global::get().jit = false;
     } else if (experiment.at("engine") == "jit") {
