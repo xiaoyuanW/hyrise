@@ -112,7 +112,7 @@ public:
     }
     // clang-format on
 #if !JIT_LAZY_LOAD
-    ++_iterator;
+    ++reader._iterator;
 #endif
   }
 
