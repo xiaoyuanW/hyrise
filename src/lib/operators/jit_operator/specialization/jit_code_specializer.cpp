@@ -76,9 +76,11 @@ std::shared_ptr<llvm::Module> JitCodeSpecializer::specialize_function(
   // Run the first specialization and optimization pass
   context.runtime_value_map[context.root_function->arg_begin()] = runtime_this;
   // initially unroll first loop incrementing segment readers
+  /*
   _optimize(context, true, false);
   context.runtime_value_map.clear();
   context.runtime_value_map[context.root_function->arg_begin()] = runtime_this;
+  */
   _inline_function_calls(context);
   _perform_load_substitution(context);
   // Unroll loops only if two passes are selected

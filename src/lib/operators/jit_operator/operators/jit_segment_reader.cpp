@@ -9,13 +9,20 @@ namespace opossum {
 
 #define U_INTS (uint8_t)(uint16_t)(uint32_t)
 
+#define JIT_ACTUAL_INSTANTIOAN(Iterator, Type, Nullable) \
+  template class JitSegmentReader<Iterator, Type, Nullable>; \
+  template class JitSegmentReaderWrapper<JitSegmentReader<Iterator, Type, Nullable>>;
+
 #define JIT_EXPLICIT_INSTANTIATION_W_TYPE(r, _, type) \
-  template class JitSegmentReaderWrapper<JitSegmentReader<AnySegmentIterator<type>, type, true>>; \
-  template class JitSegmentReaderWrapper<JitSegmentReader<AnySegmentIterator<type>, type, false>>; \
-  template class JitSegmentReaderWrapper<JitSegmentReader<ValueSegmentIterable<type>::Iterator, type, true>>; \
-  template class JitSegmentReaderWrapper<JitSegmentReader<ValueSegmentIterable<type>::NonNullIterator, type, false>>; \
-  template class JitSegmentReaderWrapper<JitSegmentReader<ReferenceSegmentIterable<type>::Iterator, type, true>>; \
-  template class JitSegmentReaderWrapper<JitSegmentReader<ReferenceSegmentIterable<type>::Iterator, type, false>>;
+  template class AnySegmentIterator<type>; \
+  JIT_ACTUAL_INSTANTIOAN(AnySegmentIterator<type>, type, true) \
+  JIT_ACTUAL_INSTANTIOAN(AnySegmentIterator<type>, type, false) \
+  template class ValueSegmentIterable<type>; \
+  JIT_ACTUAL_INSTANTIOAN(ValueSegmentIterable<type>::Iterator, type, true) \
+  JIT_ACTUAL_INSTANTIOAN(ValueSegmentIterable<type>::NonNullIterator, type, false) \
+  JIT_ACTUAL_INSTANTIOAN(ReferenceSegmentIterable<type>::Iterator, type, true) \
+  template class ReferenceSegmentIterable<type>; \
+  JIT_ACTUAL_INSTANTIOAN(ReferenceSegmentIterable<type>::Iterator, type, false)
 
 #define JIT_EXPLICIT_INSTANTIATION(r, _, type) JIT_EXPLICIT_INSTANTIATION_W_TYPE(r, _, BOOST_PP_TUPLE_ELEM(3, 0, type))
 

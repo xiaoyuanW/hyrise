@@ -1,5 +1,7 @@
 #pragma once
 
+#include <x86intrin.h>
+
 #include "../jit_types.hpp"
 #include "storage/segment_iterables/create_iterable_from_attribute_vector.hpp"
 
@@ -22,7 +24,7 @@ class BaseJitSegmentReader {
 
 class BaseJitSegmentReaderWrapper {
  public:
-  BaseJitSegmentReaderWrapper(size_t reader_index) : reader_index(reader_index), use_cast(true) {}
+  BaseJitSegmentReaderWrapper(size_t reader_index) : reader_index(reader_index) {}
   virtual ~BaseJitSegmentReaderWrapper() = default;
   virtual void read_value(JitRuntimeContext& context) const {
     // Fail("Should not be executed.");
@@ -33,7 +35,6 @@ class BaseJitSegmentReaderWrapper {
   }
 
   const size_t reader_index;
-  bool use_cast;
 };
 
 /* JitSegmentReaders wrap the segment iterable interface used by most operators and makes it accessible
@@ -65,9 +66,9 @@ public:
   // Reads a value from the _iterator into the _tuple_value and increments the _iterator.
 #if JIT_OLD_LAZY_LOAD
   void increment() final { ++_iterator; }
-    void read_value(JitRuntimeContext& context) const final {
+    __attribute__((always_inline)) void read_value(JitRuntimeContext& context) const final {
 #else
-  void read_value(JitRuntimeContext& context) final {
+  __attribute__((always_inline)) void read_value(JitRuntimeContext& context) final {
 #if JIT_LAZY_LOAD && !JIT_OLD_LAZY_LOAD
     const size_t current_offset = context.chunk_offset;
     // _iterator += current_offset - _chunk_offset;
@@ -84,6 +85,30 @@ public:
       }
     } else {
       context.tuple.set<DataType>(_tuple_index, value.value());
+    }
+    // clang-format on
+#if !JIT_LAZY_LOAD
+    ++_iterator;
+#endif
+  }
+
+  __attribute__((always_inline))
+  static void read_value(JitSegmentReader<Iterator, DataType, Nullable>& reader, JitRuntimeContext& context) {
+#if JIT_LAZY_LOAD && !JIT_OLD_LAZY_LOAD
+    const size_t current_offset = context.chunk_offset;
+    // _iterator += current_offset - _chunk_offset;
+    std::advance(reader._iterator, current_offset - reader._chunk_offset);
+    reader._chunk_offset = current_offset;
+#endif
+    const auto& value = *reader._iterator;
+    // clang-format off
+    if constexpr (Nullable) {
+      context.tuple.set_is_null(reader._tuple_index, value.is_null());
+      if (!value.is_null()) {
+        context.tuple.set<DataType>(reader._tuple_index, value.value());
+      }
+    } else {
+      context.tuple.set<DataType>(reader._tuple_index, value.value());
     }
     // clang-format on
 #if !JIT_LAZY_LOAD
@@ -114,8 +139,12 @@ class JitSegmentReaderWrapper : public BaseJitSegmentReaderWrapper {
   void read_value(JitRuntimeContext& context) const final {
     // DebugAssert(std::dynamic_pointer_cast<JitSegmentReader>(context.inputs[reader_index]), "Different reader type, no " + std::to_string(reader_index));
     if (use_cast) {
-      // std::static_pointer_cast<JitSegmentReader>(context.inputs[reader_index])->read_value(context);
-      context.inputs[reader_index]->read_value(context);
+      //std::static_pointer_cast<JitSegmentReader>(context.inputs[reader_index])->read_value(context);
+      static_cast<JitSegmentReader*>(context.inputs[reader_index].get())->read_value(context);
+      // { __rdtsc();}  // rdtsc
+      // JitSegmentReader::read_value(*static_cast<JitSegmentReader*>(context.inputs[reader_index].get()), context);
+      // {unsigned int dummy; __rdtscp(&dummy);}
+      // context.inputs[reader_index]->read_value(context);
     } else {
       context.inputs[reader_index]->read_value(context);
     }
@@ -125,6 +154,7 @@ class JitSegmentReaderWrapper : public BaseJitSegmentReaderWrapper {
     use_cast = static_cast<bool>(std::dynamic_pointer_cast<JitSegmentReader>(context.inputs[reader_index]));
     return use_cast;
   }
+  bool use_cast = true;
 };
 
 }  // namespace opossum
