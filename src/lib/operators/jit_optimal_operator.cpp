@@ -43,7 +43,11 @@ std::shared_ptr<const Table> JitOptimalOperator::_on_execute() {
     jit_aggregate.add_groupby_column("x", x_tpl);
     const auto group_by_col = jit_aggregate.groupby_columns().front();
 
+    auto expected_entries = left_table->row_count() * 0.06f;
+
     hashmap.columns.resize(1);
+    hashmap.indices = std::unordered_map<uint64_t, std::vector<size_t>>(expected_entries);
+    row_ids.reserve(expected_entries);
 
     for (opossum::ChunkID chunk_id{0}; chunk_id < right_table->chunk_count(); ++chunk_id) {
       read_tuples.before_chunk(*right_table, chunk_id, context);
@@ -125,8 +129,11 @@ std::shared_ptr<const Table> JitOptimalOperator::_on_execute() {
     for (opossum::ChunkID chunk_id{0}; chunk_id < left_table->chunk_count(); ++chunk_id) {
       Segments out_segments;
       context.output_pos_list.clear();
+      float expected_size = left_table->get_chunk(chunk_id)->size() * 0.2f;
+      context.output_pos_list.reserve(expected_size);
 
       auto output_pos_list2 = std::make_shared<PosList>();
+      output_pos_list2->reserve(expected_size);
 
       read_tuples.before_chunk(*left_table, chunk_id, context);
 
