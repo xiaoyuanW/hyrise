@@ -167,13 +167,13 @@ void run() {
 
 nlohmann::json generate_input_different_selectivity(const bool use_jit) {
   nlohmann::json globals{
-      {"scale_factor", 10}, {"use_other_tables", true}, {"use_tpch_tables", false}, {"dictionary_compress", false}};
+      {"scale_factor", 10}, {"use_other_tables", true}, {"use_tpch_tables", false}, {"dictionary_compress", true}};
   nlohmann::json queries;
   nlohmann::json experiments = nlohmann::json::array();
   const int repetitions = 50;
   const std::string table_name = "TABLE_AGGREGATE";
   const std::vector<std::string> column_names{"A", "B", "C", "D", "E", "F"};
-  for (size_t filter_value = 0; filter_value <= 10; ++filter_value) {
+  for (size_t filter_value = 0; filter_value <= 10000; filter_value += 1000) {
     for (size_t no_columns = 1; no_columns <= column_names.size(); ++no_columns) {
       std::string sql = "SELECT ID FROM " + table_name + " WHERE";
       for (size_t index = 0; index < no_columns; ++index) {
