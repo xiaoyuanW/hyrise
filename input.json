@@ -125,46 +125,14 @@
   "experiments": [
     {
       "engine": "jit",
-      "query_id": "JOIN_BENCHMARK",
-      "hand_written": true,
-      "mvcc": true,
-      "pqp_file": "JOIN_BENCHMARK_pqp_jit_hand_written",
-      "task": "pqp"
-    },
-    {
-      "engine": "jit",
-      "query_id": "JOIN_BENCHMARK",
-      "hand_written": false,
-      "mvcc": true,
-      "pqp_file": "JOIN_BENCHMARK_pqp_jit",
-      "task": "pqp"
-    },
-    {
-      "engine": "opossum",
-      "query_id": "JOIN_BENCHMARK",
-      "mvcc": true,
-      "pqp_file": "JOIN_BENCHMARK_pqp_opossum",
-      "task": "pqp"
-    },
-    {
-      "engine": "jit",
-      "query_id": "JOIN_BENCHMARK",
-      "hand_written": true,
-      "mvcc": true,
-      "repetitions": 50,
-      "task": "run"
-    },
-    {
-      "engine": "jit",
-      "query_id": "JOIN_BENCHMARK",
-      "hand_written": false,
+      "query_id": "Q-D",
       "mvcc": true,
       "repetitions": 50,
       "task": "run"
     },
     {
       "engine": "opossum",
-      "query_id": "JOIN_BENCHMARK",
+      "query_id": "Q-D",
       "mvcc": true,
       "repetitions": 50,
       "task": "run"
