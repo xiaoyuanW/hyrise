@@ -33,9 +33,9 @@
 #include "operators/jit_operator/operators/jit_write_tuples.hpp"
 #include "operators/operator_scan_predicate.hpp"
 #include "resolve_type.hpp"
+#include "statistics/table_statistics.hpp"
 #include "storage/storage_manager.hpp"
 #include "types.hpp"
-#include "statistics/table_statistics.hpp"
 
 using namespace std::string_literals;  // NOLINT
 
@@ -158,8 +158,13 @@ std::shared_ptr<JitOperatorWrapper> JitAwareLQPTranslator::_try_translate_sub_pl
   }
 
   float selectivity = 0;
-  if (const auto input_row_count = input_node->get_statistics()->row_count()) {
-    selectivity = filter_node->get_statistics()->row_count() / input_row_count;
+  try {
+    if (const auto input_row_count = input_node->get_statistics()->row_count()) {
+      selectivity = filter_node->get_statistics()->row_count() / input_row_count;
+    }
+  } catch (std::logic_error) {
+    // Not all nodes support statistics yet
+    selectivity = 1;
   }
 
   // If we can reach the input node without encountering a UnionNode or PredicateNode,

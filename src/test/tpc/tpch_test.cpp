@@ -22,6 +22,10 @@
 #include "tpch/tpch_db_generator.hpp"
 #include "tpch/tpch_queries.hpp"
 
+#include "../benchmarklib/jit/jit_table_generator.hpp"
+#include "global.hpp"
+#include "operators/jit_optimal_operator.hpp"
+
 using namespace std::string_literals;  // NOLINT
 
 namespace opossum {
@@ -59,6 +63,33 @@ class TPCHTest : public BaseTestWithParam<std::pair<const size_t, TestConfigurat
       {9, 0.01f},   {10, 0.02f},  {11, 0.01f}, {12, 0.01f},  {13, 0.01f},   {14, 0.01f}, {15, 0.01f}, {16, 0.01f},
       {17, 0.013f}, {18, 0.005f}, {19, 0.01f}, {20, 0.008f}, {21, 0.0075f}, {22, 0.01f}};
 };
+
+TEST_F(TPCHTest, JitOptimalOperator) {
+  auto& global = opossum::Global::get();
+  global.jit = false;
+  global.lazy_load = false;
+  global.jit_validate = true;
+
+  opossum::JitTableGenerator generator(0.001, opossum::ChunkID(1000));
+  generator.generate_and_store();
+
+  auto context = opossum::TransactionManager::get().new_transaction_context();
+  auto jit_op = std::make_shared<JitOptimalOperator>();
+  jit_op->set_transaction_context(context);
+  jit_op->execute();
+  auto res = jit_op->get_output();
+
+  auto pipeline =
+      SQLPipelineBuilder{
+          "SELECT T1.ID AS T1_ID, T2.ID AS T2_ID FROM TABLE_SCAN T1 JOIN TABLE_AGGREGATE T2 ON T1.ID = T2.X100000 "
+          "WHERE T1.A < 5000 AND T2.A > 0"}
+          .with_transaction_context(context)
+          .create_pipeline();
+
+  const auto res2 = pipeline.get_result_table();
+
+  EXPECT_TABLE_EQ(res, res2, OrderSensitivity::No, TypeCmpMode::Lenient, FloatComparisonMode::RelativeDifference);
+}
 
 TEST_P(TPCHTest, TPCHQueryTest) {
   const auto [query_idx, test_configuration] = GetParam();  // NOLINT

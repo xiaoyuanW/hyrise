@@ -43,10 +43,14 @@ function(EMBED_LLVM OUTPUT_FILE SYMBOL_NAME)
     endforeach()
 
     # Step 2: Compiling input files to LLVM-IR
+    get_directory_property(COMPILE_DEFS COMPILE_DEFINITIONS)
+    foreach(COMPILE_DEFINITION ${COMPILE_DEFS})
+        set(CUSTOM_COMPILE_DEFINITIONS ${CUSTOM_COMPILE_DEFINITIONS} -D${COMPILE_DEFINITION})
+    endforeach()
     set(FLAGS -std=c++17 -O3 -fwhole-program-vtables -flto ${CMAKE_CXX_FLAGS})
     add_custom_command(
         OUTPUT ${LLVM_BUNDLE_FILE}
-        COMMAND ${CMAKE_CXX_COMPILER} ${FLAGS} -c -emit-llvm -DSOURCE_PATH_SIZE -I${CMAKE_CURRENT_SOURCE_DIR} -I${PROJECT_SOURCE_DIR}/third_party/sql-parser/src -o ${LLVM_BUNDLE_FILE} ${CPP_BUNDLE_FILE}
+        COMMAND ${CMAKE_CXX_COMPILER} ${FLAGS} -c -emit-llvm ${CUSTOM_COMPILE_DEFINITIONS} -I${CMAKE_CURRENT_SOURCE_DIR} -I${PROJECT_SOURCE_DIR}/third_party/sql-parser/src -o ${LLVM_BUNDLE_FILE} ${CPP_BUNDLE_FILE}
         DEPENDS ${CPP_BUNDLE_FILE} ${INPUT_FILES})
     set_source_files_properties(${LLVM_BUNDLE_FILE} PROPERTIES GENERATED TRUE)
 

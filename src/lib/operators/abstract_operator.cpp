@@ -1,6 +1,8 @@
 #include "abstract_operator.hpp"
 
+#if PAPI_SUPPORT
 #include <papi.h>
+#endif
 
 #include <chrono>
 #include <memory>
@@ -71,6 +73,7 @@ void AbstractOperator::execute() {
 
   auto& result = JitEvaluationHelper::get().result();
 
+#if PAPI_SUPPORT
   auto papi_events = JitEvaluationHelper::get().globals()["papi_events"];
   auto num_counters = papi_events.size();
   int32_t papi_event_ids[10];
@@ -82,37 +85,46 @@ void AbstractOperator::execute() {
       throw std::logic_error("PAPI_event_name_to_code: PAPI event name: " + event_name + " PAPI error " +
                              std::to_string(PAPI_event_name_to_code(event_name.c_str(), &papi_event_ids[i])));
   }
+#endif
 
   Timer performance_timer;
+#if PAPI_SUPPORT
   if (num_counters) {
     //  if (PAPI_assign_eventset_component(papi_event_ids, 0) < 0) throw std::logic_error("PAPI error");
     if (PAPI_start_counters(papi_event_ids, num_counters) < 0)
       throw std::logic_error("PAPI_start_counters: PAPI error " +
                              std::to_string(PAPI_start_counters(papi_event_ids, num_counters)));
   }
+#endif
   _prepare();
+#if PAPI_SUPPORT
   if (num_counters) {
     if (PAPI_stop_counters(papi_values, num_counters) < 0)
       throw std::logic_error("PAPI_stop_counters: PAPI error " +
                              std::to_string(PAPI_stop_counters(papi_values, num_counters)));
   }
+#endif
 
   const auto preparation_time = performance_timer.lap();
 
   nlohmann::json op = {{"name", name()}, {"prepare", true}, {"walltime", preparation_time.count()}};
+#if PAPI_SUPPORT
   for (uint32_t i = 0; i < num_counters; ++i) {
     op[papi_events[i].get<std::string>()] = papi_values[i];
     papi_values[i] = 0;
   }
+#endif
   result["operators"].push_back(op);
 
   performance_timer.lap();
 
+#if PAPI_SUPPORT
   if (num_counters) {
     if (PAPI_start_counters(papi_event_ids, num_counters) < 0)
       throw std::logic_error("PAPI_start_counters: PAPI error " +
                              std::to_string(PAPI_start_counters(papi_event_ids, num_counters)));
   }
+#endif
 
   auto transaction_context = this->transaction_context();
 
@@ -135,18 +147,22 @@ void AbstractOperator::execute() {
   // release any temporary data if possible
   _on_cleanup();
 
+#if PAPI_SUPPORT
   if (num_counters) {
     if (PAPI_stop_counters(papi_values, num_counters) < 0)
       throw std::logic_error("PAPI_stop_counters: PAPI error " +
                              std::to_string(PAPI_stop_counters(papi_values, num_counters)));
   }
+#endif
 
   _performance_data->walltime = performance_timer.lap();
 
   nlohmann::json op2 = {{"name", name()}, {"prepare", false}, {"walltime", _performance_data->walltime.count()}};
+#if PAPI_SUPPORT
   for (uint32_t i = 0; i < num_counters; ++i) {
     op2[papi_events[i].get<std::string>()] = papi_values[i];
   }
+#endif
   result["operators"].push_back(op2);
 
   auto find = Global::get().times.find(_type);

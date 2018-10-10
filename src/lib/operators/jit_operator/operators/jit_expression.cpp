@@ -1,5 +1,7 @@
 #include "jit_compute.hpp"
 
+// #include <x86intrin.h>
+
 #include "../jit_constant_mappings.hpp"
 #include "../jit_operations.hpp"
 #include "jit_read_tuples.hpp"
@@ -108,7 +110,7 @@ void JitExpression::compute(JitRuntimeContext& context) const {
         break;
     }
   }
-
+//  { __rdtsc();}
   switch (_expression_type) {
     case JitExpressionType::Addition:
       jit_compute(jit_addition, _left_child->result(), _right_child->result(), _result_value, context);
@@ -171,6 +173,8 @@ void JitExpression::compute(JitRuntimeContext& context) const {
     default:
       Fail("Expression type is not supported.");
   }
+//  {unsigned int dummy; __rdtscp(&dummy);}
+
 }
 
 std::pair<const DataType, const bool> JitExpression::_compute_result_type() {

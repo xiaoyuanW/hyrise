@@ -1,6 +1,6 @@
 {
   "globals": {
-    "dictionary_compress": false,
+    "dictionary_compress": true,
     "_papi_events": [
       "PAPI_TOT_INS",
       "PAPI_LD_INS",
@@ -8,7 +8,7 @@
       "PAPI_SR_INS"
     ],
     "papi_events": [],
-    "scale_factor": 10,
+    "scale_factor": 1,
     "use_other_tables": true,
     "use_tpch_tables": false
   },
@@ -86,115 +86,37 @@
       ]
     },
     "TYPE_Int": {
-      "query": "SELECT L1 FROM TABLE_TYPES WHERE I1 = 5 AND I2 = 5;",
+      "query": "SELECT L1 FROM TABLE_TYPES WHERE I1 < 10000 AND I2 < 10000;",
       "tables": [
         "TABLE_TYPES"
       ]
     },
     "TYPE_Long": {
-      "query": "SELECT I1 FROM TABLE_TYPES WHERE L1 = 5 AND L2 = 5;",
+      "query": "SELECT I1 FROM TABLE_TYPES WHERE L1 < 10000 AND L2 < 10000;",
       "tables": [
         "TABLE_TYPES"
       ]
     },
     "TYPE_Float": {
-      "query": "SELECT I1 FROM TABLE_TYPES WHERE F1 = 5 AND F2 = 5;",
+      "query": "SELECT I1 FROM TABLE_TYPES WHERE F1 < 10000 AND F2 < 10000;",
       "tables": [
         "TABLE_TYPES"
       ]
     },
     "TYPE_Double": {
-      "query": "SELECT I1 FROM TABLE_TYPES WHERE D1 = 5 AND D2 = 5;",
+      "query": "SELECT I1 FROM TABLE_TYPES WHERE D1 < 10000 AND D2 < 10000;",
       "tables": [
         "TABLE_TYPES"
       ]
     },
     "TYPE_String": {
-      "query": "SELECT I1 FROM TABLE_TYPES WHERE S1 = 'A' AND S2 = 'A';",
+      "query": "SELECT I1 FROM TABLE_TYPES WHERE S1 < 'BAAAA' AND S2 < 'BAAAA';",
       "tables": [
         "TABLE_TYPES"
-      ]
-    },
-    "JOIN_BENCHMARK": {
-      "query": "SELECT T1.ID AS T1_ID, T2.ID AS T2_ID FROM TABLE_SCAN T1 JOIN TABLE_AGGREGATE T2 ON T1.ID = T2.X100000 WHERE T1.A < 5000 AND T2.A > 0",
-      "tables": [
-        "TABLE_SCAN", "TABLE_AGGREGATE"
       ]
     }
   },
   "experiments": [
-    {
-      "engine": "jit",
-      "query_id": "JOIN_BENCHMARK",
-      "hand_written": true,
-      "mvcc": true,
-      "pqp_file": "JOIN_BENCHMARK_pqp_jit_hand_written",
-      "task": "pqp"
-    },
-    {
-      "engine": "jit",
-      "query_id": "JOIN_BENCHMARK",
-      "hand_written": false,
-      "mvcc": true,
-      "pqp_file": "JOIN_BENCHMARK_pqp_jit",
-      "task": "pqp"
-    },
-    {
-      "engine": "opossum",
-      "query_id": "JOIN_BENCHMARK",
-      "mvcc": true,
-      "pqp_file": "JOIN_BENCHMARK_pqp_opossum",
-      "task": "pqp"
-    },
-    {
-      "engine": "jit",
-      "query_id": "JOIN_BENCHMARK",
-      "hand_written": true,
-      "mvcc": true,
-      "repetitions": 50,
-      "task": "run"
-    },
-    {
-      "engine": "jit",
-      "query_id": "JOIN_BENCHMARK",
-      "hand_written": false,
-      "mvcc": true,
-      "repetitions": 50,
-      "task": "run"
-    },
-    {
-      "engine": "opossum",
-      "query_id": "JOIN_BENCHMARK",
-      "mvcc": true,
-      "repetitions": 50,
-      "task": "run"
-    }
-  ],
-  "_experiments": [
-    {
-      "engine": "jit",
-      "query_id": "Q-D",
-      "repetitions": 1,
-      "task": "run"
-    },
-    {
-      "engine": "opossum",
-      "query_id": "Q-D",
-      "repetitions": 1,
-      "task": "run"
-    },
-    {
-      "engine": "jit",
-      "query_id": "Q-D",
-      "pqp_file": "Q-D_pqp_jit",
-      "task": "pqp"
-    },
-    {
-      "engine": "opossum",
-      "query_id": "Q-D",
-      "pqp_file": "Q-D_pqp_opossum",
-      "task": "pqp"
-    },
     {
       "engine": "jit",
       "query_id": "TYPE_Int",

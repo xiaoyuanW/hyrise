@@ -1,5 +1,7 @@
 #include "jit_table_generator.hpp"
 
+#include <cmath>
+
 namespace opossum {
 
 JitTableGenerator::JitTableGenerator(const float scale_factor, const opossum::ChunkOffset chunk_size)
@@ -93,17 +95,17 @@ std::map<std::string, std::shared_ptr<opossum::Table>> JitTableGenerator::genera
     add_column<int32_t>(columns_by_chunk, column_definitions, "ID", cardinalities,
                         [&](std::vector<size_t> indices) { return indices[0]; });
     add_column<int32_t>(columns_by_chunk, column_definitions, "A", cardinalities,
-                        [&](std::vector<size_t> indices) { return generator.random_number(0, 10); });
+                        [&](std::vector<size_t> indices) { return generator.random_number(0, 9); });  // 10
     add_column<int32_t>(columns_by_chunk, column_definitions, "B", cardinalities,
-                        [&](std::vector<size_t> indices) { return generator.random_number(0, 10); });
+                        [&](std::vector<size_t> indices) { return generator.random_number(0, 9); });  // 10
     add_column<int32_t>(columns_by_chunk, column_definitions, "C", cardinalities,
-                        [&](std::vector<size_t> indices) { return generator.random_number(0, 10); });
+                        [&](std::vector<size_t> indices) { return generator.random_number(0, 9); });  // 10
     add_column<int32_t>(columns_by_chunk, column_definitions, "D", cardinalities,
-                        [&](std::vector<size_t> indices) { return generator.random_number(0, 10); });
+                        [&](std::vector<size_t> indices) { return generator.random_number(0, 9); });  // 10
     add_column<int32_t>(columns_by_chunk, column_definitions, "E", cardinalities,
-                        [&](std::vector<size_t> indices) { return generator.random_number(0, 10); });
+                        [&](std::vector<size_t> indices) { return generator.random_number(0, 9); });  // 10
     add_column<int32_t>(columns_by_chunk, column_definitions, "F", cardinalities,
-                        [&](std::vector<size_t> indices) { return generator.random_number(0, 10); });
+                        [&](std::vector<size_t> indices) { return generator.random_number(0, 9); });  // 10
     add_column<int32_t>(columns_by_chunk, column_definitions, "X1", cardinalities,
                         [&](std::vector<size_t> indices) { return generator.random_number(0, 0); });
     add_column<int32_t>(columns_by_chunk, column_definitions, "X10", cardinalities,
@@ -126,29 +128,40 @@ std::map<std::string, std::shared_ptr<opossum::Table>> JitTableGenerator::genera
     std::vector<Segments> columns_by_chunk;
     TableColumnDefinitions column_definitions;
 
+    constexpr size_t number_of_chars = 5;
+    const size_t scale_factor = pow(10, number_of_chars);
+
     add_column<int32_t>(columns_by_chunk, column_definitions, "I1", cardinalities,
-                        [&](std::vector<size_t> indices) { return generator.random_number(0, 10); });
+                        [&](std::vector<size_t> indices) { return generator.random_number(0, scale_factor); });
     add_column<int32_t>(columns_by_chunk, column_definitions, "I2", cardinalities,
-                        [&](std::vector<size_t> indices) { return generator.random_number(0, 10); });
+                        [&](std::vector<size_t> indices) { return generator.random_number(0, scale_factor); });
     add_column<int64_t>(columns_by_chunk, column_definitions, "L1", cardinalities,
-                        [&](std::vector<size_t> indices) { return generator.random_number(0, 10); });
+                        [&](std::vector<size_t> indices) { return generator.random_number(0, scale_factor); });
     add_column<int64_t>(columns_by_chunk, column_definitions, "L2", cardinalities,
-                        [&](std::vector<size_t> indices) { return generator.random_number(0, 10); });
+                        [&](std::vector<size_t> indices) { return generator.random_number(0, scale_factor); });
     add_column<float>(columns_by_chunk, column_definitions, "F1", cardinalities,
-                      [&](std::vector<size_t> indices) { return generator.random_number(0, 10); });
+                      [&](std::vector<size_t> indices) { return generator.random_number(0, scale_factor); });
     add_column<float>(columns_by_chunk, column_definitions, "F2", cardinalities,
-                      [&](std::vector<size_t> indices) { return generator.random_number(0, 10); });
+                      [&](std::vector<size_t> indices) { return generator.random_number(0, scale_factor); });
     add_column<double>(columns_by_chunk, column_definitions, "D1", cardinalities,
-                       [&](std::vector<size_t> indices) { return generator.random_number(0, 10); });
+                       [&](std::vector<size_t> indices) { return generator.random_number(0, scale_factor); });
     add_column<double>(columns_by_chunk, column_definitions, "D2", cardinalities,
-                       [&](std::vector<size_t> indices) { return generator.random_number(0, 10); });
+                       [&](std::vector<size_t> indices) { return generator.random_number(0, scale_factor); });
     add_column<std::string>(columns_by_chunk, column_definitions, "S1", cardinalities,
                             [&](std::vector<size_t> indices) {
-                              return std::string(1, static_cast<char>(generator.random_number(65, 75)));
+                                char str[number_of_chars];
+                                for (size_t i = 0; i < number_of_chars; ++i) {
+                                    str[i] = static_cast<char>(generator.random_number(65, 75));
+                                }
+                                return std::string(str, number_of_chars);
                             });
     add_column<std::string>(columns_by_chunk, column_definitions, "S2", cardinalities,
                             [&](std::vector<size_t> indices) {
-                              return std::string(1, static_cast<char>(generator.random_number(65, 75)));
+                                char str[number_of_chars];
+                                for (size_t i = 0; i < number_of_chars; ++i) {
+                                    str[i] = static_cast<char>(generator.random_number(65, 75));
+                                }
+                                return std::string(str, number_of_chars);
                             });
 
     auto table = std::make_shared<Table>(column_definitions, TableType::Data, _chunk_size, UseMvcc::Yes);

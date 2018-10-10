@@ -2,7 +2,9 @@
 
 #include <json.hpp>
 
+#if PAPI_SUPPORT
 #include <papi.h>
+#endif
 
 #include <iostream>
 
@@ -163,20 +165,54 @@ void run() {
   opossum::Global::get().jit_evaluate = false;
 }
 
+nlohmann::json generate_input_different_selectivity(const bool use_jit) {
+  nlohmann::json globals{
+      {"scale_factor", 10}, {"use_other_tables", true}, {"use_tpch_tables", false}, {"dictionary_compress", false}};
+  nlohmann::json queries;
+  nlohmann::json experiments = nlohmann::json::array();
+  const int repetitions = 50;
+  const std::string table_name = "TABLE_AGGREGATE";
+  const std::vector<std::string> column_names{"A", "B", "C", "D", "E", "F"};
+  for (size_t filter_value = 0; filter_value <= 10; ++filter_value) {
+    for (size_t no_columns = 1; no_columns <= column_names.size(); ++no_columns) {
+      std::string sql = "SELECT ID FROM " + table_name + " WHERE";
+      for (size_t index = 0; index < no_columns; ++index) {
+        if (index > 0) sql += " AND";
+        sql += " " + column_names[index] + " >= " + std::to_string(filter_value);
+      }
+      sql += ";";
+      std::string query_id =
+          table_name + "_FILTER_VAL_" + std::to_string(filter_value) + "_NO_COL_" + std::to_string(no_columns);
+      nlohmann::json query{{"query", sql}, {"tables", nlohmann::json::array()}};
+      query["tables"].push_back(table_name);
+      queries[query_id] = query;
+      experiments.push_back({{"engine", use_jit ? "jit" : "opossum"},
+                             {"repetitions", repetitions},
+                             {"task", "run"},
+                             {"query_id", query_id}});
+    }
+  }
+  return {{"globals", globals}, {"queries", queries}, {"experiments", experiments}};
+}
+
 int main(int argc, char* argv[]) {
   std::cerr << "Starting the JIT benchmarking suite" << std::endl;
 
-  if (argc <= 1) {
-    freopen("input.json", "r", stdin);
-    freopen("output.json", "w", stdout);
-  }
+  const std::string output_file_name = (argc <= 1) ? "output.json" : argv[1];
+  const std::string input_file_name = (argc <= 2) ? "input.json" : argv[2];
 
   nlohmann::json config;
-  std::cin >> config;
+  if (argc <= 3) {
+    std::ifstream input_file{input_file_name};
+    input_file >> config;
+  } else {
+    bool no_jit = argc >= 5 && (std::string(argv[4]) == "opossum");
+    config = generate_input_different_selectivity(!no_jit);
+  }
   opossum::JitEvaluationHelper::get().queries() = config["queries"];
   opossum::JitEvaluationHelper::get().globals() = config["globals"];
 
-  const auto additional_scale_factor = argc > 1 ? std::stod(argv[1]) : 1.0;
+  const auto additional_scale_factor = 1.0;  // argc > 1 ? std::stod(argv[1]) : 1.0;
   double scale_factor = config["globals"]["scale_factor"].get<double>() * additional_scale_factor;
   config["globals"]["scale_factor"] = scale_factor;
 
@@ -210,16 +246,19 @@ int main(int argc, char* argv[]) {
   std::cerr << "Initializing JIT repository" << std::endl;
   opossum::JitRepository::get();
 
+#if PAPI_SUPPORT
   std::cerr << "Initializing PAPI" << std::endl;
   if (PAPI_library_init(PAPI_VER_CURRENT) < 0) throw std::logic_error("PAPI error");
   std::cerr << "  supports " << PAPI_num_counters() << " event counters" << std::endl;
-  std::cout << "{" << std::endl << "\"results\":[" << std::endl;
+#endif
+  nlohmann::json file_output{{"results", nlohmann::json::array()}};
 
   const size_t num_experiments = config["experiments"].size();
   for (size_t current_experiment = 0; current_experiment < num_experiments; ++current_experiment) {
     auto& experiment = config["experiments"][current_experiment];
     if (!experiment.count("mvcc")) experiment["mvcc"] = false;
     if (!experiment.count("optimize")) experiment["optimize"] = true;
+    if (!experiment.count("hand_written")) experiment["hand_written"] = false;
     if (experiment.at("engine") == "opossum") {
       opossum::Global::get().jit = false;
     } else if (experiment.at("engine") == "jit") {
@@ -255,12 +294,10 @@ int main(int argc, char* argv[]) {
       output["results"].push_back(opossum::JitEvaluationHelper::get().result());
     }
     opossum::SQLQueryCache<opossum::SQLQueryPlan>::get().clear();
-    std::cout << output;
-    bool not_last = current_experiment + 1 < num_experiments;
-    if (not_last) std::cout << ",";
-    std::cout << std::endl;
+    file_output["results"].push_back(output);
   }
-  std::cout << "]" << std::endl << "}" << std::endl;
+  std::ofstream output_file{output_file_name};
+  output_file << file_output;
   std::cerr << "Done" << std::endl;
 }
 

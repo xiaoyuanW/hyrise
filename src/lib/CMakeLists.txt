@@ -5,6 +5,8 @@ include(${PROJECT_SOURCE_DIR}/cmake/git_watcher.cmake)
 # Sources and libraries shared among the different builds of the lib
 set(
     SOURCES
+    jit_evaluation_helper.cpp
+    jit_evaluation_helper.hpp
     global.cpp
     global.hpp
     all_parameter_variant.cpp
@@ -575,8 +577,6 @@ if (${ENABLE_JIT_SUPPORT})
     embed_llvm(LLVM_BUNDLE_FILE jit_llvm_bundle ${JIT_EMBEDDED_SOURCES})
     set(
         SOURCES
-        jit_evaluation_helper.cpp
-        jit_evaluation_helper.hpp
         operators/jit_operator/jit_utils.cpp
         operators/jit_operator/jit_utils.hpp
         logical_query_plan/jit_aware_lqp_translator.cpp
@@ -599,6 +599,8 @@ if (${ENABLE_JIT_SUPPORT})
         operators/jit_operator/specialization/llvm_utils.hpp
         operators/jit_operator_wrapper.cpp
         operators/jit_operator_wrapper.hpp
+        operators/jit_optimal_operator.cpp
+        operators/jit_optimal_operator.hpp
         ${SOURCES}
         ${JIT_EMBEDDED_SOURCES}
         ${LLVM_BUNDLE_FILE})

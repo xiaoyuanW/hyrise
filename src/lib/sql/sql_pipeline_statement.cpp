@@ -17,6 +17,10 @@
 #include "utils/assert.hpp"
 #include "utils/tracing/probes.hpp"
 
+#include "global.hpp"
+#include "jit_evaluation_helper.hpp"
+#include "operators/jit_optimal_operator.hpp"
+
 namespace opossum {
 
 SQLPipelineStatement::SQLPipelineStatement(const std::string& sql, std::shared_ptr<hsql::SQLParserResult> parsed_sql,
@@ -208,7 +212,14 @@ const std::shared_ptr<SQLQueryPlan>& SQLPipelineStatement::get_query_plan() {
 
     // Reset time to exclude previous pipeline steps
     started = std::chrono::high_resolution_clock::now();
-    _query_plan->add_tree_by_root(_lqp_translator->translate_node(lqp));
+    if (Global::get().jit_evaluate && JitEvaluationHelper::get().experiment().at("hand_written") &&
+        _sql_string ==
+            "SELECT T1.ID AS T1_ID, T2.ID AS T2_ID FROM TABLE_SCAN T1 JOIN TABLE_AGGREGATE T2 ON T1.ID = T2.X100000 "
+            "WHERE T1.A < 5000 AND T2.A > 0") {
+      _query_plan->add_tree_by_root(std::make_shared<JitOptimalOperator>());
+    } else {
+      _query_plan->add_tree_by_root(_lqp_translator->translate_node(lqp));
+    }
 
     done = std::chrono::high_resolution_clock::now();
   }
