@@ -853,7 +853,7 @@ int main(int argc, char** argv) {
   auto logger_format = opossum::log_format_to_string.right.at(cli_parse_result["log_format"].as<std::string>());
   auto data_path = cli_parse_result["data_path"].as<std::string>();
 
-  opossum::Logger::setup(data_path, logger_implementation, logger_format);
+  opossum::Logger::setup(data_path, logger_implementation, logger_format, 1000u);
 
   // Execute .sql script if specified, otherwise recover database from logfiles
   if (cli_parse_result.count("script")) {

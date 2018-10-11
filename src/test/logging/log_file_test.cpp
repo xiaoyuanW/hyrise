@@ -41,7 +41,7 @@ class LogFileTest : public BaseTestWithParam<std::pair<Logger::Implementation, L
  *    - delete statements with 'or': "DELETE ... WHERE x=y OR w=z"
  */
 TEST_P(LogFileTest, TestWorkflow) {
-  Logger::setup(test_data_path + _folder, GetParam().first, GetParam().second);
+  Logger::setup(test_data_path + _folder, GetParam().first, GetParam().second, 1000u);
 
   run_sql("INSERT INTO a_table VALUES (41, 41.0, 41.0, '41');");
   run_sql("INSERT INTO a_table VALUES (229, 929.7, 14.983, 'öäüia');");

@@ -46,7 +46,7 @@ class Logger {
   static std::vector<std::string> get_all_log_file_paths();
 
   // Logging is turned on by console and server on startup by calling setup().
-  static void setup(std::string folder, const Implementation implementation, const Format format);
+  static void setup(std::string folder, const Implementation implementation, const Format format, const uint64_t flush_interval);
 
   // Called while setting up a new database in console or in tests
   // Current logging implementation has to be shut down beforehand or not instantiated yet.

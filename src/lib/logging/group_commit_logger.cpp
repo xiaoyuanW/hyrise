@@ -35,7 +35,8 @@ namespace opossum {
 constexpr uint32_t LOG_BUFFER_CAPACITY = 16384;
 
 // Magic number: time interval that triggers a flush to disk.
-constexpr auto LOG_INTERVAL = std::chrono::microseconds(1);
+// constexpr auto LOG_INTERVAL = std::chrono::microseconds(1);
+// constexpr auto LOG_INTERVAL = std::chrono::nanoseconds(1000);
 
 void GroupCommitLogger::log_value(const TransactionID transaction_id, const std::string& table_name, const RowID row_id,
                                   const std::vector<AllTypeVariant>& values) {
@@ -106,7 +107,7 @@ void GroupCommitLogger::log_flush() {
   }
 }
 
-GroupCommitLogger::GroupCommitLogger(std::unique_ptr<AbstractFormatter> formatter)
+GroupCommitLogger::GroupCommitLogger(std::unique_ptr<AbstractFormatter> formatter, uint64_t flush_nanosec)
     : AbstractLogger(std::move(formatter)),
       _buffer_capacity(LOG_BUFFER_CAPACITY),
       _buffer_position(0),
@@ -117,7 +118,7 @@ GroupCommitLogger::GroupCommitLogger(std::unique_ptr<AbstractFormatter> formatte
   _open_logfile();
 
   _flush_thread =
-      std::make_unique<PausableLoopThread>(LOG_INTERVAL, [this](size_t count) { GroupCommitLogger::log_flush(); });
+      std::make_unique<PausableLoopThread>(std::chrono::nanoseconds(flush_nanosec), [this](size_t count) { GroupCommitLogger::log_flush(); });
   _flush_thread->resume();
 }
 

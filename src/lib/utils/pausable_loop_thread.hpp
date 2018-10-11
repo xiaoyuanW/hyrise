@@ -13,12 +13,12 @@ namespace opossum {
 // paused state.
 struct PausableLoopThread {
  public:
-  explicit PausableLoopThread(std::chrono::microseconds loop_sleep_time, const std::function<void(size_t)>& loop_func);
+  explicit PausableLoopThread(std::chrono::nanoseconds loop_sleep_time, const std::function<void(size_t)>& loop_func);
 
   ~PausableLoopThread();
   void pause();
   void resume();
-  void set_loop_sleep_time(std::chrono::microseconds loop_sleep_time);
+  void set_loop_sleep_time(std::chrono::nanoseconds loop_sleep_time);
 
  private:
   std::atomic_bool _pause_requested{false};
@@ -27,6 +27,6 @@ struct PausableLoopThread {
   std::mutex _mutex;
   std::condition_variable _cv;
   std::thread _loop_thread;
-  std::chrono::microseconds _loop_sleep_time;
+  std::chrono::nanoseconds _loop_sleep_time;
 };
 }  // namespace opossum

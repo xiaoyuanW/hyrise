@@ -1,6 +1,9 @@
 #include <json.hpp>
+#include <pqxx/pqxx>
 
+#include <mutex>
 #include <random>
+#include <thread>
 
 #include "benchmark_runner.hpp"
 #include "constant_mappings.hpp"
@@ -17,6 +20,8 @@
 #include "utils/filesystem.hpp"
 #include "utils/load_table.hpp"
 #include "version.hpp"
+
+#include "server/server.hpp"
 
 namespace opossum {
 
@@ -47,21 +52,30 @@ void BenchmarkRunner::run() {
   }
 
   Logger::setup(_config.data_path, opossum::logger_to_string.right.at(_config.logger_implementation), 
-                opossum::log_format_to_string.right.at(_config.log_format));
+                opossum::log_format_to_string.right.at(_config.log_format),
+                _config.flush_interval);
+
+  // remove /4u, only for durchsatz
+  // const uint32_t total_inserts = 64000u / 4u;
+  const uint32_t total_inserts = 64000u;
+  const uint16_t thread_count = _config.client_count;
+  const uint16_t inserts_per_thread = std::round(total_inserts / thread_count);
 
   auto benchmark_start = std::chrono::steady_clock::now();
 
-  // Run the queries in the selected mode
-  switch (_config.benchmark_mode) {
-    case BenchmarkMode::IndividualQueries: {
-      _benchmark_individual_queries();
-      break;
-    }
-    case BenchmarkMode::PermutedQuerySets: {
-      _benchmark_permuted_query_sets();
-      break;
-    }
-  }
+  _benchmark_queries_from_threads(thread_count, inserts_per_thread);
+
+  // // Run the queries in the selected mode
+  // switch (_config.benchmark_mode) {
+  //   case BenchmarkMode::IndividualQueries: {
+  //     _benchmark_individual_queries();
+  //     break;
+  //   }
+  //   case BenchmarkMode::PermutedQuerySets: {
+  //     _benchmark_permuted_query_sets();
+  //     break;
+  //   }
+  // }
 
   auto benchmark_end = std::chrono::steady_clock::now();
   _total_run_duration = benchmark_end - benchmark_start;
@@ -129,6 +143,66 @@ void BenchmarkRunner::_benchmark_permuted_query_sets() {
       query_benchmark_result.num_iterations++;
     }
   }
+}
+
+void BenchmarkRunner::_thread_task(const uint16_t number_of_inserts) {
+  const auto query = "INSERT INTO int_float_double_string VALUES (99, 4.2, 5.4, 'long string long string long string long string long string long string long string');";
+
+  // remove /4u, only for durchsatz
+  // const auto query = "UPDATE int_float_double_string SET s='ufufufufufufufufufufufuf' WHERE i=1;";
+  // const auto query2 = "UPDATE int_float_double_string SET s='aosifnaepofinawoenf' WHERE i=2;";
+  // const auto query3 = "UPDATE int_float_double_string SET s='3ap9ap39rjqp932rhpawefipaiweuh' WHERE i=3;";
+  // const auto query4 = "UPDATE int_float_double_string SET s='apsoianpweoina' WHERE i=4;";
+  for (auto i = 0u; i < number_of_inserts; ++i) {
+    auto pipeline_builder = SQLPipelineBuilder{query}.with_mvcc(UseMvcc::Yes);
+    auto pipeline = pipeline_builder.create_pipeline();
+    pipeline.get_result_table();
+
+
+    // remove /4u, only for durchsatz
+    // auto pipeline_builder2 = SQLPipelineBuilder{query2}.with_mvcc(UseMvcc::Yes);
+    // auto pipeline2 = pipeline_builder.create_pipeline();
+    // pipeline2.get_result_table();
+
+    // auto pipeline_builder3 = SQLPipelineBuilder{query3}.with_mvcc(UseMvcc::Yes);
+    // auto pipeline3 = pipeline_builder.create_pipeline();
+    // pipeline3.get_result_table();
+
+    // auto pipeline_builder4 = SQLPipelineBuilder{query4}.with_mvcc(UseMvcc::Yes);
+    // auto pipeline4 = pipeline_builder.create_pipeline();
+    // pipeline4.get_result_table();
+  }
+}
+
+void BenchmarkRunner::_benchmark_queries_from_threads(const uint16_t number_of_threads, 
+  const uint16_t number_of_inserts_per_thread) {
+
+  std::vector<std::thread> threads;
+  threads.reserve(number_of_threads);
+
+  std::cout << "Clients: " << number_of_threads << " inserts: " << number_of_inserts_per_thread << std::endl;
+
+  BenchmarkState state{_config.max_num_query_runs, _config.max_duration};
+  while (state.keep_running()) {
+    for (auto i = 0u; i < number_of_threads; ++i) {
+      threads.emplace_back(std::thread(BenchmarkRunner::_thread_task, number_of_inserts_per_thread));
+    }
+    for (auto& thread : threads) {
+      thread.join();
+    }
+
+    // // for multiple runs only
+    // threads = std::vector<std::thread>();
+  }
+
+  QueryBenchmarkResult result;
+  result.num_iterations = state.num_iterations;
+  result.duration = state.benchmark_end - state.benchmark_begin;
+  result.iteration_durations = state.iteration_durations;
+
+  const auto& name = _queries[0].first;
+  _query_results_by_query_name.emplace(name, result);
+
 }
 
 void BenchmarkRunner::_benchmark_individual_queries() {

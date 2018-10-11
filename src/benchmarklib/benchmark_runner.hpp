@@ -38,6 +38,9 @@ class BenchmarkRunner {
   // Run benchmark in BenchmarkMode::IndividualQueries mode
   void _benchmark_individual_queries();
 
+  void _benchmark_queries_from_threads(const uint16_t number_of_threads, const uint16_t number_of_inserts_per_thread);
+  static void _thread_task(const uint16_t number_of_inserts);
+
   void _execute_query(const NamedQuery& named_query);
   // Create a report in roughly the same format as google benchmarks do when run with --benchmark_format=json
   void _create_report(std::ostream& stream) const;

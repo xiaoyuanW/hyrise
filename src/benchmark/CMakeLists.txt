@@ -49,6 +49,8 @@ target_link_libraries(
 
     hyrise
     hyriseBenchmarkLib
+    pqxx
+    ${Boost_THREAD_LIBRARY}
 )
 
 # Configure hyriseBenchmarkTPCH

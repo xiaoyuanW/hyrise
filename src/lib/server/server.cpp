@@ -18,7 +18,7 @@ Server::Server(boost::asio::io_service& io_service, uint16_t port, const std::st
     : _io_service(io_service),
       _acceptor(io_service, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port)),
       _socket(io_service) {
-  Logger::setup(log_folder, logging_implementation, log_format);
+  Logger::setup(log_folder, logging_implementation, log_format, 1000u);
   Logger::get().recover();
   _accept_next_connection();
 }

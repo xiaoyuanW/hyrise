@@ -101,7 +101,7 @@ struct BenchmarkConfig {
                   const UseMvcc use_mvcc, const std::optional<std::string>& output_file_path,
                   const bool enable_scheduler, const bool enable_visualization, std::ostream& out, 
                   const std::string& logger_implementation, const std::string& log_format, 
-                  const std::string& data_path);
+                  const std::string& data_path, const size_t client_count, const size_t flush_interval);
 
   static BenchmarkConfig get_default_config();
 
@@ -120,6 +120,8 @@ struct BenchmarkConfig {
   const std::string logger_implementation = "NoLogger";
   const std::string log_format = "NoFormat";
   const std::string data_path = "benchmark_data/";
+  const size_t client_count = 1u;
+  const size_t flush_interval = 1000u;
 
   static const char* description;
 

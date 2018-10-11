@@ -31,7 +31,7 @@ std::unique_ptr<AbstractLogger> Logger::_logger_instance = std::unique_ptr<NoLog
 
 AbstractLogger& Logger::get() { return *_logger_instance; }
 
-void Logger::setup(std::string folder, const Implementation implementation, const Format format) {
+void Logger::setup(std::string folder, const Implementation implementation, const Format format, const uint64_t flush_interval) {
   DebugAssert(_implementation == Implementation::No, "Logger: Trying to setup logging that has already been setup");
   DebugAssert(folder.length() > 0, "Logger: empty string is no folder");
 
@@ -75,7 +75,7 @@ void Logger::setup(std::string folder, const Implementation implementation, cons
       break;
     }
     case Implementation::GroupCommit: {
-      _logger_instance = std::unique_ptr<GroupCommitLogger>(new GroupCommitLogger(std::move(formatter)));
+      _logger_instance = std::unique_ptr<GroupCommitLogger>(new GroupCommitLogger(std::move(formatter), flush_interval));
       break;
     }
     default: { throw std::runtime_error("Logger: implementation unkown."); }

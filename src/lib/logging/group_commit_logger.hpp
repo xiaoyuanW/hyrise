@@ -47,7 +47,7 @@ class GroupCommitLogger final : public AbstractLogger {
 
  private:
   friend class Logger;
-  explicit GroupCommitLogger(std::unique_ptr<AbstractFormatter> formatter);
+  explicit GroupCommitLogger(std::unique_ptr<AbstractFormatter> formatter, uint64_t flush_nanosec);
 };
 
 }  // namespace opossum

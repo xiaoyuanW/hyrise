@@ -85,7 +85,7 @@ BenchmarkConfig::BenchmarkConfig(const BenchmarkMode benchmark_mode, const bool 
                                  const std::optional<std::string>& output_file_path, const bool enable_scheduler,
                                  const bool enable_visualization, std::ostream& out,
                                  const std::string& logger_implementation, const std::string& log_format, 
-                                 const std::string& data_path)
+                                 const std::string& data_path, const size_t client_count, const size_t flush_interval)
     : benchmark_mode(benchmark_mode),
       verbose(verbose),
       chunk_size(chunk_size),
@@ -99,7 +99,9 @@ BenchmarkConfig::BenchmarkConfig(const BenchmarkMode benchmark_mode, const bool 
       out(out),
       logger_implementation(logger_implementation),
       log_format(log_format),
-      data_path(data_path) {}
+      data_path(data_path),
+      client_count(client_count),
+      flush_interval(flush_interval) {}
 
 BenchmarkConfig BenchmarkConfig::get_default_config() { return BenchmarkConfig(); }
 
@@ -153,6 +155,10 @@ BenchmarkConfig CLIConfigParser::parse_basic_options_json_config(const nlohmann:
   out << "- Log format is " << log_format << std::endl;
   const auto data_path = json_config.value("data_path", default_config.data_path);
   out << "- Data path is " << data_path << std::endl;
+  const auto client_count = json_config.value("client_count", 1u);
+  out << "- Number of cllients is " << client_count << std::endl;
+  const auto flush_interval = json_config.value("flush_interval", 1000u);
+  out << "- Flush interval is " << flush_interval << std::endl;
 
   // Determine benchmark and display it
   const auto benchmark_mode_str = json_config.value("mode", "IndividualQueries");
@@ -200,7 +206,7 @@ BenchmarkConfig CLIConfigParser::parse_basic_options_json_config(const nlohmann:
   return BenchmarkConfig{
       benchmark_mode, verbose,          chunk_size,       *encoding_config,     max_runs, timeout_duration,
       use_mvcc,       output_file_path, enable_scheduler, enable_visualization, out,      logger_implementation,
-      log_format,     data_path};
+      log_format,     data_path,        client_count,     flush_interval};
 }
 
 BenchmarkConfig CLIConfigParser::parse_basic_cli_options(const cxxopts::ParseResult& parse_result) {
@@ -224,6 +230,8 @@ nlohmann::json CLIConfigParser::basic_cli_options_to_json(const cxxopts::ParseRe
   json_config.emplace("logger", parse_result["logger"].as<std::string>());
   json_config.emplace("log_format", parse_result["log_format"].as<std::string>());
   json_config.emplace("data_path", parse_result["data_path"].as<std::string>());
+  json_config.emplace("client_count", parse_result["client_count"].as<size_t>());
+  json_config.emplace("flush_interval", parse_result["flush_interval"].as<size_t>());
 
   return json_config;
 }
