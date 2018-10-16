@@ -45,7 +45,7 @@ class ValueSegmentIterable : public PointAccessibleSegmentIterable<ValueSegmentI
  private:
   const ValueSegment<T>& _segment;
 
- private:
+ public:
   class NonNullIterator : public BaseSegmentIterator<NonNullIterator, NonNullSegmentIteratorValue<T>> {
    public:
     using ValueIterator = typename pmr_concurrent_vector<T>::const_iterator;

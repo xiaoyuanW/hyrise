@@ -214,8 +214,7 @@ const std::shared_ptr<SQLQueryPlan>& SQLPipelineStatement::get_query_plan() {
     started = std::chrono::high_resolution_clock::now();
     if (Global::get().jit_evaluate && JitEvaluationHelper::get().experiment().at("hand_written") &&
         _sql_string ==
-            "SELECT T1.ID AS T1_ID, T2.ID AS T2_ID FROM TABLE_SCAN T1 JOIN TABLE_AGGREGATE T2 ON T1.ID = T2.X100000 "
-            "WHERE T1.A < 5000 AND T2.A > 0") {
+            "SELECT s_suppkey, l_suppkey from supplier JOIN lineitem ON s_suppkey = l_suppkey") {
       _query_plan->add_tree_by_root(std::make_shared<JitOptimalOperator>());
     } else {
       _query_plan->add_tree_by_root(_lqp_translator->translate_node(lqp));
