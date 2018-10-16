@@ -7,6 +7,7 @@
 #include "operators/jit_operator/jit_operations.hpp"
 #include "operators/jit_operator/operators/jit_aggregate.hpp"
 #include "operators/jit_operator/operators/jit_read_value.hpp"
+#include "operators/jit_operator/operators/jit_read_tuples.hpp"
 #include "operators/jit_operator/operators/jit_write_offset.hpp"
 #include "storage/reference_segment.hpp"
 #include "storage/storage_manager.hpp"
@@ -23,7 +24,7 @@ std::shared_ptr<const Table> JitOptimalOperator::_on_execute() {
 
   JitRuntimeHashmap hashmap;
   std::vector<std::vector<RowID>> row_ids;
-  using OwnJitSegmentReader = JitSegmentReader<ValueSegmentIterable<int32_t>::NonNullIterator, int32_t, false>;
+  using OwnJitSegmentReader = JitReadTuples::JitSegmentReader<ValueSegmentIterable<int32_t>::NonNullIterator, int32_t, false>;
 
   {
     JitRuntimeContext context;

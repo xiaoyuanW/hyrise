@@ -65,6 +65,7 @@ struct JitValueIDPredicate {
  *    it can request a slot in the tuple from JitReadTuples.
  */
 class JitReadTuples : public AbstractJittable {
+ public:
   /* JitSegmentReaders wrap the segment iterable interface used by most operators and makes it accessible
    * to the JitOperatorWrapper.
    *
