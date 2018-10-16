@@ -9,8 +9,8 @@
     ],
     "papi_events": [],
     "scale_factor": 10,
-    "use_other_tables": true,
-    "use_tpch_tables": false
+    "use_other_tables": false,
+    "use_tpch_tables": true
   },
   "queries": {
     "0": {
@@ -116,9 +116,9 @@
       ]
     },
     "JOIN_BENCHMARK": {
-      "query": "SELECT T1.ID AS T1_ID, T2.ID AS T2_ID FROM TABLE_SCAN T1 JOIN TABLE_AGGREGATE T2 ON T1.ID = T2.X100000 WHERE T1.A < 5000 AND T2.A > 0",
+      "query": "SELECT s_suppkey, l_suppkey from supplier JOIN lineitem ON s_suppkey = l_suppkey",
       "tables": [
-        "TABLE_SCAN", "TABLE_AGGREGATE"
+        "supplier", "lineitem"
       ]
     }
   },
@@ -127,7 +127,7 @@
       "engine": "jit",
       "query_id": "JOIN_BENCHMARK",
       "hand_written": true,
-      "mvcc": true,
+      "mvcc": false,
       "pqp_file": "JOIN_BENCHMARK_pqp_jit_hand_written",
       "task": "pqp"
     },
@@ -135,14 +135,14 @@
       "engine": "jit",
       "query_id": "JOIN_BENCHMARK",
       "hand_written": false,
-      "mvcc": true,
+      "mvcc": false,
       "pqp_file": "JOIN_BENCHMARK_pqp_jit",
       "task": "pqp"
     },
     {
       "engine": "opossum",
       "query_id": "JOIN_BENCHMARK",
-      "mvcc": true,
+      "mvcc": false,
       "pqp_file": "JOIN_BENCHMARK_pqp_opossum",
       "task": "pqp"
     },
@@ -150,7 +150,7 @@
       "engine": "jit",
       "query_id": "JOIN_BENCHMARK",
       "hand_written": true,
-      "mvcc": true,
+      "mvcc": false,
       "repetitions": 50,
       "task": "run"
     },
@@ -158,14 +158,14 @@
       "engine": "jit",
       "query_id": "JOIN_BENCHMARK",
       "hand_written": false,
-      "mvcc": true,
+      "mvcc": false,
       "repetitions": 50,
       "task": "run"
     },
     {
       "engine": "opossum",
       "query_id": "JOIN_BENCHMARK",
-      "mvcc": true,
+      "mvcc": false,
       "repetitions": 50,
       "task": "run"
     }

@@ -70,8 +70,8 @@ TEST_F(TPCHTest, JitOptimalOperator) {
   global.lazy_load = false;
   global.jit_validate = true;
 
-  opossum::JitTableGenerator generator(0.001, opossum::ChunkID(1000));
-  generator.generate_and_store();
+  float scale_factor = 0.1f;
+  TpchDbGenerator{scale_factor, 10'000}.generate_and_store();
 
   auto context = opossum::TransactionManager::get().new_transaction_context();
   auto jit_op = std::make_shared<JitOptimalOperator>();
@@ -81,8 +81,7 @@ TEST_F(TPCHTest, JitOptimalOperator) {
 
   auto pipeline =
       SQLPipelineBuilder{
-          "SELECT T1.ID AS T1_ID, T2.ID AS T2_ID FROM TABLE_SCAN T1 JOIN TABLE_AGGREGATE T2 ON T1.ID = T2.X100000 "
-          "WHERE T1.A < 5000 AND T2.A > 0"}
+          "SELECT s_suppkey, l_suppkey from supplier JOIN lineitem ON s_suppkey = l_suppkey"}
           .with_transaction_context(context)
           .create_pipeline();
 
