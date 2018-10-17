@@ -84,8 +84,8 @@ std::shared_ptr<const Table> JitOptimalScanOperator::_on_execute() {
           continue;
         }
         */
-        context.tuple.set<bool>(tmp_id, context.tuple.get<int>(a_id) < context.tuple.get<int>(l_id));
-        if (!context.tuple.get<bool>(tmp_id)) {
+        context.tuple.set<int>(tmp_id, context.tuple.get<int>(a_id) < context.tuple.get<int>(l_id));
+        if (!context.tuple.get<int>(tmp_id)) {
           continue;
         }
 

@@ -102,10 +102,12 @@ class JitVariantVector {
   template <typename T, typename = typename std::enable_if_t<!std::is_scalar_v<T>>>
   __attribute__((optnone)) std::string get(const size_t index) const;
   template <typename T, typename = typename std::enable_if_t<std::is_scalar_v<T>>>
+  __attribute__((always_inline))
   T get(const size_t index) const;
   template <typename T, typename = typename std::enable_if_t<!std::is_scalar_v<T>>>
   __attribute__((optnone)) void set(const size_t index, const std::string& value);
   template <typename T, typename = typename std::enable_if_t<std::is_scalar_v<T>>>
+  __attribute__((always_inline))
   void set(const size_t index, const T& value);
   bool is_null(const size_t index);
   void set_is_null(const size_t index, const bool is_null);
@@ -195,11 +197,13 @@ class JitTupleValue {
   size_t tuple_index() const;
 
   template <typename T>
+  __attribute__((always_inline))
   T get(JitRuntimeContext& context) const {
     return context.tuple.get<T>(_tuple_index);
   }
 
   template <typename T>
+  __attribute__((always_inline))
   void set(const T value, JitRuntimeContext& context) const {
     context.tuple.set<T>(_tuple_index, value);
   }

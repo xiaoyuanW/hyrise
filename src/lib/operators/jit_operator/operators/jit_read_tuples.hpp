@@ -95,8 +95,10 @@ class JitReadTuples : public AbstractJittable {
     // Reads a value from the _iterator into the _tuple_value and increments the _iterator.
 #if JIT_OLD_LAZY_LOAD
     void increment() final { ++_iterator; }
+    __attribute__((always_inline))
     void read_value(JitRuntimeContext& context) const final {
 #else
+    __attribute__((always_inline))
     void read_value(JitRuntimeContext& context) final {
 #if JIT_LAZY_LOAD && !JIT_OLD_LAZY_LOAD
       const size_t current_offset = context.chunk_offset;
