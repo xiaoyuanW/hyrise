@@ -25,6 +25,7 @@
 #include "../benchmarklib/jit/jit_table_generator.hpp"
 #include "global.hpp"
 #include "operators/jit_optimal_operator.hpp"
+#include "operators/jit_optimal_scan_operator.hpp"
 
 using namespace std::string_literals;  // NOLINT
 
@@ -64,7 +65,7 @@ class TPCHTest : public BaseTestWithParam<std::pair<const size_t, TestConfigurat
       {17, 0.013f}, {18, 0.005f}, {19, 0.01f}, {20, 0.008f}, {21, 0.0075f}, {22, 0.01f}};
 };
 
-TEST_F(TPCHTest, JitOptimalOperator) {
+TEST_F(TPCHTest, JitOptimalHashJoinOperator) {
   auto& global = opossum::Global::get();
   global.jit = false;
   global.lazy_load = false;
@@ -84,6 +85,33 @@ TEST_F(TPCHTest, JitOptimalOperator) {
           "SELECT s_suppkey, l_suppkey from supplier JOIN lineitem ON s_suppkey = l_suppkey"}
           .with_transaction_context(context)
           .create_pipeline();
+
+  const auto res2 = pipeline.get_result_table();
+
+  EXPECT_TABLE_EQ(res, res2, OrderSensitivity::No, TypeCmpMode::Lenient, FloatComparisonMode::RelativeDifference);
+}
+
+TEST_F(TPCHTest, JitOptimalTableScanOperator) {
+  auto& global = opossum::Global::get();
+  global.jit = false;
+  global.lazy_load = false;
+  global.jit_validate = true;
+
+  opossum::JitTableGenerator generator(0.001, opossum::ChunkID(1000));
+  generator.generate_and_store();
+
+
+  auto context = opossum::TransactionManager::get().new_transaction_context();
+  auto jit_op = std::make_shared<JitOptimalScanOperator>();
+  jit_op->set_transaction_context(context);
+  jit_op->execute();
+  auto res = jit_op->get_output();
+
+  auto pipeline =
+          SQLPipelineBuilder{
+                  "SELECT A FROM TABLE_SCAN WHERE A < 50000"}
+                  .with_transaction_context(context)
+                  .create_pipeline();
 
   const auto res2 = pipeline.get_result_table();
 

@@ -599,6 +599,8 @@ if (${ENABLE_JIT_SUPPORT})
         operators/jit_operator_wrapper.hpp
         operators/jit_optimal_operator.cpp
         operators/jit_optimal_operator.hpp
+        operators/jit_optimal_scan_operator.cpp
+        operators/jit_optimal_scan_operator.hpp
         ${SOURCES}
         ${JIT_EMBEDDED_SOURCES}
         ${LLVM_BUNDLE_FILE})

@@ -20,6 +20,7 @@
 #include "global.hpp"
 #include "jit_evaluation_helper.hpp"
 #include "operators/jit_optimal_operator.hpp"
+#include "operators/jit_optimal_scan_operator.hpp"
 
 namespace opossum {
 
@@ -212,10 +213,14 @@ const std::shared_ptr<SQLQueryPlan>& SQLPipelineStatement::get_query_plan() {
 
     // Reset time to exclude previous pipeline steps
     started = std::chrono::high_resolution_clock::now();
-    if (Global::get().jit_evaluate && JitEvaluationHelper::get().experiment().at("hand_written") &&
-        _sql_string ==
-            "SELECT s_suppkey, l_suppkey from supplier JOIN lineitem ON s_suppkey = l_suppkey") {
-      _query_plan->add_tree_by_root(std::make_shared<JitOptimalOperator>());
+    if (Global::get().jit_evaluate && JitEvaluationHelper::get().experiment().at("hand_written")) {
+      if (_sql_string == "SELECT s_suppkey, l_suppkey from supplier JOIN lineitem ON s_suppkey = l_suppkey") {
+        _query_plan->add_tree_by_root(std::make_shared<JitOptimalOperator>());
+      } else if (_sql_string == "SELECT A FROM TABLE_SCAN WHERE A < 50000") {
+        _query_plan->add_tree_by_root(std::make_shared<JitOptimalScanOperator>());
+      } else {
+        _query_plan->add_tree_by_root(_lqp_translator->translate_node(lqp));
+      }
     } else {
       _query_plan->add_tree_by_root(_lqp_translator->translate_node(lqp));
     }
