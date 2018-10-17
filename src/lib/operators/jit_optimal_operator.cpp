@@ -183,10 +183,11 @@ std::shared_ptr<const Table> JitOptimalOperator::_on_execute() {
         */
 
         uint64_t hash_value = std::hash<int>()(context.tuple.get<int>(a_id));
-        if (!hashmap.indices.count(hash_value)) {
+        const auto it = hashmap.indices.find(hash_value);
+        if (it == hashmap.indices.end()) {
           continue;
         }
-        auto& hash_bucket = hashmap.indices[hash_value];
+        auto& hash_bucket = it->second;
 
 
         bool found_match = false;
