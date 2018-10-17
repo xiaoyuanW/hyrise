@@ -115,7 +115,11 @@ class JitReadTuples : public AbstractJittable {
           context.tuple.set<DataType>(_tuple_index, value.value());
         }
       } else {
-        context.tuple.set<DataType>(_tuple_index, value.value());
+        if constexpr (std::is_same_v<DataType, int32_t>) {
+          context.tuple.Int[_tuple_index] = value.value();
+        } else {
+          context.tuple.set<DataType>(_tuple_index, value.value());
+        }
       }
       // clang-format on
 #if !JIT_LAZY_LOAD
