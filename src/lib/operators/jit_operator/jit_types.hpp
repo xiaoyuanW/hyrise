@@ -126,7 +126,7 @@ class JitVariantVector {
   // Returns the internal _is_null vector.
   std::vector<bool>& get_is_null_vector();
 
- public:
+ private:
   BOOST_PP_SEQ_FOR_EACH(JIT_VARIANT_VECTOR_MEMBER, _, JIT_DATA_TYPE_INFO)
   std::vector<bool> _is_null;
 };
