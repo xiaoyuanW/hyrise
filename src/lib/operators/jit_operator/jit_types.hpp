@@ -175,7 +175,7 @@ struct JitRuntimeContext {
   CommitID snapshot_commit_id;
   int64_t limit_rows;  // signed integer used to allow decrementing below 0
   ChunkID chunk_id;
-  std::vector<RowID> output_pos_list;  // std::shared_ptr<PosList>
+  std::shared_ptr<PosList> output_pos_list;  // std::shared_ptr<PosList>  -  std::vector<RowID>
 #if JIT_MEASURE
   std::chrono::nanoseconds times[JitOperatorType::Size];
   std::chrono::time_point<std::chrono::high_resolution_clock> begin_operator;

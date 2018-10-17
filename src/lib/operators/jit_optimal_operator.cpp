@@ -146,9 +146,9 @@ std::shared_ptr<const Table> JitOptimalOperator::_on_execute() {
 
     for (opossum::ChunkID chunk_id{0}; chunk_id < left_table->chunk_count(); ++chunk_id) {
       Segments out_segments;
-      context.output_pos_list.clear();
+      context.output_pos_list = std::make_shared<PosList>();
       float expected_size = left_table->get_chunk(chunk_id)->size() * 1.f;
-      context.output_pos_list.reserve(expected_size);
+      context.output_pos_list->reserve(expected_size);
 
       auto output_pos_list2 = std::make_shared<PosList>();
       output_pos_list2->reserve(expected_size);
@@ -208,17 +208,14 @@ std::shared_ptr<const Table> JitOptimalOperator::_on_execute() {
         }
 
         for (const auto id : row_ids[row_index]) {
-          context.output_pos_list.emplace_back(context.chunk_id, context.chunk_offset);
+          context.output_pos_list->emplace_back(context.chunk_id, context.chunk_offset);
           output_pos_list2->emplace_back(id);
         }
       }
-      auto output_pos_list = std::make_shared<PosList>();
-      output_pos_list->resize(context.output_pos_list.size());
-      std::copy(context.output_pos_list.cbegin(), context.output_pos_list.cend(), output_pos_list->begin());
       auto ref_segment_out =
           std::make_shared<ReferenceSegment>(right_table, right_ref_col.referenced_column_id, output_pos_list2);
       auto ref_segment_out2 =
-          std::make_shared<ReferenceSegment>(left_table, left_ref_col.referenced_column_id, output_pos_list);
+          std::make_shared<ReferenceSegment>(left_table, left_ref_col.referenced_column_id, context.output_pos_list);
       out_segments.push_back(ref_segment_out);
       out_segments.push_back(ref_segment_out2);
       out_table->append_chunk(out_segments);

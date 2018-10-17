@@ -58,6 +58,7 @@ std::shared_ptr<const Table> JitOptimalScanOperator::_on_execute() {
     JitOutputReferenceColumn left_ref_col{"A", DataType::Int, false, col_a};
     write.add_output_column(left_ref_col);
     auto out_table = write.create_output_table(table->max_chunk_size());
+    write.before_query(*table, *out_table, context);
 
     Timer timer;
 
@@ -89,7 +90,7 @@ std::shared_ptr<const Table> JitOptimalScanOperator::_on_execute() {
           continue;
         }
 
-        context.output_pos_list.emplace_back(context.chunk_id, context.chunk_offset);
+        context.output_pos_list->emplace_back(context.chunk_id, context.chunk_offset);
       }
 
       write.after_chunk(table, *out_table, context);
