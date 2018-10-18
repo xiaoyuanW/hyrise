@@ -7,6 +7,7 @@
 #include "operators/jit_operator/operators/jit_compute.hpp"
 #include "operators/jit_operator/operators/jit_read_value.hpp"
 #include "operators/jit_operator/operators/jit_validate.hpp"
+#include "operators/jit_operator/operators/jit_filter.hpp"
 #include "utils/timer.hpp"
 
 #include "jit_evaluation_helper.hpp"
@@ -87,7 +88,12 @@ void JitOperatorWrapper::insert_loads(const bool lazy) {
         if (pair.second && column_id_used_by_one_operator[pair.first]) {
           // insert within JitCompute operator
           auto compute_ptr = std::dynamic_pointer_cast<JitCompute>(jit_operator);
-          compute_ptr->set_load_column(pair.first, inverted_input_columns[pair.first]);
+          if (compute_ptr) {
+            compute_ptr->set_load_column(pair.first, inverted_input_columns[pair.first]);
+          } else {
+            auto filter_ptr = std::dynamic_pointer_cast<JitFilter>(jit_operator);
+            compute_ptr->set_load_column(pair.first, inverted_input_columns[pair.first]);
+          }
         } else {
           jit_operators.emplace_back(std::make_shared<JitReadValue>(
               _source()->input_columns()[inverted_input_columns[pair.first]], inverted_input_columns[pair.first]));
