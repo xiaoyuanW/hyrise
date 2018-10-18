@@ -12,7 +12,7 @@ namespace opossum {
 #define JIT_VARIANT_VECTOR_SET(r, d, type)                                                                     \
   template <>                                                                                                  \
   void JitVariantVector::set<BOOST_PP_TUPLE_ELEM(3, 0, type)>(const size_t index,                              \
-                                                              const BOOST_PP_TUPLE_ELEM(3, 0, type) & value) { \
+                                                              const BOOST_PP_TUPLE_ELEM(3, 0, type) value) {   \
     BOOST_PP_TUPLE_ELEM(3, 1, type)[index] = value;                                                            \
   }
 

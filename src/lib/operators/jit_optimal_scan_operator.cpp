@@ -41,12 +41,12 @@ std::shared_ptr<const Table> JitOptimalScanOperator::_on_execute() {
     const auto col_a = table->column_id_by_name("A");
     read_tuples.add_input_column(DataType::Int, false, col_a, false);
     // const auto col_x = right_table->column_id_by_name("X100000");
-    constexpr auto a_id = 0;
+    // constexpr auto a_id = 0;
     constexpr int32_t val = 50000;
     read_tuples.add_literal_value(AllTypeVariant(val));
     constexpr auto l_id = 1;
     read_tuples.add_temporary_value();
-    constexpr auto tmp_id = 2;
+    // constexpr auto tmp_id = 2;
     // const auto tpl =
 
     // const auto l_id = read_tuples.add_literal_value(0);
@@ -72,7 +72,7 @@ std::shared_ptr<const Table> JitOptimalScanOperator::_on_execute() {
         }
         */
         // context.inputs.front()->read_value(context);
-        static_cast<OwnJitSegmentReader*>(context.inputs.front().get())->read_value(context);
+        // static_cast<OwnJitSegmentReader*>(context.inputs.front().get())->read_value(context);
         /*
 
         const auto row_tid = context.mvcc_data->tids[context.chunk_offset].load();
@@ -85,8 +85,9 @@ std::shared_ptr<const Table> JitOptimalScanOperator::_on_execute() {
           continue;
         }
         */
-        context.tuple.set<int>(tmp_id, context.tuple.get<int>(a_id) < context.tuple.get<int>(l_id));
-        if (!context.tuple.get<int>(tmp_id)) {
+        //context.tuple.set<int>(tmp_id, context.tuple.get<int>(a_id) < context.tuple.get<int>(l_id));
+        //if (!context.tuple.get<int>(tmp_id)) {
+        if (! (static_cast<OwnJitSegmentReader*>(context.inputs.front().get())->read_and_get_value(context).value < context.tuple.get<int>(l_id))) {
           continue;
         }
 
