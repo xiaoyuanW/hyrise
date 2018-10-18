@@ -123,12 +123,8 @@ class JitReadTuples : public AbstractJittable {
 #endif
     }
 
-    struct Value {
-      bool is_null;
-      DataType value;
-    };
     __attribute__((always_inline))
-    Value read_and_get_value(JitRuntimeContext& context) {
+    Value<DataType> read_and_get_value(JitRuntimeContext& context) {
       const size_t current_offset = context.chunk_offset;
       // _iterator += current_offset - _chunk_offset;
       std::advance(_iterator, current_offset - _chunk_offset);

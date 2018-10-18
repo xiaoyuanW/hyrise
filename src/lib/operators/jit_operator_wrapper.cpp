@@ -92,7 +92,7 @@ void JitOperatorWrapper::insert_loads(const bool lazy) {
             compute_ptr->set_load_column(pair.first, inverted_input_columns[pair.first]);
           } else {
             auto filter_ptr = std::dynamic_pointer_cast<JitFilter>(jit_operator);
-            compute_ptr->set_load_column(pair.first, inverted_input_columns[pair.first]);
+            filter_ptr->set_load_column(pair.first, inverted_input_columns[pair.first]);
           }
         } else {
           jit_operators.emplace_back(std::make_shared<JitReadValue>(

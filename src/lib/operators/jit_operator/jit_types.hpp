@@ -30,6 +30,9 @@ namespace opossum {
   ((double,      Double,     "double"))  \
   ((bool, Bool, "bool"))
 
+#define DATA_TYPE_INFO_INT        \
+  ((int32_t,     Int,        "int"))
+
 #define DATA_TYPE_INFO_WO_INT        \
   ((int32_t,     Int,        "int"))    \
   ((int64_t,     Long,       "long"))   \
@@ -73,6 +76,15 @@ using Bool = int32_t;
 static constexpr auto DataTypeBool = DataType::Int;
 using JitValueID = int32_t;
 static constexpr auto DataTypeValueID = DataType::Int;
+
+
+template <typename T>
+struct Value {
+  // Value<bool>(const bool is_null = false, const bool value = false) : is_null(is_null), value(value) {}
+  // Value(const bool is_null = false, const Value value = Value()) : is_null(is_null), value(value) {}
+  bool is_null;
+  T value;
+};
 
 /* A brief overview of the type system and the way values are handled in the JitOperatorWrapper:
  *

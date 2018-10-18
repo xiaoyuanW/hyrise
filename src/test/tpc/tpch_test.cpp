@@ -116,6 +116,20 @@ TEST_F(TPCHTest, JitOptimalTableScanOperator) {
   const auto res2 = pipeline.get_result_table();
 
   EXPECT_TABLE_EQ(res, res2, OrderSensitivity::No, TypeCmpMode::Lenient, FloatComparisonMode::RelativeDifference);
+
+  global.jit = true;
+  global.lazy_load = true;
+  auto pipeline2 =
+          SQLPipelineBuilder{
+                  "SELECT A FROM TABLE_SCAN WHERE A < 50000"}
+                  .with_transaction_context(context)
+                  .create_pipeline();
+
+  const auto res3 = pipeline2.get_result_table();
+
+  EXPECT_TABLE_EQ(res2, res3, OrderSensitivity::No, TypeCmpMode::Lenient, FloatComparisonMode::RelativeDifference);
+
+  global.jit = false;
 }
 
 TEST_P(TPCHTest, TPCHQueryTest) {

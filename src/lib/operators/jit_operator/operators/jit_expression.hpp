@@ -38,6 +38,9 @@ class JitExpression {
    */
   void compute(JitRuntimeContext& context) const;
 
+  template <typename T>
+  Value<T> compute_and_get(JitRuntimeContext& context) const;
+
   void set_load_column(const size_t input_column_index) const {
 #if JIT_LAZY_LOAD
     auto& non_const_load_column = const_cast<bool&>(_load_column);
