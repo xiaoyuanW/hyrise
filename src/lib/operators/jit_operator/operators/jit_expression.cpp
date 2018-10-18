@@ -72,10 +72,10 @@ void JitExpression::compute(JitRuntimeContext& context) const {
   // OR:  true  or  true/false/null = true
 #if JIT_LOGICAL_PRUNING
   if (_expression_type == JitExpressionType::And && !_left_child->result().is_null(context) &&
-      !_left_child->result().get<bool>(context)) {
+      !_left_child->result().get<Bool>(context)) {
     return jit_and(_left_child->result(), _right_child->result(), _result_value, context, true);
   } else if (_expression_type == JitExpressionType::Or && !_left_child->result().is_null(context) &&
-             _left_child->result().get<bool>(context)) {
+             _left_child->result().get<Bool>(context)) {
     return jit_or(_left_child->result(), _right_child->result(), _result_value, context, true);
   }
 #endif
@@ -178,10 +178,10 @@ std::pair<const DataType, const bool> JitExpression::_compute_result_type() {
   if (!jit_expression_is_binary(_expression_type)) {
     switch (_expression_type) {
       case JitExpressionType::Not:
-        return std::make_pair(DataType::Bool, _left_child->result().is_nullable());
+        return std::make_pair(DataTypeBool, _left_child->result().is_nullable());
       case JitExpressionType::IsNull:
       case JitExpressionType::IsNotNull:
-        return std::make_pair(DataType::Bool, false);
+        return std::make_pair(DataTypeBool, false);
       default:
         Fail("Expression type not supported.");
     }
@@ -223,7 +223,7 @@ std::pair<const DataType, const bool> JitExpression::_compute_result_type() {
     case JitExpressionType::NotLike:
     case JitExpressionType::And:
     case JitExpressionType::Or:
-      result_data_type = DataType::Bool;
+      result_data_type = DataTypeBool;
       break;
     default:
       Fail("Expression type not supported.");

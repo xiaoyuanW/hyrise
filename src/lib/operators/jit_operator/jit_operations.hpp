@@ -196,7 +196,8 @@ void jit_compute(const T& op_func, const JitTupleValue& lhs, const JitTupleValue
   const auto store_result_wrapper = [&](const auto& typed_lhs, const auto& typed_rhs,
                                         auto& result) -> decltype(op_func(typed_lhs, typed_rhs), void()) {
     using ResultType = decltype(op_func(typed_lhs, typed_rhs));
-    result.template set<ResultType>(op_func(typed_lhs, typed_rhs), context);
+    using Type = std::conditional_t<std::is_same_v<ResultType, bool>, Bool, ResultType>;
+    result.template set<Type>(op_func(typed_lhs, typed_rhs), context);
   };
 
   const auto catching_func = InvalidTypeCatcher<decltype(store_result_wrapper), void>(store_result_wrapper);
@@ -231,14 +232,15 @@ Value<ValueType> jit_compute_and_get(const T& op_func, const std::shared_ptr<con
         return {true, ValueType()};
       }
     }
-    return {false, correct_type<ValueType, ResultType>(op_func(typed_lhs.value, typed_rhs.value))};
+    using Type = std::conditional_t<std::is_same_v<ResultType, bool>, Bool, ResultType>;
+    return {false, correct_type<ValueType, Type>(op_func(typed_lhs.value, typed_rhs.value))};
   };
 
   const auto catching_func = InvalidTypeCatcher<decltype(store_result_wrapper), Value<ValueType>>(store_result_wrapper);
 
   // The type information from the lhs and rhs are combined into a single value for dispatching without nesting.
   const auto combined_types = static_cast<uint8_t>(lhs.data_type()) << 8 | static_cast<uint8_t>(rhs.data_type());
-  switch (combined_types) { BOOST_PP_SEQ_FOR_EACH_PRODUCT(JIT_COMPUTE_CASE_AND_GET, (DATA_TYPE_INFO_INT)(DATA_TYPE_INFO_INT)) }
+  switch (combined_types) { BOOST_PP_SEQ_FOR_EACH_PRODUCT(JIT_COMPUTE_CASE_AND_GET, (JIT_DATA_TYPE_INFO)(JIT_DATA_TYPE_INFO)) }
   Fail("Invalid combination of types for operation.");
 }
 
