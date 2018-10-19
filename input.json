@@ -8,9 +8,9 @@
       "PAPI_SR_INS"
     ],
     "papi_events": [],
-    "scale_factor": 10,
-    "use_other_tables": false,
-    "use_tpch_tables": true
+    "scale_factor": 1,
+    "use_other_tables": true,
+    "use_tpch_tables": false
   },
   "queries": {
     "0": {
@@ -120,22 +120,32 @@
       "tables": [
         "supplier", "lineitem"
       ]
+    },
+    "JIT_CUSTOM_SCAN_BENCHMARK": {
+      "query": "SELECT A FROM TABLE_SCAN WHERE A < 50000",
+      "tables": [
+        "TABLE_SCAN"
+      ]
     }
   },
   "experiments": [
     {
       "engine": "jit",
-      "query_id": "JOIN_BENCHMARK",
-      "mvcc": false,
+      "query_id": "JIT_CUSTOM_SCAN_BENCHMARK",
       "hand_written": true,
       "repetitions": 50,
       "task": "run"
     },
     {
-      "engine": "opossum",
-      "query_id": "JOIN_BENCHMARK",
-      "mvcc": false,
+      "engine": "jit",
+      "query_id": "JIT_CUSTOM_SCAN_BENCHMARK",
       "hand_written": false,
+      "repetitions": 50,
+      "task": "run"
+    },
+    {
+      "engine": "opossum",
+      "query_id": "JIT_CUSTOM_SCAN_BENCHMARK",
       "repetitions": 50,
       "task": "run"
     }

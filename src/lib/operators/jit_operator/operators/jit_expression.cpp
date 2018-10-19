@@ -239,5 +239,44 @@ std::pair<const DataType, const bool> JitExpression::_compute_result_type() {
                         input_is_null || (_left_child->result().is_nullable() || _right_child->result().is_nullable()));
 }
 
+template <typename T>
+Value<T> JitExpression::compute_and_get(JitRuntimeContext& context) const {
+  if (_expression_type == JitExpressionType::Column) {
+#if JIT_LAZY_LOAD
+    if (_load_column) {
+      return _input_segment_wrapper->read_and_get_value(context, T());
+    }
+#endif
+    if (_result_value.is_nullable()) {
+      return {_result_value.is_null(context), _result_value.get<T>(context)};
+    } else {
+      return {false, _result_value.get<T>(context)};
+    }
+  }
+  switch (_expression_type) {
+   case JitExpressionType::Equals:
+     return jit_compute_and_get<T>(jit_equals, _left_child, _right_child, context);
+    case JitExpressionType::NotEquals:
+      return jit_compute_and_get<T>(jit_not_equals, _left_child, _right_child, context);
+    case JitExpressionType::GreaterThan:
+      return jit_compute_and_get<T>(jit_greater_than, _left_child, _right_child, context);
+    case JitExpressionType::GreaterThanEquals:
+      return jit_compute_and_get<T>(jit_greater_than_equals, _left_child, _right_child, context);
+    case JitExpressionType::LessThan:
+      return jit_compute_and_get<T>(jit_less_than, _left_child, _right_child, context);
+    case JitExpressionType::LessThanEquals:
+      return jit_compute_and_get<T>(jit_less_than_equals, _left_child, _right_child, context);
+    case JitExpressionType::Like:
+      return jit_compute_and_get<T>(jit_like, _left_child, _right_child, context);
+    case JitExpressionType::NotLike:
+      return jit_compute_and_get<T>(jit_not_like, _left_child, _right_child, context);
+    default:
+      Fail("Expression type not supported.");
+  }
+}
+
+#define INSTANTIATE_FUNCTION(r, d, type) \
+   template Value<BOOST_PP_TUPLE_ELEM(3, 0, type)> JitExpression::compute_and_get<BOOST_PP_TUPLE_ELEM(3, 0, type)>(JitRuntimeContext& context) const;
+BOOST_PP_SEQ_FOR_EACH(INSTANTIATE_FUNCTION, _, JIT_DATA_TYPE_INFO)
 
 }  // namespace opossum

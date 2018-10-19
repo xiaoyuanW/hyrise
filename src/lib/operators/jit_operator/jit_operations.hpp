@@ -8,6 +8,7 @@
 #include "jit_types.hpp"
 #include "operators/table_scan/like_table_scan_impl.hpp"
 #include "resolve_type.hpp"
+#include "operators/jit_expression.hpp"
 
 namespace opossum {
 
@@ -47,8 +48,13 @@ namespace opossum {
 
 #define JIT_COMPUTE_CASE(r, types)                                                                                   \
   case static_cast<uint8_t>(JIT_GET_ENUM_VALUE(0, types)) << 8 | static_cast<uint8_t>(JIT_GET_ENUM_VALUE(1, types)): \
-    catching_func(lhs.get<JIT_GET_DATA_TYPE(0, types)>(context), rhs.get<JIT_GET_DATA_TYPE(1, types)>(context),      \
+    return catching_func(lhs.get<JIT_GET_DATA_TYPE(0, types)>(context), rhs.get<JIT_GET_DATA_TYPE(1, types)>(context),      \
                   result);                                                                                           \
+    break;
+
+#define JIT_COMPUTE_CASE_AND_GET(r, types)                                                                                   \
+  case static_cast<uint8_t>(JIT_GET_ENUM_VALUE(0, types)) << 8 | static_cast<uint8_t>(JIT_GET_ENUM_VALUE(1, types)): \
+    return catching_func(left_side->compute_and_get<JIT_GET_DATA_TYPE(0, types)>(context), right_side->compute_and_get<JIT_GET_DATA_TYPE(1, types)>(context));                                                                                           \
     break;
 
 #define JIT_COMPUTE_TYPE_CASE(r, types)                                                                              \
@@ -198,6 +204,45 @@ void jit_compute(const T& op_func, const JitTupleValue& lhs, const JitTupleValue
   // The type information from the lhs and rhs are combined into a single value for dispatching without nesting.
   const auto combined_types = static_cast<uint8_t>(lhs.data_type()) << 8 | static_cast<uint8_t>(rhs.data_type());
   switch (combined_types) { BOOST_PP_SEQ_FOR_EACH_PRODUCT(JIT_COMPUTE_CASE, (JIT_DATA_TYPE_INFO)(JIT_DATA_TYPE_INFO)) }
+}
+
+template <typename ValueType, typename T, typename = typename std::enable_if_t<std::is_same_v<ValueType, T>>>
+__attribute__((always_inline)) ValueType correct_type(const ValueType value) {
+  return value;
+}
+template <typename ValueType, typename T, typename = typename std::enable_if_t<!std::is_same_v<ValueType, T>>>
+__attribute__((always_inline)) ValueType correct_type(const T value) {
+  return ValueType();
+}
+
+template <typename ValueType, typename T>
+Value<ValueType> jit_compute_and_get(const T& op_func, const std::shared_ptr<const JitExpression>& left_side, const std::shared_ptr<const JitExpression>&  right_side,
+                 JitRuntimeContext& context) {
+  // Handle NULL values and return if either input is NULL.
+  const auto lhs = left_side->result();
+  const auto rhs = right_side->result();
+
+  // This lambda calls the op_func (a lambda that performs the actual computation) with typed arguments and stores
+  // the result.
+  const auto store_result_wrapper = [&](const auto& typed_lhs, const auto& typed_rhs) -> decltype(op_func(typed_lhs.value, typed_rhs.value), Value<ValueType>()) {
+    if (lhs.is_nullable() || rhs.is_nullable()) {
+      if (typed_lhs.is_null || typed_rhs.is_null) {
+        return {true, ValueType()};
+      }
+    }
+    using ResultType = decltype(op_func(typed_lhs.value, typed_rhs.value));
+    return {false, correct_type<ValueType, ResultType>(op_func(typed_lhs.value, typed_rhs.value))};
+  };
+
+  const auto catching_func = InvalidTypeCatcher<decltype(store_result_wrapper), Value<ValueType>>(store_result_wrapper);
+
+  // The type information from the lhs and rhs are combined into a single value for dispatching without nesting.
+  const auto combined_types = static_cast<uint8_t>(lhs.data_type()) << 8 | static_cast<uint8_t>(rhs.data_type());
+  switch (combined_types) {
+    BOOST_PP_SEQ_FOR_EACH_PRODUCT(JIT_COMPUTE_CASE_AND_GET, (JIT_DATA_TYPE_INFO)(JIT_DATA_TYPE_INFO))
+    default:
+      Fail("Code unreachable.");
+  }
 }
 
 template <typename T>

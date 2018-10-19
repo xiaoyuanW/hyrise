@@ -22,8 +22,41 @@ namespace opossum {
 // See "all_type_variant.hpp" for details.
 #define JIT_DATA_TYPE_INFO ((bool, Bool, "bool")) DATA_TYPE_INFO
 
+// clang-format off
+#define DATA_TYPE_INFO_WO_STRING        \
+  ((int32_t,     Int,        "int"))    \
+  ((int64_t,     Long,       "long"))   \
+  ((float,       Float,      "float"))  \
+  ((double,      Double,     "double"))  \
+  ((bool, Bool, "bool"))
+
+#define DATA_TYPE_INFO_INT        \
+  ((int32_t,     Int,        "int"))
+
+#define DATA_TYPE_INFO_WO_INT        \
+  ((int32_t,     Int,        "int"))    \
+  ((int64_t,     Long,       "long"))   \
+  ((float,       Float,      "float"))  \
+  ((double,      Double,     "double"))  \
+  ((std::string, String,     "string"))  \
+  ((bool, Bool, "bool"))
+// Type          Enum Value   String
+// clang-format on
+
 #define JIT_VARIANT_VECTOR_MEMBER(r, d, type) \
   std::vector<BOOST_PP_TUPLE_ELEM(3, 0, type)> BOOST_PP_TUPLE_ELEM(3, 1, type);
+
+#define JIT_VARIANT_VECTOR_GET(r, d, type)                                           \
+  template <typename T = BOOST_PP_TUPLE_ELEM(3, 0, type), typename = typename std::enable_if_t<std::is_same_v<T, BOOST_PP_TUPLE_ELEM(3, 0, type)>>>        \
+  __attribute__((always_inline)) BOOST_PP_TUPLE_ELEM(3, 0, type) get(const size_t index) const { \
+    return BOOST_PP_TUPLE_ELEM(3, 1, type)[index];                                   \
+  }
+
+#define JIT_VARIANT_VECTOR_SET(r, d, type)                                                                     \
+  template <typename T = BOOST_PP_TUPLE_ELEM(3, 0, type), typename = typename std::enable_if_t<std::is_same_v<T, BOOST_PP_TUPLE_ELEM(3, 0, type)>>>        \
+  __attribute__((always_inline)) void set(const size_t index, const BOOST_PP_TUPLE_ELEM(3, 0, type) & value) { \
+    BOOST_PP_TUPLE_ELEM(3, 1, type)[index] = value;                                                            \
+  }
 
 #define JIT_MEASURE 0
 
@@ -43,6 +76,15 @@ using Bool = int32_t;
 static constexpr auto DataTypeBool = DataType::Int;
 using JitValueID = int32_t;
 static constexpr auto DataTypeValueID = DataType::Int;
+
+
+template <typename T>
+struct Value {
+  // Value<bool>(const bool is_null = false, const bool value = false) : is_null(is_null), value(value) {}
+  // Value(const bool is_null = false, const Value value = Value()) : is_null(is_null), value(value) {}
+  bool is_null;
+  T value;
+};
 
 /* A brief overview of the type system and the way values are handled in the JitOperatorWrapper:
  *
@@ -101,12 +143,21 @@ class JitVariantVector {
 
   template <typename T, typename = typename std::enable_if_t<!std::is_scalar_v<T>>>
   __attribute__((optnone)) std::string get(const size_t index) const;
-  template <typename T, typename = typename std::enable_if_t<std::is_scalar_v<T>>>
-  T get(const size_t index) const;
+  // template <typename T, typename = typename std::enable_if_t<std::is_scalar_v<T>>>
+  // __attribute__((always_inline))
+  // T get(const size_t index) const;
   template <typename T, typename = typename std::enable_if_t<!std::is_scalar_v<T>>>
   __attribute__((optnone)) void set(const size_t index, const std::string& value);
-  template <typename T, typename = typename std::enable_if_t<std::is_scalar_v<T>>>
-  void set(const size_t index, const T& value);
+  // template <typename T, typename = typename std::enable_if_t<std::is_scalar_v<T> && !std::is_same_v<T, int32_t>>>
+  // __attribute__((always_inline))
+  // void set(const size_t index, const T& value);
+  /*
+  template <typename T = int32_t, typename = typename std::enable_if_t<std::is_same_v<T, int32_t>>>
+  __attribute__((always_inline))
+  void set(const size_t index, const int32_t& value) {
+    Int[index] = value;
+  }
+   */
   bool is_null(const size_t index);
   void set_is_null(const size_t index, const bool is_null);
 
@@ -123,6 +174,9 @@ class JitVariantVector {
 
   // Returns the internal _is_null vector.
   std::vector<bool>& get_is_null_vector();
+
+  BOOST_PP_SEQ_FOR_EACH(JIT_VARIANT_VECTOR_GET, _, DATA_TYPE_INFO_WO_STRING)
+  BOOST_PP_SEQ_FOR_EACH(JIT_VARIANT_VECTOR_SET, _, DATA_TYPE_INFO_WO_STRING)
 
  private:
   BOOST_PP_SEQ_FOR_EACH(JIT_VARIANT_VECTOR_MEMBER, _, JIT_DATA_TYPE_INFO)
@@ -173,7 +227,7 @@ struct JitRuntimeContext {
   CommitID snapshot_commit_id;
   int64_t limit_rows;  // signed integer used to allow decrementing below 0
   ChunkID chunk_id;
-  std::vector<RowID> output_pos_list;  // std::shared_ptr<PosList>
+  std::shared_ptr<PosList> output_pos_list;  // std::shared_ptr<PosList>  -  std::vector<RowID>
 #if JIT_MEASURE
   std::chrono::nanoseconds times[JitOperatorType::Size];
   std::chrono::time_point<std::chrono::high_resolution_clock> begin_operator;
@@ -195,11 +249,13 @@ class JitTupleValue {
   size_t tuple_index() const;
 
   template <typename T>
+  __attribute__((always_inline))
   T get(JitRuntimeContext& context) const {
     return context.tuple.get<T>(_tuple_index);
   }
 
   template <typename T>
+  __attribute__((always_inline))
   void set(const T value, JitRuntimeContext& context) const {
     context.tuple.set<T>(_tuple_index, value);
   }
@@ -296,6 +352,8 @@ enum class JitExpressionType {
 bool jit_expression_is_binary(const JitExpressionType expression_type);
 
 // cleanup
+#undef JIT_VARIANT_VECTOR_GET
+#undef JIT_VARIANT_VECTOR_SET
 #undef JIT_VARIANT_VECTOR_MEMBER
 #undef JIT_VARIANT_VECTOR_RESIZE
 

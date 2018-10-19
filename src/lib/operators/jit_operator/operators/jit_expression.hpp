@@ -40,6 +40,9 @@ class JitExpression {
    */
   void compute(JitRuntimeContext& context) const;
 
+  template <typename T>
+  Value<T> compute_and_get(JitRuntimeContext& context) const;
+
   void set_load_column(const std::shared_ptr<BaseJitSegmentReaderWrapper> input_segment_wrapper) const {
 #if JIT_LAZY_LOAD
     const_cast<bool&>(_load_column) = true;

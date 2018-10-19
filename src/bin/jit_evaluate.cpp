@@ -104,6 +104,7 @@ void pqp() {
 
   const std::string query_string = opossum::JitEvaluationHelper::get().queries()[query_id]["query"];
 
+  opossum::Global::get().jit_evaluate = true;
   opossum::SQLPipeline pipeline = opossum::SQLPipelineBuilder(query_string)
                                       .with_mvcc(opossum::UseMvcc(mvcc))
                                       .dont_cleanup_temporaries()
@@ -111,6 +112,7 @@ void pqp() {
   pipeline.get_result_table();
   opossum::SQLQueryPlan query_plan(opossum::CleanupTemporaries::No);
   const auto plans = pipeline.get_query_plans();
+  opossum::Global::get().jit_evaluate = false;
   for (const auto& plan : plans) {
     query_plan.append_plan(*plan);
   }

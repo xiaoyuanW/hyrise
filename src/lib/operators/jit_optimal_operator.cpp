@@ -7,24 +7,32 @@
 #include "operators/jit_operator/jit_operations.hpp"
 #include "operators/jit_operator/operators/jit_aggregate.hpp"
 #include "operators/jit_operator/operators/jit_read_value.hpp"
+#include "operators/jit_operator/operators/jit_read_tuples.hpp"
 #include "operators/jit_operator/operators/jit_write_offset.hpp"
 #include "storage/reference_segment.hpp"
 #include "storage/storage_manager.hpp"
 #include "validate.hpp"
 #include "storage/value_segment/value_segment_iterable.hpp"
+#include "jit_evaluation_helper.hpp"
+#include "utils/timer.hpp"
 
 namespace opossum {
 
 const std::string JitOptimalOperator::name() const { return "JitOperatorWrapper"; }
 
 std::shared_ptr<const Table> JitOptimalOperator::_on_execute() {
+  std::cerr << "Using custom jit hash join operator" << std::endl;
+
   const auto left_table = StorageManager::get().get_table("lineitem");
   const auto right_table = StorageManager::get().get_table("supplier");
+  std::chrono::nanoseconds create_hash_map{0};
+  std::chrono::nanoseconds probe{0};
 
   JitRuntimeHashmap hashmap;
   std::vector<std::vector<RowID>> row_ids;
   using OwnJitSegmentReader = JitSegmentReader<ValueSegmentIterable<int32_t>::NonNullIterator, int32_t, false>;
 
+  Timer timer;
   {
     JitRuntimeContext context;
     if (transaction_context_is_set()) {
@@ -107,7 +115,7 @@ std::shared_ptr<const Table> JitOptimalOperator::_on_execute() {
       }
     }
   }
-
+  create_hash_map = timer.lap();
   {
     JitRuntimeContext context;
     if (transaction_context_is_set()) {
@@ -138,9 +146,9 @@ std::shared_ptr<const Table> JitOptimalOperator::_on_execute() {
 
     for (opossum::ChunkID chunk_id{0}; chunk_id < left_table->chunk_count(); ++chunk_id) {
       Segments out_segments;
-      context.output_pos_list.clear();
+      context.output_pos_list = std::make_shared<PosList>();
       float expected_size = left_table->get_chunk(chunk_id)->size() * 1.f;
-      context.output_pos_list.reserve(expected_size);
+      context.output_pos_list->reserve(expected_size);
 
       auto output_pos_list2 = std::make_shared<PosList>();
       output_pos_list2->reserve(expected_size);
@@ -175,10 +183,12 @@ std::shared_ptr<const Table> JitOptimalOperator::_on_execute() {
         */
 
         uint64_t hash_value = std::hash<int>()(context.tuple.get<int>(a_id));
-        if (!hashmap.indices.count(hash_value)) {
+        const auto it = hashmap.indices.find(hash_value);
+        if (it == hashmap.indices.end()) {
           continue;
         }
-        auto& hash_bucket = hashmap.indices[hash_value];
+        auto& hash_bucket = it->second;
+
 
 
         bool found_match = false;
@@ -199,21 +209,32 @@ std::shared_ptr<const Table> JitOptimalOperator::_on_execute() {
         }
 
         for (const auto id : row_ids[row_index]) {
-          context.output_pos_list.emplace_back(context.chunk_id, context.chunk_offset);
+          context.output_pos_list->emplace_back(context.chunk_id, context.chunk_offset);
           output_pos_list2->emplace_back(id);
         }
       }
-      auto output_pos_list = std::make_shared<PosList>();
-      output_pos_list->resize(context.output_pos_list.size());
-      std::copy(context.output_pos_list.cbegin(), context.output_pos_list.cend(), output_pos_list->begin());
       auto ref_segment_out =
           std::make_shared<ReferenceSegment>(right_table, right_ref_col.referenced_column_id, output_pos_list2);
       auto ref_segment_out2 =
-          std::make_shared<ReferenceSegment>(left_table, left_ref_col.referenced_column_id, output_pos_list);
+          std::make_shared<ReferenceSegment>(left_table, left_ref_col.referenced_column_id, context.output_pos_list);
       out_segments.push_back(ref_segment_out);
       out_segments.push_back(ref_segment_out2);
       out_table->append_chunk(out_segments);
     }
+    probe = timer.lap();
+
+    auto& operators = JitEvaluationHelper::get().result()["operators"];
+    auto add_time = [&operators](const std::string& name, const auto& time) {
+      const auto micro_s = std::chrono::duration_cast<std::chrono::microseconds>(time).count();
+      if (micro_s > 0) {
+        nlohmann::json jit_op = {{"name", name}, {"prepare", false}, {"walltime", micro_s}};
+        operators.push_back(jit_op);
+      }
+    };
+
+    add_time("_create_hash_map", create_hash_map);
+    add_time("_probe_hash_map", probe);
+
     return out_table;
   }
 }
