@@ -28,9 +28,9 @@ namespace opossum {
 void jit_not(const JitTupleValue& lhs, const JitTupleValue& result, JitRuntimeContext& context) {
   // If the input value is computed by a non-jit operator, its data type is int but it can be read as a bool value.
   DebugAssert(
-      lhs.data_type() == DataTypeBool && result.data_type() == DataTypeBool,
+      (lhs.data_type() == DataType::Bool || lhs.data_type() == DataType::Int) && result.data_type() == DataType::Bool,
       "invalid type for jit operation not");
-  result.set<Bool>(!lhs.get<Bool>(context), context);
+  result.set<bool>(!lhs.get<bool>(context), context);
   result.set_is_null(lhs.is_null(context), context);
 }
 
@@ -38,20 +38,20 @@ void jit_not(const JitTupleValue& lhs, const JitTupleValue& result, JitRuntimeCo
 void jit_and(const JitTupleValue& lhs, const JitTupleValue& rhs, const JitTupleValue& result,
              JitRuntimeContext& context, const bool prune_right_side) {
   // If the input values are computed by non-jit operators, their data type is int but they can be read as bool values.
-  DebugAssert(lhs.data_type() == DataTypeBool &&
-                  rhs.data_type() == DataTypeBool &&
-                  result.data_type() == DataTypeBool,
+  DebugAssert((lhs.data_type() == DataType::Bool || lhs.data_type() == DataType::Int) &&
+                  (rhs.data_type() == DataType::Bool || rhs.data_type() == DataType::Int) &&
+                  result.data_type() == DataType::Bool,
               "invalid type for jit operation and");
 
   // three-valued logic AND
   if (prune_right_side) {  // result is false
-    result.set<Bool>(false, context);
+    result.set<bool>(false, context);
     result.set_is_null(false, context);
   } else if (lhs.is_null(context)) {
-    result.set<Bool>(false, context);
-    result.set_is_null(rhs.is_null(context) || rhs.get<Bool>(context), context);
+    result.set<bool>(false, context);
+    result.set_is_null(rhs.is_null(context) || rhs.get<bool>(context), context);
   } else {
-    result.set<Bool>(rhs.get<Bool>(context), context);
+    result.set<bool>(rhs.get<bool>(context), context);
     result.set_is_null(rhs.is_null(context), context);
   }
 }
@@ -59,20 +59,20 @@ void jit_and(const JitTupleValue& lhs, const JitTupleValue& rhs, const JitTupleV
 void jit_or(const JitTupleValue& lhs, const JitTupleValue& rhs, const JitTupleValue& result, JitRuntimeContext& context,
             const bool prune_right_side) {
   // If the input values are computed by non-jit operators, their data type is int but they can be read as bool values.
-  DebugAssert(lhs.data_type() == DataTypeBool &&
-                  rhs.data_type() == DataTypeBool &&
-                  result.data_type() == DataTypeBool,
+  DebugAssert((lhs.data_type() == DataType::Bool || lhs.data_type() == DataType::Int) &&
+                  (rhs.data_type() == DataType::Bool || rhs.data_type() == DataType::Int) &&
+                  result.data_type() == DataType::Bool,
               "invalid type for jit operation or");
 
   // three-valued logic OR
   if (prune_right_side) {  // result is true
-    result.set<Bool>(true, context);
+    result.set<bool>(true, context);
     result.set_is_null(false, context);
   } else if (lhs.is_null(context)) {
-    result.set<Bool>(true, context);
-    result.set_is_null(rhs.is_null(context) || !rhs.get<Bool>(context), context);
+    result.set<bool>(true, context);
+    result.set_is_null(rhs.is_null(context) || !rhs.get<bool>(context), context);
   } else {
-    result.set<Bool>(rhs.get<Bool>(context), context);
+    result.set<bool>(rhs.get<bool>(context), context);
     result.set_is_null(rhs.is_null(context), context);
   }
 }
@@ -81,32 +81,32 @@ void jit_or(const JitTupleValue& lhs, const JitTupleValue& rhs, const JitTupleVa
 void jit_and(const JitTupleValue& lhs, const JitTupleValue& rhs, const JitTupleValue& result,
              JitRuntimeContext& context) {
   DebugAssert(
-      lhs.data_type() == DataTypeBool && rhs.data_type() == DataTypeBool && result.data_type() == DataTypeBool,
+      lhs.data_type() == DataType::Bool && rhs.data_type() == DataType::Bool && result.data_type() == DataType::Bool,
       "invalid type for operation");
 
   // three-valued logic AND
   if (lhs.is_null(context)) {
-    result.set<Bool>(false, context);
-    result.set_is_null(rhs.is_null(context) || rhs.get<Bool>(context), context);
+    result.set<bool>(false, context);
+    result.set_is_null(rhs.is_null(context) || rhs.get<bool>(context), context);
   } else {
-    result.set<Bool>(lhs.get<Bool>(context) && rhs.get<Bool>(context), context);
-    result.set_is_null(lhs.get<Bool>(context) && rhs.is_null(context), context);
+    result.set<bool>(lhs.get<bool>(context) && rhs.get<bool>(context), context);
+    result.set_is_null(lhs.get<bool>(context) && rhs.is_null(context), context);
   }
 }
 
 void jit_or(const JitTupleValue& lhs, const JitTupleValue& rhs, const JitTupleValue& result,
             JitRuntimeContext& context) {
   DebugAssert(
-      lhs.data_type() == DataTypeBool && rhs.data_type() == DataTypeBool && result.data_type() == DataTypeBool,
+      lhs.data_type() == DataType::Bool && rhs.data_type() == DataType::Bool && result.data_type() == DataType::Bool,
       "invalid type for operation");
 
   // three-valued logic OR
   if (lhs.is_null(context)) {
-    result.set<Bool>(true, context);
-    result.set_is_null(rhs.is_null(context) || !rhs.get<Bool>(context), context);
+    result.set<bool>(true, context);
+    result.set_is_null(rhs.is_null(context) || !rhs.get<bool>(context), context);
   } else {
-    result.set<Bool>(lhs.get<Bool>(context) || rhs.get<Bool>(context), context);
-    result.set_is_null(!lhs.get<Bool>(context) && rhs.is_null(context), context);
+    result.set<bool>(lhs.get<bool>(context) || rhs.get<bool>(context), context);
+    result.set_is_null(!lhs.get<bool>(context) && rhs.is_null(context), context);
   }
 }
 #endif
@@ -125,12 +125,12 @@ bool jit_not_like(const std::string& a, const std::string& b) {
 
 void jit_is_null(const JitTupleValue& lhs, const JitTupleValue& result, JitRuntimeContext& context) {
   result.set_is_null(false, context);
-  result.set<Bool>(lhs.is_null(context), context);
+  result.set<bool>(lhs.is_null(context), context);
 }
 
 void jit_is_not_null(const JitTupleValue& lhs, const JitTupleValue& result, JitRuntimeContext& context) {
   result.set_is_null(false, context);
-  result.set<Bool>(!lhs.is_null(context), context);
+  result.set<bool>(!lhs.is_null(context), context);
 }
 
 uint64_t jit_hash(const JitTupleValue& value, JitRuntimeContext& context) {

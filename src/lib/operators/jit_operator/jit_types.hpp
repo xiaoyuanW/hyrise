@@ -20,16 +20,26 @@ namespace opossum {
 // We need a boolean data type in the JitOperatorWrapper, but don't want to add it to
 // DATA_TYPE_INFO to avoid costly template instantiations.
 // See "all_type_variant.hpp" for details.
-
-#define JIT_DATA_TYPE_INFO DATA_TYPE_INFO  // ((bool, Bool, "bool"))
+#define JIT_DATA_TYPE_INFO ((bool, Bool, "bool")) DATA_TYPE_INFO
 
 // clang-format off
 #define DATA_TYPE_INFO_WO_STRING        \
   ((int32_t,     Int,        "int"))    \
   ((int64_t,     Long,       "long"))   \
   ((float,       Float,      "float"))  \
-  ((double,      Double,     "double"))  //\
-//((bool, Bool, "bool"))
+  ((double,      Double,     "double"))  \
+  ((bool, Bool, "bool"))
+
+#define DATA_TYPE_INFO_INT        \
+  ((int32_t,     Int,        "int"))
+
+#define DATA_TYPE_INFO_WO_INT        \
+  ((int32_t,     Int,        "int"))    \
+  ((int64_t,     Long,       "long"))   \
+  ((float,       Float,      "float"))  \
+  ((double,      Double,     "double"))  \
+  ((std::string, String,     "string"))  \
+  ((bool, Bool, "bool"))
 // Type          Enum Value   String
 // clang-format on
 

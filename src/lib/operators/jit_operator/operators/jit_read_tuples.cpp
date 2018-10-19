@@ -24,7 +24,7 @@ std::string JitReadTuples::description() const {
   desc << "[ReadTuple] ";
   for (const auto& input_column : _input_columns) {
     desc << "(" << (input_column.use_value_id ? "(V) " : "")
-         << data_type_to_string.left.at(input_column.data_type)
+         << (input_column.data_type == DataType::Bool ? "Bool" : data_type_to_string.left.at(input_column.data_type))
          << " x" << input_column.tuple_value.tuple_index() << " = Column#" << input_column.column_id << "), ";
   }
   for (const auto& input_literal : _input_literals) {
@@ -68,6 +68,10 @@ void JitReadTuples::before_query(const Table& in_table, JitRuntimeContext& conte
         context.tuple.set<DataType>(tuple_value.tuple_index(), boost::get<DataType>(value));
         if (tuple_value.is_nullable()) {
           context.tuple.set_is_null(tuple_value.tuple_index(), variant_is_null(value));
+        }
+        // Non-jit operators store bool values as int values
+        if constexpr (std::is_same_v<DataType, Bool>) {
+          context.tuple.set<bool>(tuple_value.tuple_index(), boost::get<DataType>(value));
         }
       });
     }
@@ -123,19 +127,31 @@ void JitReadTuples::before_chunk(const Table& in_table, const ChunkID chunk_id, 
         }
       });
     } else {
-      resolve_data_and_segment_type(*segment, [&](auto type, auto& typed_segment) {
-        using ColumnDataType = typename decltype(type)::type;
-        create_iterable_from_segment<ColumnDataType>(typed_segment).with_iterators([&](auto it, auto end) {
-          using IteratorType = decltype(it);
-          if (is_nullable) {
+      if (input_column.tuple_value.data_type() == DataType::Bool) {
+        DebugAssert(!is_nullable, "Bool column is null");
+        resolve_segment_type<Bool>(*segment, [&](auto& typed_segment) {
+          create_iterable_from_segment<Bool>(typed_segment).with_iterators([&](auto it, auto end) {
+            using IteratorType = decltype(it);
+            // If Data type is bool, the input column is a compute non-null int column
             context.inputs.push_back(
-                std::make_shared<JitSegmentReader<IteratorType, ColumnDataType, true>>(it, input_column.tuple_value));
-          } else {
-            context.inputs.push_back(std::make_shared<JitSegmentReader<IteratorType, ColumnDataType, false>>(
-                it, input_column.tuple_value));
-          }
+                std::make_shared<JitSegmentReader<IteratorType, bool, false>>(it, input_column.tuple_value));
+          });
         });
-      });
+      } else {
+        resolve_data_and_segment_type(*segment, [&](auto type, auto& typed_segment) {
+          using ColumnDataType = typename decltype(type)::type;
+          create_iterable_from_segment<ColumnDataType>(typed_segment).with_iterators([&](auto it, auto end) {
+            using IteratorType = decltype(it);
+            if (is_nullable) {
+              context.inputs.push_back(
+                  std::make_shared<JitSegmentReader<IteratorType, ColumnDataType, true>>(it, input_column.tuple_value));
+            } else {
+              context.inputs.push_back(std::make_shared<JitSegmentReader<IteratorType, ColumnDataType, false>>(
+                  it, input_column.tuple_value));
+            }
+          });
+        });
+      }
     }
   }
 
