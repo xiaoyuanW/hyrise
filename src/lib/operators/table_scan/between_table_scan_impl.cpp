@@ -116,7 +116,8 @@ void BetweenTableScanImpl::handle_segment(const BaseDictionarySegment& base_segm
   };
 
   column_iterable.with_iterators(mapped_chunk_offsets.get(), [&](auto left_it, auto left_end) {
-    this->_scan<true>(comparator_with_values, left_it, left_end, chunk_id, matches_out, true);
+    // No need to check for NULL because `right_value_id <= INVALID_VALUE_ID`
+    this->_scan<false>(comparator_with_values, left_it, left_end, chunk_id, matches_out, true);
   });
 }
 
