@@ -24,6 +24,13 @@ namespace opossum {
   template class ReferenceSegmentIterable<type>; \
   JIT_ACTUAL_INSTANTIOAN(ReferenceSegmentIterable<type>::Iterator, type, false)
 
+JIT_ACTUAL_INSTANTIOAN(AttributeVectorIterable::Iterator<pmr_vector<uint8_t>::const_iterator>, JitValueID, false)
+JIT_ACTUAL_INSTANTIOAN(AttributeVectorIterable::Iterator<pmr_vector<uint16_t>::const_iterator>, JitValueID, false)
+JIT_ACTUAL_INSTANTIOAN(AttributeVectorIterable::Iterator<pmr_vector<uint32_t>::const_iterator>, JitValueID, false)
+JIT_ACTUAL_INSTANTIOAN(AttributeVectorIterable::Iterator<pmr_vector<uint8_t>::const_iterator>, JitValueID, true)
+JIT_ACTUAL_INSTANTIOAN(AttributeVectorIterable::Iterator<pmr_vector<uint16_t>::const_iterator>, JitValueID, true)
+JIT_ACTUAL_INSTANTIOAN(AttributeVectorIterable::Iterator<pmr_vector<uint32_t>::const_iterator>, JitValueID, true)
+
 #define JIT_EXPLICIT_INSTANTIATION(r, _, type) JIT_EXPLICIT_INSTANTIATION_W_TYPE(r, _, BOOST_PP_TUPLE_ELEM(3, 0, type))
 
 // template class JitSegmentReader<ValueSegmentIterable<type>::Iterator, type, true>; \

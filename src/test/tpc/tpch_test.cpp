@@ -99,7 +99,8 @@ TEST_F(TPCHTest, JitOptimalTableScanOperator) {
 
   opossum::JitTableGenerator generator(0.001, opossum::ChunkID(1000));
   generator.generate_and_store();
-
+  // const auto table = StorageManager::get().get_table("TABLE_SCAN");
+  // ChunkEncoder::encode_all_chunks(table);
 
   auto context = opossum::TransactionManager::get().new_transaction_context();
   auto jit_op = std::make_shared<JitOptimalScanOperator>();
