@@ -4,6 +4,7 @@
 #include <boost/hana/tuple.hpp>
 #include <boost/hana/type.hpp>
 #include <memory>
+#include <vector>
 
 #include "fixed_size_byte_aligned_decompressor.hpp"
 #include "storage/vector_compression/base_compressed_vector.hpp"
@@ -24,10 +25,14 @@ class FixedSizeByteAlignedVector : public CompressedVector<FixedSizeByteAlignedV
                 "UnsignedIntType must be any of the three listed unsigned integer types.");
 
  public:
-  explicit FixedSizeByteAlignedVector(pmr_vector<UnsignedIntType> data) : _data{std::move(data)} {}
+  explicit FixedSizeByteAlignedVector(pmr_vector<UnsignedIntType> data) {
+    _data.resize(data.size());
+    std::move(data.begin(), data.end(), _data.begin());
+  }
+  explicit FixedSizeByteAlignedVector(std::vector<UnsignedIntType> data) : _data{std::move(data)} {}
   ~FixedSizeByteAlignedVector() = default;
 
-  const pmr_vector<UnsignedIntType>& data() const { return _data; }
+  const std::vector<UnsignedIntType>& data() const { return _data; }
 
  public:
   size_t on_size() const { return _data.size(); }
@@ -42,12 +47,12 @@ class FixedSizeByteAlignedVector : public CompressedVector<FixedSizeByteAlignedV
   auto on_end() const { return _data.cend(); }
 
   std::unique_ptr<const BaseCompressedVector> on_copy_using_allocator(const PolymorphicAllocator<size_t>& alloc) const {
-    auto data_copy = pmr_vector<UnsignedIntType>{_data, alloc};
+    auto data_copy = std::vector<UnsignedIntType>{_data};
     return std::make_unique<FixedSizeByteAlignedVector<UnsignedIntType>>(std::move(data_copy));
   }
 
  private:
-  const pmr_vector<UnsignedIntType> _data;
+  std::vector<UnsignedIntType> _data;
 };
 
 }  // namespace opossum

@@ -32,7 +32,7 @@ std::unique_ptr<BaseCompressedVector> FixedSizeByteAlignedCompressor::_encode_us
 template <typename UnsignedIntType>
 std::unique_ptr<BaseCompressedVector> FixedSizeByteAlignedCompressor::_encode_using_uint_type(
     const PolymorphicAllocator<size_t>& alloc, const pmr_vector<uint32_t>& vector) {
-  auto data = pmr_vector<UnsignedIntType>(alloc);
+  auto data = std::vector<UnsignedIntType>();  // Fabian
   data.reserve(vector.size());
 
   for (auto value : vector) {
