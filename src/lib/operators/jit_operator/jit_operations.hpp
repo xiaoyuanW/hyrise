@@ -225,12 +225,12 @@ Value<ValueType> jit_compute_and_get(const T& op_func, const std::shared_ptr<con
   // This lambda calls the op_func (a lambda that performs the actual computation) with typed arguments and stores
   // the result.
   const auto store_result_wrapper = [&](const auto& typed_lhs, const auto& typed_rhs) -> decltype(op_func(typed_lhs.value, typed_rhs.value), Value<ValueType>()) {
-    using ResultType = decltype(op_func(typed_lhs.value, typed_rhs.value));
     if (lhs.is_nullable() || rhs.is_nullable()) {
       if (typed_lhs.is_null || typed_rhs.is_null) {
         return {true, ValueType()};
       }
     }
+    using ResultType = decltype(op_func(typed_lhs.value, typed_rhs.value));
     return {false, correct_type<ValueType, ResultType>(op_func(typed_lhs.value, typed_rhs.value))};
   };
 
