@@ -238,8 +238,11 @@ Value<ValueType> jit_compute_and_get(const T& op_func, const std::shared_ptr<con
 
   // The type information from the lhs and rhs are combined into a single value for dispatching without nesting.
   const auto combined_types = static_cast<uint8_t>(lhs.data_type()) << 8 | static_cast<uint8_t>(rhs.data_type());
-  switch (combined_types) { BOOST_PP_SEQ_FOR_EACH_PRODUCT(JIT_COMPUTE_CASE_AND_GET, (DATA_TYPE_INFO_INT)(DATA_TYPE_INFO_INT)) }
-  Fail("Invalid combination of types for operation.");
+  switch (combined_types) {
+    BOOST_PP_SEQ_FOR_EACH_PRODUCT(JIT_COMPUTE_CASE_AND_GET, (JIT_DATA_TYPE_INFO)(JIT_DATA_TYPE_INFO))
+    default:
+      Fail("Code unreachable.");
+  }
 }
 
 template <typename T>
