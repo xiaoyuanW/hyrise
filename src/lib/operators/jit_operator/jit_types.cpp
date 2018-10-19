@@ -77,7 +77,7 @@ JitTupleValue::JitTupleValue(const std::pair<const DataType, const bool> data_ty
 
 DataType JitTupleValue::data_type() const { return _data_type; }
 
-bool JitTupleValue::is_nullable() const { return _is_nullable; }
+bool JitTupleValue::is_nullable() const { return _data_type == DataType::Null || _is_nullable; }
 
 size_t JitTupleValue::tuple_index() const { return _tuple_index; }
 
