@@ -89,7 +89,7 @@ void LikeTableScanImpl::handle_segment(const BaseDictionarySegment& base_segment
   const auto dictionary_lookup = [&dictionary_matches](const ValueID& value) { return dictionary_matches[value]; };
 
   attribute_vector_iterable.with_iterators(mapped_chunk_offsets.get(), [&](auto left_it, auto left_end) {
-    this->_scan<true>(dictionary_lookup, left_it, left_end, chunk_id, matches_out, true);
+    this->_scan<true>(dictionary_lookup, left_it, left_end, chunk_id, matches_out, false);
   });
 }
 

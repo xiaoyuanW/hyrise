@@ -93,8 +93,7 @@ void BetweenTableScanImpl::handle_segment(const BaseDictionarySegment& base_segm
 
   auto column_iterable = create_iterable_from_attribute_vector(base_segment);
 
-  if (left_value_id == ValueID{0} &&  // NOLINT
-      right_value_id == static_cast<ValueID>(base_segment.unique_values_count())) {
+  if (left_value_id == ValueID{0} && right_value_id == static_cast<ValueID>(base_segment.unique_values_count())) {
     // all values match
     column_iterable.with_iterators(mapped_chunk_offsets.get(), [&](auto left_it, auto left_end) {
       static const auto always_true = [](const auto&) { return true; };
@@ -109,9 +108,11 @@ void BetweenTableScanImpl::handle_segment(const BaseDictionarySegment& base_segm
     return;
   }
 
-  auto comparator_with_values = [left_value_id, right_value_id](auto value) {
-    // Using < here because the right value id is the upper_bound
-    return value >= left_value_id && value < right_value_id;
+  const auto value_id_diff = right_value_id - left_value_id;
+  const auto comparator_with_values = [left_value_id, value_id_diff](const auto value) {
+    // Using < here because the right value id is the upper_bound. Also, because the value ids are integers, we can do
+    // a little hack here: (x >= a && x < b) === ((x - a) < (b - a)) - cf. https://stackoverflow.com/a/17095534/2204581
+    return (value - left_value_id) < value_id_diff;
   };
 
   column_iterable.with_iterators(mapped_chunk_offsets.get(), [&](auto left_it, auto left_end) {
