@@ -146,12 +146,6 @@ void JitExpression::compute(JitRuntimeContext& context) const {
     case JitExpressionType::LessThanEquals:
       jit_compute(jit_less_than_equals, _left_child->result(), _right_child->result(), _result_value, context);
       break;
-    case JitExpressionType::Like:
-      jit_compute(jit_like, _left_child->result(), _right_child->result(), _result_value, context);
-      break;
-    case JitExpressionType::NotLike:
-      jit_compute(jit_not_like, _left_child->result(), _right_child->result(), _result_value, context);
-      break;
 
     case JitExpressionType::And:
 #if JIT_LOGICAL_PRUNING
@@ -242,14 +236,64 @@ Value<T> JitExpression::compute_and_get(JitRuntimeContext& context) const {
 #if JIT_LAZY_LOAD
     if (_load_column) context.inputs[_input_column_index]->read_value(context);
 #endif
+    if (_result_value.data_type() == DataType::Null) return {true, T()};
     if (_result_value.is_nullable()) {
       return {_result_value.is_null(context), _result_value.get<T>(context)};
     } else {
       return {false, _result_value.get<T>(context)};
     }
   }
+
+  if (!jit_expression_is_binary(_expression_type)) {
+    switch (_expression_type) {
+      case JitExpressionType::Not:
+        return jit_compute_unary_and_get<T>(jit_not_and_get, _left_child, context);
+      case JitExpressionType::IsNull:
+        return jit_compute_unary_and_get<T>(jit_is_null_and_get, _left_child, context);
+      case JitExpressionType::IsNotNull:
+        return jit_compute_unary_and_get<T>(jit_is_not_null_and_get, _left_child, context);
+      default:
+        Fail("Expression type is not supported.");
+    }
+  }
+
+  if (_left_child->result().data_type() == DataType::String) {
+    switch (_expression_type) {
+      case JitExpressionType::Equals:
+        return jit_compute_and_get<T>(jit_string_equals, _left_child, _right_child, context);
+      case JitExpressionType::NotEquals:
+        return jit_compute_and_get<T>(jit_string_not_equals, _left_child, _right_child, context);
+      case JitExpressionType::GreaterThan:
+        return jit_compute_and_get<T>(jit_string_greater_than, _left_child, _right_child, context);
+      case JitExpressionType::GreaterThanEquals:
+        return jit_compute_and_get<T>(jit_string_greater_than_equals, _left_child, _right_child, context);
+      case JitExpressionType::LessThan:
+        return jit_compute_and_get<T>(jit_string_less_than, _left_child, _right_child, context);
+      case JitExpressionType::LessThanEquals:
+        return jit_compute_and_get<T>(jit_string_less_than_equals, _left_child, _right_child, context);
+      case JitExpressionType::Like:
+        return jit_compute_and_get<T>(jit_like, _left_child, _right_child, context);
+      case JitExpressionType::NotLike:
+        return jit_compute_and_get<T>(jit_not_like, _left_child, _right_child, context);
+      default:
+        Fail("Expression type not supported.");
+    }
+  }
+
   switch (_expression_type) {
-   case JitExpressionType::Equals:
+    case JitExpressionType::Addition:
+      return jit_compute_and_get<T>(jit_addition, _left_child, _right_child, context);
+    case JitExpressionType::Subtraction:
+      return jit_compute_and_get<T>(jit_subtraction, _left_child, _right_child, context);
+    case JitExpressionType::Multiplication:
+      return jit_compute_and_get<T>(jit_multiplication, _left_child, _right_child, context);
+    case JitExpressionType::Division:
+      return jit_compute_and_get<T>(jit_division, _left_child, _right_child, context);
+    case JitExpressionType::Modulo:
+      return jit_compute_and_get<T>(jit_modulo, _left_child, _right_child, context);
+    case JitExpressionType::Power:
+      return jit_compute_and_get<T>(jit_power, _left_child, _right_child, context);
+    case JitExpressionType::Equals:
      return jit_compute_and_get<T>(jit_equals, _left_child, _right_child, context);
     case JitExpressionType::NotEquals:
       return jit_compute_and_get<T>(jit_not_equals, _left_child, _right_child, context);
@@ -261,12 +305,13 @@ Value<T> JitExpression::compute_and_get(JitRuntimeContext& context) const {
       return jit_compute_and_get<T>(jit_less_than, _left_child, _right_child, context);
     case JitExpressionType::LessThanEquals:
       return jit_compute_and_get<T>(jit_less_than_equals, _left_child, _right_child, context);
-    case JitExpressionType::Like:
-      return jit_compute_and_get<T>(jit_like, _left_child, _right_child, context);
-    case JitExpressionType::NotLike:
-      return jit_compute_and_get<T>(jit_not_like, _left_child, _right_child, context);
+
+    case JitExpressionType::And:
+      return jit_and_get<T>(_left_child, _right_child, context);
+    case JitExpressionType::Or:
+      return jit_or_get<T>(_left_child, _right_child, context);
     default:
-      Fail("Expression type not supported.");
+      Fail("Expression type is not supported.");
   }
 }
 

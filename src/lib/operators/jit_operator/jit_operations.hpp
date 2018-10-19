@@ -212,7 +212,7 @@ __attribute__((always_inline)) ValueType correct_type(const ValueType value) {
 }
 template <typename ValueType, typename T, typename = typename std::enable_if_t<!std::is_same_v<ValueType, T>>>
 __attribute__((always_inline)) ValueType correct_type(const T value) {
-  return ValueType();
+  Fail("Code unreachable.");
 }
 
 template <typename ValueType, typename T>
@@ -221,6 +221,9 @@ Value<ValueType> jit_compute_and_get(const T& op_func, const std::shared_ptr<con
   // Handle NULL values and return if either input is NULL.
   const auto lhs = left_side->result();
   const auto rhs = right_side->result();
+  if (lhs.data_type() == DataType::Null || rhs.data_type() == DataType::Null) {
+    return {true, ValueType()};
+  }
 
   // This lambda calls the op_func (a lambda that performs the actual computation) with typed arguments and stores
   // the result.
@@ -243,6 +246,34 @@ Value<ValueType> jit_compute_and_get(const T& op_func, const std::shared_ptr<con
     default:
       Fail("Code unreachable.");
   }
+}
+
+#define JIT_COMPUTE_UNARY_CASE_AND_GET(r, types)                                 \
+  case JIT_GET_ENUM_VALUE(0, types):                                         \
+    return op_func(left_side->compute_and_get<JIT_GET_DATA_TYPE(0, types)>(context));
+
+template <typename T, typename = typename std::enable_if_t<std::is_same_v<T, bool>>>
+__attribute__((always_inline)) bool _not(const bool value) { return !value; }
+template <typename T, typename = typename std::enable_if_t<!std::is_same_v<T, bool>>>
+bool _not(const T) { Fail("Operator 'NOT' only works on bool columns."); }
+
+const auto jit_is_null_and_get = [](const auto value) -> Value<bool> { return {false, value.is_null}; };
+const auto jit_is_not_null_and_get = [](const auto value) -> Value<bool> { return {false, !value.is_null}; };
+const auto jit_not_and_get = [](const auto value) -> Value<bool> { return {value.is_null, _not<decltype(value.value)>(value.value)}; };
+
+template <typename ValueType, typename T, typename = typename std::enable_if_t<std::is_same_v<ValueType, bool>>>
+__attribute__((always_inline)) Value<bool> jit_compute_unary_and_get(const T& op_func, const std::shared_ptr<const JitExpression>& left_side, JitRuntimeContext& context) {
+  // The type information from the lhs and rhs are combined into a single value for dispatching without nesting.
+  switch (left_side->result().data_type()) {
+    BOOST_PP_SEQ_FOR_EACH_PRODUCT(JIT_COMPUTE_UNARY_CASE_AND_GET, (JIT_DATA_TYPE_INFO))
+    case DataType::Null:
+      return op_func(Value<bool>{true, false});
+  }
+}
+
+template <typename ValueType, typename T, typename = typename std::enable_if_t<!std::is_same_v<ValueType, bool>>>
+Value<ValueType> jit_compute_unary_and_get(const T& op_func, const std::shared_ptr<const JitExpression>& left_side, JitRuntimeContext& context) {
+  Fail("Unary operators only return bool as data type");
 }
 
 template <typename T>
@@ -282,6 +313,111 @@ void jit_and(const JitTupleValue& lhs, const JitTupleValue& rhs, const JitTupleV
 void jit_or(const JitTupleValue& lhs, const JitTupleValue& rhs, const JitTupleValue& result,
             JitRuntimeContext& context);
 #endif
+
+template <typename ValueType, typename = typename std::enable_if_t<std::is_same_v<ValueType, bool>>>
+__attribute__((always_inline)) Value<bool> jit_or_get(const std::shared_ptr<const JitExpression>& left_side, const std::shared_ptr<const JitExpression>& right_side, JitRuntimeContext& context) {
+  const auto lhs = left_side->result();
+  const auto rhs = right_side->result();
+
+  const auto left_result = left_side->compute_and_get<bool>(context);
+#if JIT_LOGICAL_PRUNING
+  if (lhs.is_nullable()) {
+    if (!left_result.is_null && left_result.value) return {false, true};
+  } else {
+    if (left_result.value) return {false, true};
+  }
+
+  const auto right_result = right_side->compute_and_get<bool>(context);
+  if (lhs.is_nullable()) {  // can be pruned
+    if (left_result.is_null) {  // can not be pruned
+      if (rhs.is_nullable()) {
+        return {right_result.is_null || !right_result.value, true};
+      } else {
+        return {!right_result.value, true};
+      }
+    }
+  }
+  if (rhs.is_nullable()) {
+    return {right_result.is_null, right_result.value};
+  } else {
+    return {false, right_result.value};
+  }
+#else
+  const auto right_result = right_side->compute_and_get<bool>(context);
+  if (lhs.is_nullable()) {  // can be pruned
+    if (left_result.is_null) {  // can not be pruned
+      if (rhs.is_nullable()) {
+        return {right_result.is_null || !right_result.value, true};
+      } else {
+        return {!right_result.value, true};
+      }
+    }
+  }
+  if (rhs.is_nullable()) {
+    return {!left_result.value && right_result.is_null, left_result.value || right_result.value};
+  } else {
+    return {false, left_result.value || right_result.value};
+  }
+#endif
+}
+
+template <typename ValueType, typename = typename std::enable_if_t<std::is_same_v<ValueType, bool>>>
+__attribute__((always_inline)) Value<bool> jit_and_get(const std::shared_ptr<const JitExpression>& left_side, const std::shared_ptr<const JitExpression>& right_side, JitRuntimeContext& context) {
+  // Handle NULL values and return if either input is NULL.
+  const auto lhs = left_side->result();
+  const auto rhs = right_side->result();
+
+  const auto left_result = left_side->compute_and_get<bool>(context);
+#if JIT_LOGICAL_PRUNING
+  if (lhs.is_nullable()) {
+    if (!left_result.is_null && !left_result.value) return {false, false};
+  } else {
+    if (!left_result.value) return {false, false};
+  }
+
+  const auto right_result = right_side->compute_and_get<bool>(context);
+  if (lhs.is_nullable()) {  // can be pruned
+    if (left_result.is_null) {  // can not be pruned
+      if (rhs.is_nullable()) {
+        return {right_result.is_null || right_result.value, false};
+      } else {
+        return {right_result.value, false};
+      }
+    }
+  }
+  if (rhs.is_nullable()) {
+    return {right_result.is_null, right_result.value};
+  } else {
+    return {false, right_result.value};
+  }
+#else
+  const auto right_result = right_side->compute_and_get<bool>(context);
+  if (lhs.is_nullable()) {  // can be pruned
+    if (left_result.is_null) {  // can not be pruned
+      if (rhs.is_nullable()) {
+        return {right_result.is_null || right_result.value, false};
+      } else {
+        return {right_result.value, false};
+      }
+    }
+  }
+  if (rhs.is_nullable()) {
+    return {left_result.value && right_result.is_null, left_result.value && right_result.value};
+  } else {
+    return {false, left_result.value && right_result.value};
+  }
+#endif
+}
+
+template <typename ValueType, typename = typename std::enable_if_t<!std::is_same_v<ValueType, bool>>>
+Value<ValueType> jit_or_get(const std::shared_ptr<const JitExpression>& left_side, const std::shared_ptr<const JitExpression>& right_side, JitRuntimeContext& context) {
+  Fail("Binary operator 'OR' only returns bool as data type");
+}
+
+template <typename ValueType, typename = typename std::enable_if_t<!std::is_same_v<ValueType, bool>>>
+Value<ValueType> jit_and_get(const std::shared_ptr<const JitExpression>& left_side, const std::shared_ptr<const JitExpression>& right_side, JitRuntimeContext& context) {
+  Fail("Binary operator 'AND' only returns bool as data type");
+}
 
 void jit_is_null(const JitTupleValue& lhs, const JitTupleValue& result, JitRuntimeContext& context);
 void jit_is_not_null(const JitTupleValue& lhs, const JitTupleValue& result, JitRuntimeContext& context);
