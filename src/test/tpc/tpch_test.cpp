@@ -69,7 +69,6 @@ TEST_F(TPCHTest, JitOptimalHashJoinOperator) {
   auto& global = opossum::Global::get();
   global.jit = false;
   global.lazy_load = false;
-  global.jit_validate = true;
 
   float scale_factor = 0.1f;
   TpchDbGenerator{scale_factor, 10'000}.generate_and_store();
@@ -94,8 +93,7 @@ TEST_F(TPCHTest, JitOptimalHashJoinOperator) {
 TEST_F(TPCHTest, JitOptimalTableScanOperator) {
   auto& global = opossum::Global::get();
   global.jit = false;
-  global.lazy_load = false;
-  global.jit_validate = true;
+  global.lazy_load = true;
 
   opossum::JitTableGenerator generator(0.001, opossum::ChunkID(1000));
   generator.generate_and_store();
@@ -119,7 +117,6 @@ TEST_F(TPCHTest, JitOptimalTableScanOperator) {
   EXPECT_TABLE_EQ(res, res2, OrderSensitivity::No, TypeCmpMode::Lenient, FloatComparisonMode::RelativeDifference);
 
   global.jit = true;
-  global.lazy_load = true;
   auto pipeline2 =
           SQLPipelineBuilder{
                   "SELECT A FROM TABLE_SCAN WHERE A < 50000"}
@@ -131,11 +128,14 @@ TEST_F(TPCHTest, JitOptimalTableScanOperator) {
   EXPECT_TABLE_EQ(res2, res3, OrderSensitivity::No, TypeCmpMode::Lenient, FloatComparisonMode::RelativeDifference);
 
   global.jit = false;
+  global.lazy_load = false;
 }
 
 TEST_P(TPCHTest, TPCHQueryTest) {
   const auto [query_idx, test_configuration] = GetParam();  // NOLINT
   const auto [query, use_jit] = test_configuration;         // NOLINT
+
+  auto& global = opossum::Global::get();
 
   /**
    * Generate the TPC-H tables with a scale factor appropriate for this query
@@ -167,6 +167,8 @@ TEST_P(TPCHTest, TPCHQueryTest) {
   }
   auto sql_pipeline = SQLPipelineBuilder{query}.with_lqp_translator(lqp_translator).disable_mvcc().create_pipeline();
 
+  global.lazy_load = true;
+
   // TPC-H 15 needs special patching as it contains a DROP VIEW that doesn't return a table as last statement
   if (query_idx == 15) {
     Assert(sql_pipeline.statement_count() == 3u, "Expected 3 statements in TPC-H 15") sql_pipeline.get_result_table();
@@ -180,6 +182,8 @@ TEST_P(TPCHTest, TPCHQueryTest) {
     sqlite_result_table = _sqlite_wrapper->execute_query(query);
     hyrise_result_table = sql_pipeline.get_result_table();
   }
+
+  global.lazy_load = false;
 
   // EXPECT_TABLE_EQ crashes if one table is a nullptr
   ASSERT_TRUE(hyrise_result_table);

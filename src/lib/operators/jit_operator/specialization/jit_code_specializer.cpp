@@ -215,7 +215,7 @@ void JitCodeSpecializer::_inline_function_calls(SpecializationContext& context) 
     auto function_has_opossum_namespace =
         boost::starts_with(function_name, "_ZNK7opossum") || boost::starts_with(function_name, "_ZN7opossum");
 
-    print = boost::contains(function_name, "read_value");
+    print = boost::contains(function_name, "read_value") || boost::contains(function_name, "read_and_get_value");
 
     // A note about "__clang_call_terminate":
     // __clang_call_terminate is generated / used internally by clang to call the std::terminate function when exception

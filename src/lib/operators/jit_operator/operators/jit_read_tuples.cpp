@@ -229,7 +229,7 @@ bool JitReadTuples::before_chunk(const Table& in_table, const ChunkID chunk_id, 
   for (const auto wrapper : _input_wrappers) {
     bool tmp = wrapper->same_type(context);
     if (!tmp) {
-      std::cout << "type changed for " << wrapper->reader_index << std::endl;
+      std::cout << "chunk id: " << chunk_id << " type changed for " << wrapper->reader_index << std::endl;
     }
     same_type &= tmp;
   }

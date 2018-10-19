@@ -19,8 +19,8 @@ virtual Value<BOOST_PP_TUPLE_ELEM(3, 0, type)> read_and_get_value(JitRuntimeCont
 
 #define JIT_EXPLICIT_INSTANTIATION_GET_CONST_FUNCTION(r, _, type) \
   virtual Value<BOOST_PP_TUPLE_ELEM(3, 0, type)> read_and_get_value(JitRuntimeContext& context, BOOST_PP_TUPLE_ELEM(3, 0, type)) const { \
-    Fail("Reading wrong datatype from segment reader wrapper"); \
-  }
+     return context.inputs[reader_index]->read_and_get_value(context, BOOST_PP_TUPLE_ELEM(3, 0, type)()); \
+  }  // Used when input segments not available during specialization  Fail("Reading wrong datatype from segment reader wrapper");
 
 class BaseJitSegmentReader {
  public:
