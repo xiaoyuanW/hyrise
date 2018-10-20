@@ -217,6 +217,10 @@ void JitCodeSpecializer::_inline_function_calls(SpecializationContext& context) 
 
     print = boost::contains(function_name, "read_value") || boost::contains(function_name, "read_and_get_value");
 
+    if (boost::contains(function_name, "ValueSegmentIterable") && boost::contains(function_name, "string")) {
+      function_has_opossum_namespace = false;
+    }
+
     // A note about "__clang_call_terminate":
     // __clang_call_terminate is generated / used internally by clang to call the std::terminate function when exception
     // handling fails. For some unknown reason this function cannot be resolved in the Hyrise binary when jit-compiling
@@ -245,7 +249,8 @@ void JitCodeSpecializer::_inline_function_calls(SpecializationContext& context) 
     if (first_argument_cannot_be_resolved) {
       // std::cout << "first_argument_cannot_be_resolved for func: " << function_name << std::endl;
     }
-    if (first_argument_cannot_be_resolved && function_name != "__clang_call_terminate") {
+    if ((first_argument_cannot_be_resolved && function_name != "__clang_call_terminate")
+                                ||  boost::contains(function_name, "DictionarySegmentIterable")) {
       if (print) std::cerr << "Func: " << function_name << " first_argument_cannot_be_resolved" << std::endl;
       call_sites.pop();
       continue;
