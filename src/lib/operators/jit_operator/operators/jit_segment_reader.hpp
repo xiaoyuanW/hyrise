@@ -132,9 +132,12 @@ public:
 
   __attribute__((always_inline))
   Value<DataType> read_and_get_value(JitRuntimeContext& context, DataType) final {
+#if JIT_LAZY_LOAD
+#if !JIT_OLD_LAZY_LOAD
     const size_t current_offset = context.chunk_offset;
     std::advance(_iterator, current_offset - _chunk_offset);
     _chunk_offset = current_offset;
+#endif
 
     const auto& value = *_iterator;
 
@@ -146,6 +149,7 @@ public:
     } else {
       return {false, static_cast<DataType>(value.value())};
     }
+#endif
   }
 
 private:
