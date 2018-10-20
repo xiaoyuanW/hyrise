@@ -120,12 +120,18 @@ std::shared_ptr<const Table> TableScan::_on_execute() {
           auto& filtered_pos_list = filtered_pos_lists[pos_list_in];
 
           if (!filtered_pos_list) {
-            filtered_pos_list = std::make_shared<PosList>();
-            filtered_pos_list->reserve(matches_out->size());
+            if (pos_list_in == std::dynamic_pointer_cast<const ReferenceSegment>(chunk_in->get_segment(_predicate.column_id))->pos_list()) {
+              // This is the pos list that we originally scanned on
+              filtered_pos_list = matches_out;
+            } else {
+              filtered_pos_list = std::make_shared<PosList>(matches_out->size());
 
-            for (const auto& match : *matches_out) {
-              const auto row_id = (*pos_list_in)[match.chunk_offset];
-              filtered_pos_list->push_back(row_id);
+              size_t offset = 0;
+              for (const auto& match : *matches_out) {
+                const auto row_id = (*pos_list_in)[match.chunk_offset];
+                (*filtered_pos_list)[offset] = row_id;
+                ++offset;
+              }
             }
           }
 
