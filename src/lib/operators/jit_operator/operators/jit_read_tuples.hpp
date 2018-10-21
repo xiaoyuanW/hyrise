@@ -125,10 +125,13 @@ class JitReadTuples : public AbstractJittable {
 
     __attribute__((always_inline))
     Value<DataType> read_and_get_value(JitRuntimeContext& context) {
+#if JIT_LAZY_LOAD
+#if !JIT_OLD_LAZY_LOAD
       const size_t current_offset = context.chunk_offset;
       // _iterator += current_offset - _chunk_offset;
       std::advance(_iterator, current_offset - _chunk_offset);
       _chunk_offset = current_offset;
+#endif
       const auto& value = *_iterator;
       if constexpr (Nullable) {
         if (!value.is_null()) {
@@ -138,6 +141,9 @@ class JitReadTuples : public AbstractJittable {
       } else {
         return {false, value.value()};
       }
+#else
+      Fail("Not used outside of lazy load");
+#endif
     }
 
    private:
