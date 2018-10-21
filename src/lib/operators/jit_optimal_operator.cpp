@@ -21,7 +21,7 @@ namespace opossum {
 const std::string JitOptimalOperator::name() const { return "JitOperatorWrapper"; }
 
 std::shared_ptr<const Table> JitOptimalOperator::_on_execute() {
-  std::cerr << "Using custom jit hash join operator" << std::endl;
+  // std::cerr << "Using custom jit hash join operator" << std::endl;
 
   const auto left_table = StorageManager::get().get_table("lineitem");
   const auto right_table = StorageManager::get().get_table("supplier");

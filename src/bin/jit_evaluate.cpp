@@ -197,6 +197,21 @@ nlohmann::json generate_input_different_selectivity(const bool use_jit) {
   return {{"globals", globals}, {"queries", queries}, {"experiments", experiments}};
 }
 
+void generte_tables(const nlohmann::json& config, const float scale_factor) {
+  opossum::StorageManager::get().reset();
+  if (config["globals"]["use_tpch_tables"]) {
+    std::cerr << "Generating TPCH tables with scale factor " << scale_factor << std::endl;
+    opossum::TpchDbGenerator generator(scale_factor, opossum::ChunkID(100000));
+    generator.generate_and_store();
+  }
+
+  if (config["globals"]["use_other_tables"]) {
+    std::cerr << "Generating JIT tables with scale factor " << scale_factor << std::endl;
+    opossum::JitTableGenerator generator(scale_factor, opossum::ChunkID(100000));
+    generator.generate_and_store();
+  }
+}
+
 int main(int argc, char* argv[]) {
   std::cerr << "Starting the JIT benchmarking suite" << std::endl;
 
@@ -215,20 +230,12 @@ int main(int argc, char* argv[]) {
   opossum::JitEvaluationHelper::get().globals() = config["globals"];
 
   const auto additional_scale_factor = 1.0;  // argc > 1 ? std::stod(argv[1]) : 1.0;
-  double scale_factor = config["globals"]["scale_factor"].get<double>() * additional_scale_factor;
+  const double scale_factor = config["globals"]["scale_factor"].get<double>() * additional_scale_factor;
   config["globals"]["scale_factor"] = scale_factor;
 
-  if (config["globals"]["use_tpch_tables"]) {
-    std::cerr << "Generating TPCH tables with scale factor " << scale_factor << std::endl;
-    opossum::TpchDbGenerator generator(scale_factor, opossum::ChunkID(100000));
-    generator.generate_and_store();
-  }
+  double current_scale_factor = scale_factor;
 
-  if (config["globals"]["use_other_tables"]) {
-    std::cerr << "Generating JIT tables with scale factor " << scale_factor << std::endl;
-    opossum::JitTableGenerator generator(scale_factor, opossum::ChunkID(100000));
-    generator.generate_and_store();
-  }
+  generte_tables(config, current_scale_factor);
 
   if (config["globals"]["dictionary_compress"]) {
     std::cerr << "Dictionary encoding tables" << std::endl;
@@ -261,6 +268,12 @@ int main(int argc, char* argv[]) {
     if (!experiment.count("mvcc")) experiment["mvcc"] = false;
     if (!experiment.count("optimize")) experiment["optimize"] = true;
     if (!experiment.count("hand_written")) experiment["hand_written"] = false;
+    if (!experiment.count("scale_factor")) experiment["scale_factor"] = scale_factor;
+    const auto experiment_scale_factor = experiment["scale_factor"].get<double>();
+    if (current_scale_factor != experiment_scale_factor) {
+      current_scale_factor = experiment_scale_factor;
+      generte_tables(config, current_scale_factor);
+    }
     if (experiment.at("engine") == "opossum") {
       opossum::Global::get().jit = false;
     } else if (experiment.at("engine") == "jit") {

@@ -21,7 +21,7 @@ namespace opossum {
 const std::string JitOptimalScanOperator::name() const { return "JitOperatorWrapper"; }
 
 std::shared_ptr<const Table> JitOptimalScanOperator::_on_execute() {
-  std::cerr << "Using custom jit scan operator" << std::endl;
+  // std::cerr << "Using custom jit scan operator" << std::endl;
 
   // SELECT A FROM TABLE_SCAN WHERE A < 50000
 
