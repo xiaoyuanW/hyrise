@@ -26,7 +26,8 @@
       ]
     },
     "Q-E": {
-      "query": "SELECT A + B + C + D + E + F FROM TABLE_AGGREGATE WHERE (A + B + C + D + E + F) > X1",
+      "query": "SELECT ID FROM TABLE_AGGREGATE WHERE (A + B + C + D + E + F) > X1",
+      "_query": "SELECT A + B + C + D + E + F FROM TABLE_AGGREGATE WHERE (A + B + C + D + E + F) > X1",
       "tables": [
         "TABLE_AGGREGATE"
       ]
@@ -131,22 +132,69 @@
   "experiments": [
     {
       "engine": "jit",
-      "query_id": "JIT_CUSTOM_SCAN_BENCHMARK",
+      "query_id": "Q-E",
+      "repetitions": 50,
+      "task": "run"
+    },
+    {
+      "engine": "jit",
+      "query_id": "Q-E",
       "hand_written": true,
       "repetitions": 50,
+      "task": "run"
+    },
+    {
+      "engine": "opossum",
+      "query_id": "Q-E",
+      "repetitions": 50,
+      "task": "run"
+    }
+  ],
+  "_experiments": [
+    {
+      "engine": "jit",
+      "query_id": "Q-D",
+      "repetitions": 50,
+      "task": "run"
+    },
+    {
+      "engine": "opossum",
+      "query_id": "Q-D",
+      "repetitions": 50,
+      "task": "run"
+    },
+    {
+      "engine": "jit",
+      "query_id": "Q-G",
+      "repetitions": 50,
+      "task": "run"
+    },
+    {
+      "engine": "opossum",
+      "query_id": "Q-G",
+      "repetitions": 50,
+      "task": "run"
+    }
+  ],
+  "_experiments": [
+    {
+      "engine": "jit",
+      "query_id": "JIT_CUSTOM_SCAN_BENCHMARK",
+      "hand_written": true,
+      "repetitions": 1,
       "task": "run"
     },
     {
       "engine": "jit",
       "query_id": "JIT_CUSTOM_SCAN_BENCHMARK",
       "hand_written": false,
-      "repetitions": 50,
+      "repetitions": 1,
       "task": "run"
     },
     {
       "engine": "opossum",
       "query_id": "JIT_CUSTOM_SCAN_BENCHMARK",
-      "repetitions": 50,
+      "repetitions": 1,
       "task": "run"
     }
   ],
