@@ -21,6 +21,7 @@
 #include "jit_evaluation_helper.hpp"
 #include "operators/jit_optimal_operator.hpp"
 #include "operators/jit_optimal_scan_operator.hpp"
+#include "operators/jit_optimal_expression_operator.hpp"
 
 namespace opossum {
 
@@ -218,6 +219,8 @@ const std::shared_ptr<SQLQueryPlan>& SQLPipelineStatement::get_query_plan() {
         _query_plan->add_tree_by_root(std::make_shared<JitOptimalOperator>());
       } else if (_sql_string == "SELECT A FROM TABLE_SCAN WHERE A < 50000") {
         _query_plan->add_tree_by_root(std::make_shared<JitOptimalScanOperator>());
+      } else if (_sql_string == "SELECT ID FROM TABLE_AGGREGATE WHERE (A + B + C + D + E + F) > X1") {
+        _query_plan->add_tree_by_root(std::make_shared<JitOptimalExpressionOperator>());
       } else {
         _query_plan->add_tree_by_root(_lqp_translator->translate_node(lqp));
       }
