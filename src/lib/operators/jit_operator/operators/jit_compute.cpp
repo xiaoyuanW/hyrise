@@ -1,8 +1,27 @@
 #include "jit_compute.hpp"
 
+#include <boost/preprocessor/seq/for_each_product.hpp>
+#include <boost/preprocessor/tuple/elem.hpp>
+
 #include <stack>
 
 namespace opossum {
+
+// Returns the enum value (e.g., DataType::Int, DataType::String) of a data type defined in the DATA_TYPE_INFO sequence
+#define JIT_GET_ENUM_VALUE(index, s) APPEND_ENUM_NAMESPACE(_, _, BOOST_PP_TUPLE_ELEM(3, 1, BOOST_PP_SEQ_ELEM(index, s)))
+
+// Returns the data type (e.g., int32_t, std::string) of a data type defined in the DATA_TYPE_INFO sequence
+#define JIT_GET_DATA_TYPE(index, s) BOOST_PP_TUPLE_ELEM(3, 0, BOOST_PP_SEQ_ELEM(index, s))
+
+#define JIT_COMPUTE_CASE_AND_GET(r, types)                                 \
+  case JIT_GET_ENUM_VALUE(0, types): {                                        \
+    const auto result = _expression->compute_and_get<JIT_GET_DATA_TYPE(0, types)>(context); \
+    _expression->result().set<JIT_GET_DATA_TYPE(0, types)>(result.value, context); \
+    if (_expression->result().is_nullable()) { \
+      _expression->result().set_is_null(result.is_null, context); \
+    } \
+    break; \
+  }
 
 JitCompute::JitCompute(const std::shared_ptr<const JitExpression>& expression)
     : AbstractJittable(JitOperatorType::Compute), _expression{expression} {}
@@ -49,8 +68,17 @@ void JitCompute::set_load_column(const size_t tuple_id, const std::shared_ptr<Ba
 }
 
 void JitCompute::_consume(JitRuntimeContext& context) const {
-  _expression->compute(context);
+  // _expression->compute(context);
+  switch (_expression->result().data_type()) {
+    BOOST_PP_SEQ_FOR_EACH_PRODUCT(JIT_COMPUTE_CASE_AND_GET, (JIT_DATA_TYPE_INFO))
+    case DataType::Null:
+      break;
+  }
   _emit(context);
 }
+
+#undef JIT_GET_ENUM_VALUE
+#undef JIT_GET_DATA_TYPE
+#undef JIT_COMPUTE_CASE_AND_GET
 
 }  // namespace opossum

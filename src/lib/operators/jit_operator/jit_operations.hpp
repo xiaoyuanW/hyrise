@@ -263,7 +263,6 @@ const auto jit_not_and_get = [](const auto value) -> Value<bool> { return {value
 
 template <typename ValueType, typename T, typename = typename std::enable_if_t<std::is_same_v<ValueType, bool>>>
 __attribute__((always_inline)) Value<bool> jit_compute_unary_and_get(const T& op_func, const std::shared_ptr<const JitExpression>& left_side, JitRuntimeContext& context) {
-  // The type information from the lhs and rhs are combined into a single value for dispatching without nesting.
   switch (left_side->result().data_type()) {
     BOOST_PP_SEQ_FOR_EACH_PRODUCT(JIT_COMPUTE_UNARY_CASE_AND_GET, (JIT_DATA_TYPE_INFO))
     case DataType::Null:
@@ -499,5 +498,6 @@ __attribute__((noinline)) void jit_aggregate_compute(const T& op_func, const Jit
 #undef JIT_COMPUTE_CASE
 #undef JIT_COMPUTE_TYPE_CASE
 #undef JIT_AGGREGATE_COMPUTE_CASE
+#undef JIT_COMPUTE_CASE_AND_GET
 
 }  // namespace opossum
