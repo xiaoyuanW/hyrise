@@ -155,6 +155,8 @@ public:
     } else {
       return {false, static_cast<DataType>(value.value())};
     }
+#else
+    Fail("Function should not be used without lazy load");
 #endif
   }
 
