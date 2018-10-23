@@ -78,6 +78,7 @@ std::shared_ptr<llvm::Module> JitCodeSpecializer::specialize_function(
   // initially unroll first loop incrementing segment readers
 
 #if !JIT_LAZY_LOAD || JIT_OLD_LAZY_LOAD
+  _perform_load_substitution(context);
   _optimize(context, true, false);
 #endif
 
