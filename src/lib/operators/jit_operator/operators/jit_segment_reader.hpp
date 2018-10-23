@@ -47,6 +47,12 @@ class BaseJitSegmentReaderWrapper {
   }
   BOOST_PP_SEQ_FOR_EACH(JIT_EXPLICIT_INSTANTIATION_GET_CONST_FUNCTION, _, JIT_DATA_TYPE_INFO)
 
+#if JIT_OLD_LAZY_LOAD
+  virtual void increment(JitRuntimeContext& context) {
+    context.inputs[reader_index]->increment();
+  }
+#endif
+
   const size_t reader_index;
 };
 
@@ -79,8 +85,8 @@ public:
 
   // Reads a value from the _iterator into the _tuple_value and increments the _iterator.
 #if JIT_OLD_LAZY_LOAD
-  void increment() final { ++_iterator; }
-    __attribute__((always_inline)) void read_value(JitRuntimeContext& context) const final {
+  __attribute__((always_inline)) void increment() final { ++_iterator; }
+  __attribute__((always_inline)) void read_value(JitRuntimeContext& context) const final {
 #else
   __attribute__((always_inline)) void read_value(JitRuntimeContext& context) final {
 #if JIT_LAZY_LOAD && !JIT_OLD_LAZY_LOAD
@@ -199,6 +205,16 @@ class JitSegmentReaderWrapper : public BaseJitSegmentReaderWrapper {
       return context.inputs[reader_index]->read_and_get_value(context, DATA_TYPE());
     }
   }
+
+#if JIT_OLD_LAZY_LOAD
+  virtual void increment(JitRuntimeContext& context) {
+    if (use_cast) {
+    static_cast<JitSegmentReader*>(context.inputs[reader_index].get())->increment();
+  } else {
+    context.inputs[reader_index]->increment();
+  }
+}
+#endif
 
   bool same_type(JitRuntimeContext& context) final {
     use_cast = static_cast<bool>(std::dynamic_pointer_cast<JitSegmentReader>(context.inputs[reader_index]));

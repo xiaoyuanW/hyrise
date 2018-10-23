@@ -76,11 +76,13 @@ std::shared_ptr<llvm::Module> JitCodeSpecializer::specialize_function(
   // Run the first specialization and optimization pass
   context.runtime_value_map[context.root_function->arg_begin()] = runtime_this;
   // initially unroll first loop incrementing segment readers
-  /*
+
+#if !JIT_LAZY_LOAD || JIT_OLD_LAZY_LOAD
   _optimize(context, true, false);
-  context.runtime_value_map.clear();
-  context.runtime_value_map[context.root_function->arg_begin()] = runtime_this;
-  */
+#endif
+
+  if (false) print(context);
+
   _inline_function_calls(context);
   _perform_load_substitution(context);
   // Unroll loops only if two passes are selected
@@ -215,7 +217,8 @@ void JitCodeSpecializer::_inline_function_calls(SpecializationContext& context) 
     auto function_has_opossum_namespace =
         boost::starts_with(function_name, "_ZNK7opossum") || boost::starts_with(function_name, "_ZN7opossum");
 
-    print = boost::contains(function_name, "read_value") || boost::contains(function_name, "read_and_get_value");
+    print = boost::contains(function_name, "read_value") || boost::contains(function_name, "read_and_get_value")
+            || boost::contains(function_name, "increment") || boost::contains(function_name, "jit_aggregate_compute");
 
     if (boost::contains(function_name, "ValueSegmentIterable") && boost::contains(function_name, "string")) {
       function_has_opossum_namespace = false;

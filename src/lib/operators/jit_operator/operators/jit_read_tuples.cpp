@@ -245,8 +245,10 @@ void JitReadTuples::execute(JitRuntimeContext& context) const {
     _emit(context);
     // We advance all segment iterators, after processing the tuple with the next operators.
 #if JIT_OLD_LAZY_LOAD
-    for (const auto& input : context.inputs) {
-      input->increment();
+    // for (const auto& input : _input_wrappers /* context.inputs */ ) {
+    const auto input_size = _input_wrappers.size();
+    for (uint32_t i = 0; i < input_size; ++i) {
+      _input_wrappers[i]->increment(context);
     }
 #endif
 #else
