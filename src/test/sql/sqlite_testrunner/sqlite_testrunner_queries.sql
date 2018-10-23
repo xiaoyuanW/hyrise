@@ -214,6 +214,11 @@ SELECT a, b FROM id_int_int_int_100 WHERE a IN (SELECT b FROM mixed)
 SELECT a FROM id_int_int_int_100 WHERE a IN (SELECT 14) AND b > (SELECT 15);
 SELECT a FROM id_int_int_int_100 WHERE a IN (SELECT 11) AND b > (SELECT 11);
 
+-- Predicates not referencing FROM elements
+SELECT * FROM id_int_int_int_100 AS a, id_int_int_int_100 AS b WHERE 1 IN (1, 2, 3) AND a.id > b.id;
+SELECT * FROM id_int_int_int_100 AS a, id_int_int_int_100 AS b WHERE 1 IN (1, 2, 3) AND a.id > b.id;
+SELECT * FROM id_int_int_int_100 AS a, id_int_int_int_100 AS b WHERE a.id < b.id AND a.a < b.a AND EXISTS(SELECT * FROM id_int_int_int_100);
+
 -- cannot test these because we cannot handle empty query results here
 ---- SELECT * FROM mixed WHERE b IS NULL;
 ---- SELECT * FROM mixed WHERE b = NULL;
