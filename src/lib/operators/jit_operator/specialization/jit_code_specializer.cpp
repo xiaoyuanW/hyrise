@@ -205,7 +205,7 @@ void JitCodeSpecializer::_inline_function_calls(SpecializationContext& context) 
       }
     }
 
-    bool print = true;
+    bool print = false;
 
     auto function = call_site.getCalledFunction();
     if (!function) {
@@ -219,7 +219,8 @@ void JitCodeSpecializer::_inline_function_calls(SpecializationContext& context) 
         boost::starts_with(function_name, "_ZNK7opossum") || boost::starts_with(function_name, "_ZN7opossum");
 
     print = boost::contains(function_name, "read_value") || boost::contains(function_name, "read_and_get_value")
-            || boost::contains(function_name, "increment") || boost::contains(function_name, "jit_aggregate_compute");
+            || boost::contains(function_name, "increment") /* || boost::contains(function_name, "jit_aggregate_compute") */;
+    // print = false;
 
     if (boost::contains(function_name, "ValueSegmentIterable") && boost::contains(function_name, "string")) {
       function_has_opossum_namespace = false;

@@ -54,16 +54,16 @@ const std::shared_ptr<AbstractJittableSink> JitOperatorWrapper::_sink() const {
 }
 
 void JitOperatorWrapper::insert_loads(const bool lazy) {
-  if constexpr (!JIT_LAZY_LOAD) return;
+  // if constexpr (!JIT_LAZY_LOAD) return;
 
   const auto input_wrappers = _source()->input_wrappers();
 
-  if (!lazy) {
+  if constexpr (!JIT_LAZY_LOAD || JIT_OLD_LAZY_LOAD) {
     auto itr = ++_jit_operators.cbegin();
     for (size_t index = 0; index < _source()->input_columns().size(); ++index) {
       itr = _jit_operators.insert(itr, std::make_shared<JitReadValue>(_source()->input_columns()[index], input_wrappers[index]));
     }
-    return;
+    if constexpr (!JIT_LAZY_LOAD) return;
   }
   std::map<size_t, size_t> inverted_input_columns;
   auto input_columns = _source()->input_columns();
