@@ -8,6 +8,7 @@
 #include "constant_mappings.hpp"
 #include "expression/evaluation/expression_evaluator.hpp"
 #include "jit_expression.hpp"
+#include "jit_read_value.hpp"
 #include "resolve_type.hpp"
 #include "storage/create_iterable_from_segment.hpp"
 #include "jit_segment_reader.hpp"
@@ -243,6 +244,9 @@ void JitReadTuples::execute(JitRuntimeContext& context) const {
   for (; context.chunk_offset < context.chunk_size; ++context.chunk_offset) {
 // #if JIT_LAZY_LOAD
     _emit(context);
+#if JIT_OLD_LAZY_LOAD
+    _incr->consume(context);
+#endif
     // We advance all segment iterators, after processing the tuple with the next operators.
 /*
 #if JIT_OLD_LAZY_LOAD

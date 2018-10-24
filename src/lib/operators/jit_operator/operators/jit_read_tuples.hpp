@@ -41,6 +41,8 @@ struct JitValueIDPredicate {
   const std::optional<size_t> input_parameter_index;
 };
 
+class JitReadValue;
+
 /* JitReadTuples must be the first operator in any chain of jit operators.
  * It is responsible for:
  * 1) storing literal values to the runtime tuple before the query is executed
@@ -86,6 +88,10 @@ class JitReadTuples : public AbstractJittable {
   std::shared_ptr<AbstractExpression> row_count_expression() const;
 
   void add_input_segment_iterators(JitRuntimeContext& context, const Table& in_table, const Chunk& in_chunk, const bool prepare_wrapper);
+
+#if JIT_OLD_LAZY_LOAD
+  std::shared_ptr<JitReadValue> _incr;
+#endif
 
  protected:
   uint32_t _num_tuple_values{0};
