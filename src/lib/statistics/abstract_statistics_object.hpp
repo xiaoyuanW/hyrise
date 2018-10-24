@@ -14,6 +14,12 @@ namespace opossum {
 
 enum class EstimateType { MatchesNone, MatchesExactly, MatchesApproximately, MatchesAll };
 
+/**
+ * Every chunk can hold at most ChunkOffset values.
+ * Consequently, there can be at most be ChunkOffset distinct values in a StatisticsObject.
+ */
+using StatisticsObjectCountType = ChunkOffset;
+
 struct CardinalityEstimate {
   Cardinality cardinality;
   EstimateType type;

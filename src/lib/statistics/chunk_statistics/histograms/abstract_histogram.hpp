@@ -17,14 +17,6 @@ using BinID = size_t;
 constexpr BinID INVALID_BIN_ID{std::numeric_limits<BinID>::max()};
 
 /**
- * Every chunk can hold at most ChunkOffset values.
- * Consequently, there can be at most be ChunkOffset distinct values in a bin,
- * and a bin can have a maximum height of ChunkOffset.
- * We use this alias to automatically adapt if the type of ChunkOffset is changed.
- */
-using HistogramCountType = ChunkOffset;
-
-/**
  * Abstract class for various histogram types.
  * Provides logic for estimating cardinality and making pruning decisions.
  *
@@ -120,13 +112,13 @@ class AbstractHistogram : public AbstractStatisticsObject {
    * This is equal to the number of rows in the segment during the generation of the bins for the histogram,
    * without null values.
    */
-  virtual HistogramCountType total_count() const = 0;
+  virtual StatisticsObjectCountType total_count() const = 0;
 
   /**
    * Returns the number of distinct values represented in the histogram.
    * This is equal to the number of distinct values in the segment during creation.
    */
-  virtual HistogramCountType total_distinct_count() const = 0;
+  virtual StatisticsObjectCountType total_distinct_count() const = 0;
 
   /**
    * Returns the smallest value in the bin.
@@ -141,19 +133,19 @@ class AbstractHistogram : public AbstractStatisticsObject {
   /**
    * Returns the number of values in a bin.
    */
-  virtual HistogramCountType bin_height(const BinID index) const = 0;
+  virtual StatisticsObjectCountType bin_height(const BinID index) const = 0;
 
   /**
    * Returns the number of distinct values in a bin.
    */
-  virtual HistogramCountType bin_distinct_count(const BinID index) const = 0;
+  virtual StatisticsObjectCountType bin_distinct_count(const BinID index) const = 0;
 
  protected:
   /**
    * Returns a list of pairs of distinct values and their respective number of occurrences in a given segment.
    * The list is sorted by distinct value from lowest to highest.
    */
-  static std::vector<std::pair<T, HistogramCountType>> _gather_value_distribution(
+  static std::vector<std::pair<T, StatisticsObjectCountType>> _gather_value_distribution(
       const std::shared_ptr<const BaseSegment>& segment);
 
   /**

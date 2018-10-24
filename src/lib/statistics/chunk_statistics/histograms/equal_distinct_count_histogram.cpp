@@ -16,8 +16,8 @@ using namespace opossum::histogram;  // NOLINT
 
 template <typename T>
 EqualDistinctCountHistogram<T>::EqualDistinctCountHistogram(std::vector<T>&& bin_minima, std::vector<T>&& bin_maxima,
-                                                            std::vector<HistogramCountType>&& bin_heights,
-                                                            const HistogramCountType distinct_count_per_bin,
+                                                            std::vector<StatisticsObjectCountType>&& bin_heights,
+                                                            const StatisticsObjectCountType distinct_count_per_bin,
                                                             const BinID bin_count_with_extra_value)
     : AbstractHistogram<T>(),
       _bin_data({std::move(bin_minima), std::move(bin_maxima), std::move(bin_heights), distinct_count_per_bin,
@@ -45,7 +45,7 @@ EqualDistinctCountHistogram<T>::EqualDistinctCountHistogram(std::vector<T>&& bin
 template <>
 EqualDistinctCountHistogram<std::string>::EqualDistinctCountHistogram(
     std::vector<std::string>&& bin_minima, std::vector<std::string>&& bin_maxima,
-    std::vector<HistogramCountType>&& bin_heights, const HistogramCountType distinct_count_per_bin,
+    std::vector<StatisticsObjectCountType>&& bin_heights, const StatisticsObjectCountType distinct_count_per_bin,
     const BinID bin_count_with_extra_value, const std::string& supported_characters, const size_t string_prefix_length)
     : AbstractHistogram<std::string>(supported_characters, string_prefix_length),
       _bin_data({std::move(bin_minima), std::move(bin_maxima), std::move(bin_heights), distinct_count_per_bin,
@@ -77,17 +77,17 @@ EqualDistinctCountHistogram<std::string>::EqualDistinctCountHistogram(
 
 template <typename T>
 EqualDistinctCountBinData<T> EqualDistinctCountHistogram<T>::_build_bins(
-    const std::vector<std::pair<T, HistogramCountType>>& value_counts, const BinID max_bin_count) {
+    const std::vector<std::pair<T, StatisticsObjectCountType>>& value_counts, const BinID max_bin_count) {
   // If there are fewer distinct values than the number of desired bins use that instead.
   const auto bin_count = value_counts.size() < max_bin_count ? static_cast<BinID>(value_counts.size()) : max_bin_count;
 
   // Split values evenly among bins.
-  const auto distinct_count_per_bin = static_cast<HistogramCountType>(value_counts.size() / bin_count);
+  const auto distinct_count_per_bin = static_cast<StatisticsObjectCountType>(value_counts.size() / bin_count);
   const BinID bin_count_with_extra_value = value_counts.size() % bin_count;
 
   std::vector<T> bin_minima(bin_count);
   std::vector<T> bin_maxima(bin_count);
-  std::vector<HistogramCountType> bin_heights(bin_count);
+  std::vector<StatisticsObjectCountType> bin_heights(bin_count);
 
   auto current_bin_begin_index = BinID{0};
   for (BinID bin_index = 0; bin_index < bin_count; bin_index++) {
@@ -100,8 +100,8 @@ EqualDistinctCountBinData<T> EqualDistinctCountHistogram<T>::_build_bins(
     bin_maxima[bin_index] = value_counts[current_bin_end_index].first;
     bin_heights[bin_index] =
         std::accumulate(value_counts.cbegin() + current_bin_begin_index,
-                        value_counts.cbegin() + current_bin_end_index + 1, HistogramCountType{0},
-                        [](HistogramCountType a, const std::pair<T, HistogramCountType>& b) { return a + b.second; });
+                        value_counts.cbegin() + current_bin_end_index + 1, StatisticsObjectCountType{0},
+                        [](StatisticsObjectCountType a, const std::pair<T, StatisticsObjectCountType>& b) { return a + b.second; });
 
     current_bin_begin_index = current_bin_end_index + 1;
   }
@@ -199,24 +199,24 @@ T EqualDistinctCountHistogram<T>::bin_maximum(const BinID index) const {
 }
 
 template <typename T>
-HistogramCountType EqualDistinctCountHistogram<T>::bin_height(const BinID index) const {
+StatisticsObjectCountType EqualDistinctCountHistogram<T>::bin_height(const BinID index) const {
   DebugAssert(index < _bin_data.bin_heights.size(), "Index is not a valid bin.");
   return _bin_data.bin_heights[index];
 }
 
 template <typename T>
-HistogramCountType EqualDistinctCountHistogram<T>::bin_distinct_count(const BinID index) const {
+StatisticsObjectCountType EqualDistinctCountHistogram<T>::bin_distinct_count(const BinID index) const {
   DebugAssert(index < bin_count(), "Index is not a valid bin.");
   return _bin_data.distinct_count_per_bin + (index < _bin_data.bin_count_with_extra_value ? 1 : 0);
 }
 
 template <typename T>
-HistogramCountType EqualDistinctCountHistogram<T>::total_count() const {
-  return std::accumulate(_bin_data.bin_heights.cbegin(), _bin_data.bin_heights.cend(), HistogramCountType{0});
+StatisticsObjectCountType EqualDistinctCountHistogram<T>::total_count() const {
+  return std::accumulate(_bin_data.bin_heights.cbegin(), _bin_data.bin_heights.cend(), StatisticsObjectCountType{0});
 }
 
 template <typename T>
-HistogramCountType EqualDistinctCountHistogram<T>::total_distinct_count() const {
+StatisticsObjectCountType EqualDistinctCountHistogram<T>::total_distinct_count() const {
   return _bin_data.distinct_count_per_bin * bin_count() + _bin_data.bin_count_with_extra_value;
 }
 
@@ -229,9 +229,9 @@ std::shared_ptr<AbstractStatisticsObject> EqualDistinctCountHistogram<T>::scale_
   // Scale the number of values in the bin with the given selectivity.
   // Round up the numbers such that we tend to over- rather than underestimate.
   // Also, we avoid 0 as a height.
-  auto bin_heights = std::vector<HistogramCountType>(_bin_data.bin_heights.size());
+  auto bin_heights = std::vector<StatisticsObjectCountType>(_bin_data.bin_heights.size());
   for (auto bin_id = BinID{0}; bin_id < _bin_data.bin_heights.size(); bin_id++) {
-    bin_heights[bin_id] = static_cast<HistogramCountType>(std::ceil(_bin_data.bin_heights[bin_id] * selectivity));
+    bin_heights[bin_id] = static_cast<StatisticsObjectCountType>(std::ceil(_bin_data.bin_heights[bin_id] * selectivity));
   }
 
   return std::make_shared<EqualDistinctCountHistogram<T>>(std::move(bin_minima), std::move(bin_maxima),

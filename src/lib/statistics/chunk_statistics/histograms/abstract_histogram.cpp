@@ -64,9 +64,9 @@ std::string AbstractHistogram<T>::description() const {
 }
 
 template <typename T>
-std::vector<std::pair<T, HistogramCountType>> AbstractHistogram<T>::_gather_value_distribution(
+std::vector<std::pair<T, StatisticsObjectCountType>> AbstractHistogram<T>::_gather_value_distribution(
     const std::shared_ptr<const BaseSegment>& segment) {
-  std::map<T, HistogramCountType> value_counts;
+  std::map<T, StatisticsObjectCountType> value_counts;
 
   resolve_segment_type<T>(*segment, [&](auto& typed_segment) {
     auto iterable = create_iterable_from_segment<T>(typed_segment);
@@ -77,7 +77,7 @@ std::vector<std::pair<T, HistogramCountType>> AbstractHistogram<T>::_gather_valu
     });
   });
 
-  std::vector<std::pair<T, HistogramCountType>> result(value_counts.cbegin(), value_counts.cend());
+  std::vector<std::pair<T, StatisticsObjectCountType>> result(value_counts.cbegin(), value_counts.cend());
   return result;
 }
 
@@ -746,14 +746,14 @@ std::shared_ptr<AbstractStatisticsObject> AbstractHistogram<T>::slice_with_predi
 
   std::vector<T> bin_minima;
   std::vector<T> bin_maxima;
-  std::vector<HistogramCountType> bin_heights;
-  std::vector<HistogramCountType> bin_distinct_counts;
+  std::vector<StatisticsObjectCountType> bin_heights;
+  std::vector<StatisticsObjectCountType> bin_distinct_counts;
 
   switch (predicate_type) {
     case PredicateCondition::Equals: {
       bin_minima.emplace_back(value);
       bin_maxima.emplace_back(value);
-      bin_heights.emplace_back(static_cast<HistogramCountType>(
+      bin_heights.emplace_back(static_cast<StatisticsObjectCountType>(
           std::ceil(estimate_cardinality(PredicateCondition::Equals, variant_value).cardinality)));
       bin_distinct_counts.emplace_back(1);
     } break;
@@ -787,7 +787,7 @@ std::shared_ptr<AbstractStatisticsObject> AbstractHistogram<T>::slice_with_predi
           const auto value_count =
               estimate_cardinality(PredicateCondition::Equals, variant_value, variant_value2).cardinality;
 
-          bin_heights[bin_id] = static_cast<HistogramCountType>(std::ceil(bin_height(bin_id) - value_count));
+          bin_heights[bin_id] = static_cast<StatisticsObjectCountType>(std::ceil(bin_height(bin_id) - value_count));
           bin_distinct_counts[bin_id] = distinct_count - 1;
         } else {
           bin_heights[bin_id] = bin_height(bin_id);
@@ -839,9 +839,9 @@ std::shared_ptr<AbstractStatisticsObject> AbstractHistogram<T>::slice_with_predi
         const auto less_than_bound = predicate_type == PredicateCondition::LessThan ? value : _get_next_value(value);
         const auto sliced_bin_share = _share_of_bin_less_than_value(last_sliced_bin_id, less_than_bound);
         bin_heights.back() =
-            static_cast<HistogramCountType>(std::ceil(bin_height(last_sliced_bin_id) * sliced_bin_share));
+            static_cast<StatisticsObjectCountType>(std::ceil(bin_height(last_sliced_bin_id) * sliced_bin_share));
         bin_distinct_counts.back() =
-            static_cast<HistogramCountType>(std::ceil(bin_distinct_count(last_sliced_bin_id) * sliced_bin_share));
+            static_cast<StatisticsObjectCountType>(std::ceil(bin_distinct_count(last_sliced_bin_id) * sliced_bin_share));
       }
 
       for (auto bin_id = BinID{0}; bin_id < last_sliced_bin_id; ++bin_id) {
@@ -896,9 +896,9 @@ std::shared_ptr<AbstractStatisticsObject> AbstractHistogram<T>::slice_with_predi
         const auto sliced_bin_share = 1.0f - _share_of_bin_less_than_value(first_sliced_bin_id, value);
 
         bin_heights.front() =
-            static_cast<HistogramCountType>(std::ceil(bin_height(first_sliced_bin_id) * sliced_bin_share));
+            static_cast<StatisticsObjectCountType>(std::ceil(bin_height(first_sliced_bin_id) * sliced_bin_share));
         bin_distinct_counts.front() =
-            static_cast<HistogramCountType>(std::ceil(bin_distinct_count(first_sliced_bin_id) * sliced_bin_share));
+            static_cast<StatisticsObjectCountType>(std::ceil(bin_distinct_count(first_sliced_bin_id) * sliced_bin_share));
       } else {
         bin_minima.front() = bin_minimum(first_sliced_bin_id);
         bin_heights.front() = bin_height(first_sliced_bin_id);
@@ -997,8 +997,8 @@ std::shared_ptr<AbstractHistogram<T>> AbstractHistogram<T>::split_at_bin_edges(
 
   std::vector<T> bin_minima;
   std::vector<T> bin_maxima;
-  std::vector<HistogramCountType> bin_heights;
-  std::vector<HistogramCountType> bin_distinct_counts;
+  std::vector<StatisticsObjectCountType> bin_heights;
+  std::vector<StatisticsObjectCountType> bin_distinct_counts;
 
   // We do not resize the vectors because we might not need all the slots because bins can be empty.
   const auto new_bin_count = all_edges.size() / 2;
@@ -1022,8 +1022,8 @@ std::shared_ptr<AbstractHistogram<T>> AbstractHistogram<T>::split_at_bin_edges(
 
     bin_minima.emplace_back(bin_min);
     bin_maxima.emplace_back(bin_max);
-    bin_heights.emplace_back(static_cast<HistogramCountType>(std::ceil(estimate.cardinality)));
-    bin_distinct_counts.emplace_back(static_cast<HistogramCountType>(
+    bin_heights.emplace_back(static_cast<StatisticsObjectCountType>(std::ceil(estimate.cardinality)));
+    bin_distinct_counts.emplace_back(static_cast<StatisticsObjectCountType>(
         std::ceil(estimate_distinct_count(PredicateCondition::Between, bin_min, bin_max))));
   }
 

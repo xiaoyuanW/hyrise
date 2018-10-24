@@ -19,18 +19,18 @@ class GenericHistogramTest : public BaseTest {
     _int_histogram = std::make_shared<GenericHistogram<int32_t>>(
             std::vector<int32_t>{2,  21, 37},
             std::vector<int32_t>{20, 25, 100},
-            std::vector<HistogramCountType>{17, 30, 40},
-            std::vector<HistogramCountType>{5,  3,  27});
+            std::vector<StatisticsObjectCountType>{17, 30, 40},
+            std::vector<StatisticsObjectCountType>{5,  3,  27});
     _double_histogram = std::make_shared<GenericHistogram<double>>(
             std::vector<double>{2.,  21., 37.},
             std::vector<double>{20., 25., 100.},
-            std::vector<HistogramCountType>{17, 30, 40},
-            std::vector<HistogramCountType>{5,  3,  27});
+            std::vector<StatisticsObjectCountType>{17, 30, 40},
+            std::vector<StatisticsObjectCountType>{5,  3,  27});
     _string_histogram = std::make_shared<GenericHistogram<std::string>>(
             std::vector<std::string>{"aa", "at", "bi"},
             std::vector<std::string>{"as", "ax", "dr"},
-            std::vector<HistogramCountType>{17, 30, 40},
-            std::vector<HistogramCountType>{5,  3,  27},
+            std::vector<StatisticsObjectCountType>{17, 30, 40},
+            std::vector<StatisticsObjectCountType>{5,  3,  27},
             "abcdefghijklmnopqrstuvwxyz", 2u);
     // clang-format on
   }
@@ -80,8 +80,8 @@ TEST_F(GenericHistogramTest, SliceWithPredicate) {
   const auto hist = std::make_shared<GenericHistogram<int32_t>>(
           std::vector<int32_t>{1,  30, 60, 80},
           std::vector<int32_t>{25, 50, 75, 100},
-          std::vector<HistogramCountType>{40, 30, 20, 10},
-          std::vector<HistogramCountType>{10, 20, 15,  5});
+          std::vector<StatisticsObjectCountType>{40, 30, 20, 10},
+          std::vector<StatisticsObjectCountType>{10, 20, 15,  5});
   // clang-format on
   auto new_hist = std::shared_ptr<GenericHistogram<int32_t>>{};
 
@@ -184,14 +184,14 @@ TEST_F(GenericHistogramTest, SplitAtBinEdges) {
     const auto hist = std::make_shared<GenericHistogram<int32_t>>(
             std::vector<int32_t>{1,  30, 60, 80},
             std::vector<int32_t>{25, 50, 75, 100},
-            std::vector<HistogramCountType>{40, 30, 20, 10},
-            std::vector<HistogramCountType>{10, 20, 15, 5});
+            std::vector<StatisticsObjectCountType>{40, 30, 20, 10},
+            std::vector<StatisticsObjectCountType>{10, 20, 15, 5});
   // clang-format on
 
   const auto expected_minima = std::vector<int32_t>{1, 10, 16, 30, 36, 60, 80};
   const auto expected_maxima = std::vector<int32_t>{9, 15, 25, 35, 50, 75, 100};
-  const auto expected_heights = std::vector<HistogramCountType>{15, 10, 16, 9, 22, 20, 10};
-  const auto expected_distinct_counts = std::vector<HistogramCountType>{4, 3, 4, 6, 15, 15, 5};
+  const auto expected_heights = std::vector<StatisticsObjectCountType>{15, 10, 16, 9, 22, 20, 10};
+  const auto expected_distinct_counts = std::vector<StatisticsObjectCountType>{4, 3, 4, 6, 15, 15, 5};
 
   const auto new_hist = hist->split_at_bin_edges(std::vector<std::pair<int32_t, int32_t>>{{10, 15}, {28, 35}});
   EXPECT_EQ(new_hist->bin_count(), expected_minima.size());
@@ -211,16 +211,16 @@ TEST_F(GenericHistogramTest, SplitAtBinEdgesTwoHistograms) {
           std::vector<int32_t>{4, 10, 18, 29, 40, 48, 51},
 
           // We only care about the bin edges in this test.
-          std::vector<HistogramCountType>{1, 1, 1, 1, 1, 1, 1},
-          std::vector<HistogramCountType>{1, 1, 1, 1, 1, 1, 1});
+          std::vector<StatisticsObjectCountType>{1, 1, 1, 1, 1, 1, 1},
+          std::vector<StatisticsObjectCountType>{1, 1, 1, 1, 1, 1, 1});
 
   const auto hist_2 = std::make_shared<GenericHistogram<int32_t>>(
           std::vector<int32_t>{2, 12, 40, 45, 50},
           std::vector<int32_t>{7, 25, 42, 48, 52},
 
           // We only care about the bin edges in this test.
-          std::vector<HistogramCountType>{1, 1, 1, 1, 1},
-          std::vector<HistogramCountType>{1, 1, 1, 1, 1});
+          std::vector<StatisticsObjectCountType>{1, 1, 1, 1, 1},
+          std::vector<StatisticsObjectCountType>{1, 1, 1, 1, 1});
 
   // Even though the histograms are supposed to have the same bin edges, they do not exactly match.
   // The reason is that bins which do not contain any values are not created,

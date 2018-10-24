@@ -23,10 +23,10 @@ struct GenericBinData {
   std::vector<T> bin_maxima;
 
   // Number of values on a per-bin basis.
-  std::vector<HistogramCountType> bin_heights;
+  std::vector<StatisticsObjectCountType> bin_heights;
 
   // Number of distinct values on a per-bin basis.
-  std::vector<HistogramCountType> bin_distinct_counts;
+  std::vector<StatisticsObjectCountType> bin_distinct_counts;
 };
 
 /**
@@ -39,24 +39,24 @@ class GenericHistogram : public AbstractHistogram<T> {
  public:
   using AbstractHistogram<T>::AbstractHistogram;
   GenericHistogram(std::vector<T>&& bin_minima, std::vector<T>&& bin_maxima,
-                   std::vector<HistogramCountType>&& bin_heights,
-                   std::vector<HistogramCountType>&& bin_count_distincts);
+                   std::vector<StatisticsObjectCountType>&& bin_heights,
+                   std::vector<StatisticsObjectCountType>&& bin_count_distincts);
   GenericHistogram(std::vector<T>&& bin_minima, std::vector<T>&& bin_maxima,
-                   std::vector<HistogramCountType>&& bin_heights, std::vector<HistogramCountType>&& bin_count_distincts,
+                   std::vector<StatisticsObjectCountType>&& bin_heights, std::vector<StatisticsObjectCountType>&& bin_count_distincts,
                    const std::string& supported_characters, const size_t string_prefix_length);
 
   HistogramType histogram_type() const override;
   std::string histogram_name() const override;
   std::shared_ptr<AbstractHistogram<T>> clone() const override;
-  HistogramCountType total_distinct_count() const override;
-  HistogramCountType total_count() const override;
+  StatisticsObjectCountType total_distinct_count() const override;
+  StatisticsObjectCountType total_count() const override;
 
   BinID bin_count() const override;
 
   T bin_minimum(const BinID index) const override;
   T bin_maximum(const BinID index) const override;
-  HistogramCountType bin_height(const BinID index) const override;
-  HistogramCountType bin_distinct_count(const BinID index) const override;
+  StatisticsObjectCountType bin_height(const BinID index) const override;
+  StatisticsObjectCountType bin_distinct_count(const BinID index) const override;
 
   std::shared_ptr<AbstractStatisticsObject> scale_with_selectivity(const Selectivity selectivity) const override;
 

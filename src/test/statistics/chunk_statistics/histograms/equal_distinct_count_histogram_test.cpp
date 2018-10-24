@@ -831,7 +831,7 @@ TEST_F(EqualDistinctCountHistogramTest, SliceWithPredicate) {
   const auto hist = std::make_shared<EqualDistinctCountHistogram<int32_t>>(
           std::vector<int32_t>{1,  30, 60, 80},
           std::vector<int32_t>{25, 50, 75, 100},
-          std::vector<HistogramCountType>{40, 30, 20, 10},
+          std::vector<StatisticsObjectCountType>{40, 30, 20, 10},
           10, 0);
   // clang-format on
   auto new_hist = std::shared_ptr<GenericHistogram<int32_t>>{};

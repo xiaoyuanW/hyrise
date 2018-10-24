@@ -363,6 +363,8 @@ set(
     statistics/chunk_statistics/histograms/histogram_utils.hpp
     statistics/chunk_statistics/min_max_filter.cpp
     statistics/chunk_statistics/min_max_filter.hpp
+    statistics/chunk_statistics/minimal_statistics.cpp
+    statistics/chunk_statistics/minimal_statistics.hpp
     statistics/chunk_statistics/range_filter.cpp
     statistics/chunk_statistics/range_filter.hpp
     statistics/chunk_statistics/segment_statistics.cpp

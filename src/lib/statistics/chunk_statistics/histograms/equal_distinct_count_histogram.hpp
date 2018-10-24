@@ -23,10 +23,10 @@ struct EqualDistinctCountBinData {
   std::vector<T> bin_maxima;
 
   // Number of values on a per-bin basis.
-  std::vector<HistogramCountType> bin_heights;
+  std::vector<StatisticsObjectCountType> bin_heights;
 
   // Number of distinct values per bin.
-  HistogramCountType distinct_count_per_bin;
+  StatisticsObjectCountType distinct_count_per_bin;
 
   // The first bin_count_with_extra_value bins have an additional distinct value.
   BinID bin_count_with_extra_value;
@@ -42,11 +42,11 @@ class EqualDistinctCountHistogram : public AbstractHistogram<T> {
  public:
   using AbstractHistogram<T>::AbstractHistogram;
   EqualDistinctCountHistogram(std::vector<T>&& bin_minima, std::vector<T>&& bin_maxima,
-                              std::vector<HistogramCountType>&& bin_heights,
-                              const HistogramCountType distinct_count_per_bin, const BinID bin_count_with_extra_value);
+                              std::vector<StatisticsObjectCountType>&& bin_heights,
+                              const StatisticsObjectCountType distinct_count_per_bin, const BinID bin_count_with_extra_value);
   EqualDistinctCountHistogram(std::vector<std::string>&& bin_minima, std::vector<std::string>&& bin_maxima,
-                              std::vector<HistogramCountType>&& bin_heights,
-                              const HistogramCountType distinct_count_per_bin, const BinID bin_count_with_extra_value,
+                              std::vector<StatisticsObjectCountType>&& bin_heights,
+                              const StatisticsObjectCountType distinct_count_per_bin, const BinID bin_count_with_extra_value,
                               const std::string& supported_characters, const size_t string_prefix_length);
 
   /**
@@ -66,8 +66,8 @@ class EqualDistinctCountHistogram : public AbstractHistogram<T> {
   HistogramType histogram_type() const override;
   std::string histogram_name() const override;
   std::shared_ptr<AbstractHistogram<T>> clone() const override;
-  HistogramCountType total_distinct_count() const override;
-  HistogramCountType total_count() const override;
+  StatisticsObjectCountType total_distinct_count() const override;
+  StatisticsObjectCountType total_count() const override;
 
   /**
    * Returns the number of bins actually present in the histogram.
@@ -79,8 +79,8 @@ class EqualDistinctCountHistogram : public AbstractHistogram<T> {
 
   T bin_minimum(const BinID index) const override;
   T bin_maximum(const BinID index) const override;
-  HistogramCountType bin_height(const BinID index) const override;
-  HistogramCountType bin_distinct_count(const BinID index) const override;
+  StatisticsObjectCountType bin_height(const BinID index) const override;
+  StatisticsObjectCountType bin_distinct_count(const BinID index) const override;
 
   std::shared_ptr<AbstractStatisticsObject> scale_with_selectivity(const Selectivity selectivity) const override;
 
@@ -88,7 +88,7 @@ class EqualDistinctCountHistogram : public AbstractHistogram<T> {
   /**
    * Creates bins and their statistics.
    */
-  static EqualDistinctCountBinData<T> _build_bins(const std::vector<std::pair<T, HistogramCountType>>& value_counts,
+  static EqualDistinctCountBinData<T> _build_bins(const std::vector<std::pair<T, StatisticsObjectCountType>>& value_counts,
                                                   const BinID max_bin_count);
 
   BinID _bin_for_value(const T& value) const override;

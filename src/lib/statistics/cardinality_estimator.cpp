@@ -8,6 +8,7 @@
 #include "logical_query_plan/abstract_lqp_node.hpp"
 #include "logical_query_plan/mock_node.hpp"
 #include "logical_query_plan/predicate_node.hpp"
+#include "logical_query_plan/projection_node.hpp"
 #include "logical_query_plan/stored_table_node.hpp"
 #include "operators/operator_scan_predicate.hpp"
 #include "resolve_type.hpp"
@@ -34,6 +35,22 @@ std::shared_ptr<TableStatistics2> CardinalityEstimator::estimate_statistics(
     const auto table = StorageManager::get().get_table(stored_table_node->table_name);
     Assert(table->table_statistics2(), "");
     return table->table_statistics2();
+  }
+
+  if (const auto projection_node = std::dynamic_pointer_cast<ProjectionNode>(lqp)) {
+    const auto input_table_statistics = estimate_statistics(lqp->left_input());
+    const auto output_table_statistics = std::make_shared<TableStatistics2>();
+
+    output_table_statistics->chunk_statistics.reserve(input_table_statistics->chunk_statistics.size());
+
+    for (const auto& input_chunk_statistics : input_table_statistics->chunk_statistics) {
+      const auto output_chunk_statistics = std::make_shared<ChunkStatistics2>(input_chunk_statistics->row_count);
+      output_chunk_statistics->segment_statistics.reserve(projection_node->expressions.size());
+
+      for (const auto& expression : projection_node->expressions) {
+        output_chunk_statistics->segment_statistics.emplace_back(_estimate_statistics_for_expression(expression, input_chunk_statistics));
+      }
+    }
   }
 
   if (const auto predicate_node = std::dynamic_pointer_cast<PredicateNode>(lqp)) {
@@ -136,6 +153,15 @@ std::shared_ptr<TableStatistics2> CardinalityEstimator::estimate_statistics(
   }
 
   Fail("NYI");
+}
+
+std::shared_ptr<BaseSegmentStatistics> CardinalityEstimator::estimate_segment_statistics_for_expression(
+const AbstractExpression& expression,
+const ChunkStatistics2& chunk_statistics
+) {
+
+
+
 }
 
 }  // namespace opossum

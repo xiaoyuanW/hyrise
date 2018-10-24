@@ -1014,7 +1014,7 @@ TEST_F(EqualWidthHistogramTest, StringLikePruning) {
 
 TEST_F(EqualWidthHistogramTest, SliceWithPredicate) {
   const auto hist = std::make_shared<EqualWidthHistogram<int32_t>>(
-      1, 100, std::vector<HistogramCountType>{40, 30, 20, 10}, std::vector<HistogramCountType>{15, 20, 5, 10}, 0);
+      1, 100, std::vector<StatisticsObjectCountType>{40, 30, 20, 10}, std::vector<StatisticsObjectCountType>{15, 20, 5, 10}, 0);
   auto new_hist = std::shared_ptr<GenericHistogram<int32_t>>{};
 
   EXPECT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 1).type, EstimateType::MatchesNone);

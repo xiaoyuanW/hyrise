@@ -10,8 +10,8 @@ namespace opossum {
 
 template <typename T>
 GenericHistogram<T>::GenericHistogram(std::vector<T>&& bin_minima, std::vector<T>&& bin_maxima,
-                                      std::vector<HistogramCountType>&& bin_heights,
-                                      std::vector<HistogramCountType>&& bin_distinct_counts)
+                                      std::vector<StatisticsObjectCountType>&& bin_heights,
+                                      std::vector<StatisticsObjectCountType>&& bin_distinct_counts)
     : AbstractHistogram<T>(),
       _bin_data(
           {std::move(bin_minima), std::move(bin_maxima), std::move(bin_heights), std::move(bin_distinct_counts)}) {
@@ -37,8 +37,8 @@ GenericHistogram<T>::GenericHistogram(std::vector<T>&& bin_minima, std::vector<T
 template <>
 GenericHistogram<std::string>::GenericHistogram(std::vector<std::string>&& bin_minima,
                                                 std::vector<std::string>&& bin_maxima,
-                                                std::vector<HistogramCountType>&& bin_heights,
-                                                std::vector<HistogramCountType>&& bin_distinct_counts,
+                                                std::vector<StatisticsObjectCountType>&& bin_heights,
+                                                std::vector<StatisticsObjectCountType>&& bin_distinct_counts,
                                                 const std::string& supported_characters,
                                                 const size_t string_prefix_length)
     : AbstractHistogram<std::string>(supported_characters, string_prefix_length),
@@ -125,26 +125,26 @@ T GenericHistogram<T>::bin_maximum(const BinID index) const {
 }
 
 template <typename T>
-HistogramCountType GenericHistogram<T>::bin_height(const BinID index) const {
+StatisticsObjectCountType GenericHistogram<T>::bin_height(const BinID index) const {
   DebugAssert(index < _bin_data.bin_heights.size(), "Index is not a valid bin.");
   return _bin_data.bin_heights[index];
 }
 
 template <typename T>
-HistogramCountType GenericHistogram<T>::bin_distinct_count(const BinID index) const {
+StatisticsObjectCountType GenericHistogram<T>::bin_distinct_count(const BinID index) const {
   DebugAssert(index < _bin_data.bin_distinct_counts.size(), "Index is not a valid bin.");
   return _bin_data.bin_distinct_counts[index];
 }
 
 template <typename T>
-HistogramCountType GenericHistogram<T>::total_count() const {
-  return std::accumulate(_bin_data.bin_heights.cbegin(), _bin_data.bin_heights.cend(), HistogramCountType{0});
+StatisticsObjectCountType GenericHistogram<T>::total_count() const {
+  return std::accumulate(_bin_data.bin_heights.cbegin(), _bin_data.bin_heights.cend(), StatisticsObjectCountType{0});
 }
 
 template <typename T>
-HistogramCountType GenericHistogram<T>::total_distinct_count() const {
+StatisticsObjectCountType GenericHistogram<T>::total_distinct_count() const {
   return std::accumulate(_bin_data.bin_distinct_counts.cbegin(), _bin_data.bin_distinct_counts.cend(),
-                         HistogramCountType{0});
+                         StatisticsObjectCountType{0});
 }
 
 template <typename T>
@@ -157,9 +157,9 @@ std::shared_ptr<AbstractStatisticsObject> GenericHistogram<T>::scale_with_select
   // Scale the number of values in the bin with the given selectivity.
   // Round up the numbers such that we tend to over- rather than underestimate.
   // Also, we avoid 0 as a height.
-  auto bin_heights = std::vector<HistogramCountType>(_bin_data.bin_heights.size());
+  auto bin_heights = std::vector<StatisticsObjectCountType>(_bin_data.bin_heights.size());
   for (auto bin_id = BinID{0}; bin_id < _bin_data.bin_heights.size(); bin_id++) {
-    bin_heights[bin_id] = static_cast<HistogramCountType>(std::ceil(_bin_data.bin_heights[bin_id] * selectivity));
+    bin_heights[bin_id] = static_cast<StatisticsObjectCountType>(std::ceil(_bin_data.bin_heights[bin_id] * selectivity));
   }
 
   return std::make_shared<GenericHistogram<T>>(std::move(bin_minima), std::move(bin_maxima), std::move(bin_heights),

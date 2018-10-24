@@ -17,8 +17,8 @@ using namespace opossum::histogram;  // NOLINT
 
 template <typename T>
 EqualWidthHistogram<T>::EqualWidthHistogram(const T minimum, const T maximum,
-                                            std::vector<HistogramCountType>&& bin_heights,
-                                            std::vector<HistogramCountType>&& bin_distinct_counts,
+                                            std::vector<StatisticsObjectCountType>&& bin_heights,
+                                            std::vector<StatisticsObjectCountType>&& bin_distinct_counts,
                                             const BinID bin_count_with_larger_range)
     : AbstractHistogram<T>(),
       _bin_data(
@@ -37,8 +37,8 @@ EqualWidthHistogram<T>::EqualWidthHistogram(const T minimum, const T maximum,
 
 template <>
 EqualWidthHistogram<std::string>::EqualWidthHistogram(const std::string& minimum, const std::string& maximum,
-                                                      std::vector<HistogramCountType>&& bin_heights,
-                                                      std::vector<HistogramCountType>&& bin_distinct_counts,
+                                                      std::vector<StatisticsObjectCountType>&& bin_heights,
+                                                      std::vector<StatisticsObjectCountType>&& bin_distinct_counts,
                                                       const BinID bin_count_with_larger_range,
                                                       const std::string& supported_characters,
                                                       const size_t string_prefix_length)
@@ -57,7 +57,7 @@ EqualWidthHistogram<std::string>::EqualWidthHistogram(const std::string& minimum
 
 template <>
 EqualWidthBinData<std::string> EqualWidthHistogram<std::string>::_build_bins(
-    const std::vector<std::pair<std::string, HistogramCountType>>& value_counts, const BinID max_bin_count,
+    const std::vector<std::pair<std::string, StatisticsObjectCountType>>& value_counts, const BinID max_bin_count,
     const std::string& supported_characters, const size_t string_prefix_length) {
   // Bins shall have the same range.
   const auto min = value_counts.front().first;
@@ -70,8 +70,8 @@ EqualWidthBinData<std::string> EqualWidthHistogram<std::string>::_build_bins(
   // Never have more bins than representable values.
   const auto bin_count = max_bin_count <= base_width ? max_bin_count : base_width;
 
-  std::vector<HistogramCountType> bin_heights(bin_count);
-  std::vector<HistogramCountType> bin_distinct_counts(bin_count);
+  std::vector<StatisticsObjectCountType> bin_heights(bin_count);
+  std::vector<StatisticsObjectCountType> bin_distinct_counts(bin_count);
 
   const auto bin_width = base_width / bin_count;
   const BinID bin_count_with_larger_range = base_width % bin_count;
@@ -96,8 +96,8 @@ EqualWidthBinData<std::string> EqualWidthHistogram<std::string>::_build_bins(
     }
 
     bin_heights[current_bin_id] = std::accumulate(
-        current_bin_begin_it, next_bin_begin_it, HistogramCountType{0},
-        [](HistogramCountType a, std::pair<std::string, HistogramCountType> b) { return a + b.second; });
+        current_bin_begin_it, next_bin_begin_it, StatisticsObjectCountType{0},
+        [](StatisticsObjectCountType a, std::pair<std::string, StatisticsObjectCountType> b) { return a + b.second; });
     bin_distinct_counts[current_bin_id] = std::distance(current_bin_begin_it, next_bin_begin_it);
 
     current_bin_begin_it = next_bin_begin_it;
@@ -160,24 +160,24 @@ BinID EqualWidthHistogram<T>::bin_count() const {
 }
 
 template <typename T>
-HistogramCountType EqualWidthHistogram<T>::bin_height(const BinID index) const {
+StatisticsObjectCountType EqualWidthHistogram<T>::bin_height(const BinID index) const {
   DebugAssert(index < _bin_data.bin_heights.size(), "Index is not a valid bin.");
   return _bin_data.bin_heights[index];
 }
 
 template <typename T>
-HistogramCountType EqualWidthHistogram<T>::total_count() const {
-  return std::accumulate(_bin_data.bin_heights.cbegin(), _bin_data.bin_heights.cend(), HistogramCountType{0});
+StatisticsObjectCountType EqualWidthHistogram<T>::total_count() const {
+  return std::accumulate(_bin_data.bin_heights.cbegin(), _bin_data.bin_heights.cend(), StatisticsObjectCountType{0});
 }
 
 template <typename T>
-HistogramCountType EqualWidthHistogram<T>::total_distinct_count() const {
+StatisticsObjectCountType EqualWidthHistogram<T>::total_distinct_count() const {
   return std::accumulate(_bin_data.bin_distinct_counts.cbegin(), _bin_data.bin_distinct_counts.cend(),
-                         HistogramCountType{0});
+                         StatisticsObjectCountType{0});
 }
 
 template <typename T>
-HistogramCountType EqualWidthHistogram<T>::bin_distinct_count(const BinID index) const {
+StatisticsObjectCountType EqualWidthHistogram<T>::bin_distinct_count(const BinID index) const {
   DebugAssert(index < _bin_data.bin_distinct_counts.size(), "Index is not a valid bin.");
   return _bin_data.bin_distinct_counts[index];
 }
@@ -309,9 +309,9 @@ std::shared_ptr<AbstractStatisticsObject> EqualWidthHistogram<T>::scale_with_sel
   // Scale the number of values in the bin with the given selectivity.
   // Round up the numbers such that we tend to over- rather than underestimate.
   // Also, we avoid 0 as a height.
-  auto bin_heights = std::vector<HistogramCountType>(_bin_data.bin_heights.size());
+  auto bin_heights = std::vector<StatisticsObjectCountType>(_bin_data.bin_heights.size());
   for (auto bin_id = BinID{0}; bin_id < _bin_data.bin_heights.size(); bin_id++) {
-    bin_heights[bin_id] = static_cast<HistogramCountType>(std::ceil(_bin_data.bin_heights[bin_id] * selectivity));
+    bin_heights[bin_id] = static_cast<StatisticsObjectCountType>(std::ceil(_bin_data.bin_heights[bin_id] * selectivity));
   }
 
   return std::make_shared<EqualWidthHistogram<T>>(_bin_data.minimum, _bin_data.maximum, std::move(bin_heights),

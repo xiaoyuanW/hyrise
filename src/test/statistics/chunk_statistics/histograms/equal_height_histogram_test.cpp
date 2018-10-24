@@ -694,7 +694,7 @@ TEST_F(EqualHeightHistogramTest, StringCommonPrefix) {
 
 TEST_F(EqualHeightHistogramTest, SliceWithPredicate) {
   const auto hist = std::make_shared<EqualHeightHistogram<int32_t>>(1, std::vector<int32_t>{25, 50, 80, 100}, 100,
-                                                                    std::vector<HistogramCountType>{15, 5, 20, 10});
+                                                                    std::vector<StatisticsObjectCountType>{15, 5, 20, 10});
   auto new_hist = std::shared_ptr<GenericHistogram<int32_t>>{};
 
   EXPECT_EQ(hist->estimate_cardinality(PredicateCondition::LessThan, 1).type, EstimateType::MatchesNone);
