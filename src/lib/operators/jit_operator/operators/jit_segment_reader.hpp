@@ -48,7 +48,7 @@ class BaseJitSegmentReaderWrapper {
   BOOST_PP_SEQ_FOR_EACH(JIT_EXPLICIT_INSTANTIATION_GET_CONST_FUNCTION, _, JIT_DATA_TYPE_INFO)
 
 #if JIT_OLD_LAZY_LOAD
-  virtual void increment(JitRuntimeContext& context) {
+  virtual void increment(JitRuntimeContext& context) const {
     context.inputs[reader_index]->increment();
   }
 #endif
@@ -112,6 +112,7 @@ public:
 #endif
   }
 
+  /*
   __attribute__((always_inline))
   static void read_value(JitSegmentReader<Iterator, DataType, Nullable>& reader, JitRuntimeContext& context) {
 #if JIT_LAZY_LOAD && !JIT_OLD_LAZY_LOAD
@@ -135,6 +136,7 @@ public:
     ++reader._iterator;
 #endif
   }
+   */
 
   __attribute__((always_inline))
   Value<DataType> read_and_get_value(JitRuntimeContext& context, DataType) final {
@@ -209,7 +211,7 @@ class JitSegmentReaderWrapper : public BaseJitSegmentReaderWrapper {
   }
 
 #if JIT_OLD_LAZY_LOAD
-  virtual void increment(JitRuntimeContext& context) {
+  void increment(JitRuntimeContext& context) const final {
     if (use_cast) {
     static_cast<JitSegmentReader*>(context.inputs[reader_index].get())->increment();
   } else {
