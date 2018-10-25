@@ -22,11 +22,13 @@ BetweenTableScanImpl::BetweenTableScanImpl(const std::shared_ptr<const Table>& i
       _left_value{left_value},
       _right_value{right_value} {}
 
+std::string BetweenTableScanImpl::description() const { return "BetweenScan"; }
+
 void BetweenTableScanImpl::handle_segment(const BaseValueSegment& base_segment,
                                           std::shared_ptr<SegmentVisitorContext> base_context) {
   auto context = std::static_pointer_cast<Context>(base_context);
   auto& matches_out = context->_matches_out;
-  const auto& mapped_chunk_offsets = context->_mapped_chunk_offsets;
+  const auto& position_filter = context->_position_filter;
   const auto chunk_id = context->_chunk_id;
 
   // TODO(anyone): A lot of code is duplicated here, below, and in the other table scans.
@@ -47,7 +49,7 @@ void BetweenTableScanImpl::handle_segment(const BaseValueSegment& base_segment,
       return value >= typed_left_value && value <= typed_right_value;
     };
 
-    left_segment_iterable.with_iterators(mapped_chunk_offsets.get(), [&](auto left_it, auto left_end) {
+    left_segment_iterable.with_iterators(position_filter, [&](auto left_it, auto left_end) {
       _scan<true>(comparator_with_values, left_it, left_end, chunk_id, matches_out, true);
     });
   });
@@ -57,7 +59,7 @@ void BetweenTableScanImpl::handle_segment(const BaseEncodedSegment& base_segment
                                           std::shared_ptr<SegmentVisitorContext> base_context) {
   auto context = std::static_pointer_cast<Context>(base_context);
   auto& matches_out = context->_matches_out;
-  const auto& mapped_chunk_offsets = context->_mapped_chunk_offsets;
+  const auto& position_filter = context->_position_filter;
   const auto chunk_id = context->_chunk_id;
 
   const auto left_column_type = _in_table->column_data_type(_left_column_id);
@@ -74,7 +76,7 @@ void BetweenTableScanImpl::handle_segment(const BaseEncodedSegment& base_segment
     resolve_encoded_segment_type<ColumnDataType>(base_segment, [&](const auto& typed_segment) {
       auto left_segment_iterable = create_iterable_from_segment(typed_segment);
 
-      left_segment_iterable.with_iterators(mapped_chunk_offsets.get(), [&](auto left_it, auto left_end) {
+      left_segment_iterable.with_iterators(position_filter, [&](auto left_it, auto left_end) {
         _scan<true>(comparator_with_values, left_it, left_end, chunk_id, matches_out, true);
       });
     });
@@ -86,7 +88,7 @@ void BetweenTableScanImpl::handle_segment(const BaseDictionarySegment& base_segm
   auto context = std::static_pointer_cast<Context>(base_context);
   auto& matches_out = context->_matches_out;
   const auto chunk_id = context->_chunk_id;
-  const auto& mapped_chunk_offsets = context->_mapped_chunk_offsets;
+  const auto& position_filter = context->_position_filter;
 
   const auto left_value_id = base_segment.lower_bound(_left_value);
   const auto right_value_id = base_segment.upper_bound(_right_value);
@@ -95,7 +97,7 @@ void BetweenTableScanImpl::handle_segment(const BaseDictionarySegment& base_segm
 
   if (left_value_id == ValueID{0} && right_value_id == static_cast<ValueID>(base_segment.unique_values_count())) {
     // all values match
-    column_iterable.with_iterators(mapped_chunk_offsets.get(), [&](auto left_it, auto left_end) {
+    column_iterable.with_iterators(position_filter, [&](auto left_it, auto left_end) {
       static const auto always_true = [](const auto&) { return true; };
       this->_scan<false>(always_true, left_it, left_end, chunk_id, matches_out, true);
     });
@@ -115,7 +117,7 @@ void BetweenTableScanImpl::handle_segment(const BaseDictionarySegment& base_segm
     return (value - left_value_id) < value_id_diff;
   };
 
-  column_iterable.with_iterators(mapped_chunk_offsets.get(), [&](auto left_it, auto left_end) {
+  column_iterable.with_iterators(position_filter, [&](auto left_it, auto left_end) {
     // No need to check for NULL because `right_value_id <= INVALID_VALUE_ID`
     this->_scan<false>(comparator_with_values, left_it, left_end, chunk_id, matches_out, true);
   });

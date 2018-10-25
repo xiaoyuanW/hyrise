@@ -176,7 +176,8 @@ set(
     operators/insert.hpp
     operators/join_hash.cpp
     operators/join_hash.hpp
-    operators/join_hash/hash_traits.hpp
+    operators/join_hash/join_hash_traits.hpp
+    operators/join_hash/join_hash_steps.hpp
     operators/join_index.cpp
     operators/join_index.hpp
     operators/join_mpsm.cpp
@@ -220,6 +221,7 @@ set(
     operators/sort.hpp
     operators/table_scan.cpp
     operators/table_scan.hpp
+    operators/table_scan/abstract_table_scan_impl.hpp
     operators/table_scan/base_single_column_table_scan_impl.cpp
     operators/table_scan/base_single_column_table_scan_impl.hpp
     operators/table_scan/base_table_scan_impl.hpp
@@ -227,6 +229,8 @@ set(
     operators/table_scan/between_table_scan_impl.hpp
     operators/table_scan/column_comparison_table_scan_impl.cpp
     operators/table_scan/column_comparison_table_scan_impl.hpp
+    operators/table_scan/expression_evaluator_table_scan_impl.cpp
+    operators/table_scan/expression_evaluator_table_scan_impl.hpp
     operators/table_scan/is_null_table_scan_impl.cpp
     operators/table_scan/is_null_table_scan_impl.hpp
     operators/table_scan/like_table_scan_impl.cpp
@@ -271,8 +275,8 @@ set(
     optimizer/strategy/join_detection_rule.hpp
     optimizer/strategy/join_ordering_rule.cpp
     optimizer/strategy/join_ordering_rule.hpp
-    optimizer/strategy/predicate_pushdown_rule.cpp
-    optimizer/strategy/predicate_pushdown_rule.hpp
+    optimizer/strategy/predicate_placement_rule.cpp
+    optimizer/strategy/predicate_placement_rule.hpp
     optimizer/strategy/predicate_reordering_rule.cpp
     optimizer/strategy/predicate_reordering_rule.hpp
     optimizer/strategy/rule_batch.cpp
@@ -363,6 +367,8 @@ set(
     statistics/chunk_statistics/range_filter.hpp
     statistics/chunk_statistics/segment_statistics.cpp
     statistics/chunk_statistics/segment_statistics.hpp
+    statistics/chunk_statistics/counting_quotient_filter.hpp
+    statistics/chunk_statistics/counting_quotient_filter.cpp
     statistics/column_statistics.cpp
     statistics/column_statistics.cpp
     statistics/generate_column_statistics.cpp
@@ -438,6 +444,7 @@ set(
     storage/mvcc_data.hpp
     storage/numa_placement_manager.cpp
     storage/numa_placement_manager.hpp
+    storage/pos_list.hpp
     storage/proxy_chunk.cpp
     storage/proxy_chunk.hpp
     storage/reference_segment.cpp
@@ -455,10 +462,10 @@ set(
     storage/segment_iterables/any_segment_iterable.hpp
     storage/segment_iterables/any_segment_iterator.hpp
     storage/segment_iterables/base_segment_iterators.hpp
-    storage/segment_iterables/chunk_offset_mapping.cpp
-    storage/segment_iterables/chunk_offset_mapping.hpp
     storage/segment_iterables/create_iterable_from_attribute_vector.hpp
     storage/segment_iterables/segment_iterator_values.hpp
+    storage/split_pos_list_by_chunk_id.cpp
+    storage/split_pos_list_by_chunk_id.hpp
     storage/storage_manager.cpp
     storage/storage_manager.hpp
     storage/table.cpp
@@ -522,6 +529,7 @@ set(
     utils/assert.hpp
     utils/boost_default_memory_resource.cpp
     utils/copyable_atomic.hpp
+    utils/div_with_rounding.hpp
     utils/enum_constant.hpp
     utils/filesystem.hpp
     utils/format_bytes.cpp
@@ -548,7 +556,6 @@ set(
     utils/timer.cpp
     utils/timer.hpp
     utils/tracing/probes.hpp
-    utils/uninitialized_vector.hpp
     ${CMAKE_BINARY_DIR}/version.hpp
 )
 
@@ -556,6 +563,8 @@ set(
     LIBRARIES
     pthread
     sqlparser
+    cqf
+    uninitialized_vector
     ${Boost_CONTAINER_LIBRARY}
     ${TBB_LIBRARY}
 )

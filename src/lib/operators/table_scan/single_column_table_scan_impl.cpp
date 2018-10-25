@@ -20,6 +20,8 @@ SingleColumnTableScanImpl::SingleColumnTableScanImpl(const std::shared_ptr<const
                                                      const AllTypeVariant& right_value)
     : BaseSingleColumnTableScanImpl{in_table, left_column_id, predicate_condition}, _right_value{right_value} {}
 
+std::string SingleColumnTableScanImpl::description() const { return "SingleColumnScan"; }
+
 std::shared_ptr<PosList> SingleColumnTableScanImpl::scan_chunk(ChunkID chunk_id) {
   // early outs for specific NULL semantics
   if (variant_is_null(_right_value)) {
@@ -39,7 +41,7 @@ void SingleColumnTableScanImpl::handle_segment(const BaseValueSegment& base_segm
                                                std::shared_ptr<SegmentVisitorContext> base_context) {
   auto context = std::static_pointer_cast<Context>(base_context);
   auto& matches_out = context->_matches_out;
-  const auto& mapped_chunk_offsets = context->_mapped_chunk_offsets;
+  const auto& position_filter = context->_position_filter;
   const auto chunk_id = context->_chunk_id;
 
   const auto left_column_type = _in_table->column_data_type(_left_column_id);
@@ -56,7 +58,7 @@ void SingleColumnTableScanImpl::handle_segment(const BaseValueSegment& base_segm
       auto comparator_with_value = [comparator, typed_right_value](auto value) {
         return comparator(value, typed_right_value);
       };
-      left_segment_iterable.with_iterators(mapped_chunk_offsets.get(), [&](auto left_it, auto left_end) {
+      left_segment_iterable.with_iterators(position_filter, [&](auto left_it, auto left_end) {
         if (left_segment.is_nullable()) {
           _scan<true>(comparator_with_value, left_it, left_end, chunk_id, matches_out, true);
         } else {
@@ -71,7 +73,7 @@ void SingleColumnTableScanImpl::handle_segment(const BaseEncodedSegment& base_se
                                                std::shared_ptr<SegmentVisitorContext> base_context) {
   auto context = std::static_pointer_cast<Context>(base_context);
   auto& matches_out = context->_matches_out;
-  const auto& mapped_chunk_offsets = context->_mapped_chunk_offsets;
+  const auto& position_filter = context->_position_filter;
   const auto chunk_id = context->_chunk_id;
 
   const auto left_column_type = _in_table->column_data_type(_left_column_id);
@@ -88,7 +90,7 @@ void SingleColumnTableScanImpl::handle_segment(const BaseEncodedSegment& base_se
         auto comparator_with_value = [comparator, typed_right_value](auto value) {
           return comparator(value, typed_right_value);
         };
-        left_segment_iterable.with_iterators(mapped_chunk_offsets.get(), [&](auto left_it, auto left_end) {
+        left_segment_iterable.with_iterators(position_filter, [&](auto left_it, auto left_end) {
           _scan<true>(comparator_with_value, left_it, left_end, chunk_id, matches_out, true);
         });
       });
@@ -101,7 +103,7 @@ void SingleColumnTableScanImpl::handle_segment(const BaseDictionarySegment& base
   auto context = std::static_pointer_cast<Context>(base_context);
   auto& matches_out = context->_matches_out;
   const auto chunk_id = context->_chunk_id;
-  const auto& mapped_chunk_offsets = context->_mapped_chunk_offsets;
+  const auto& position_filter = context->_position_filter;
 
   /**
    * ValueID value_id; // left value id
@@ -135,7 +137,7 @@ void SingleColumnTableScanImpl::handle_segment(const BaseDictionarySegment& base
   auto left_iterable = create_iterable_from_attribute_vector(base_segment);
 
   if (_right_value_matches_all(base_segment, search_value_id)) {
-    left_iterable.with_iterators(mapped_chunk_offsets.get(), [&](auto left_it, auto left_end) {
+    left_iterable.with_iterators(position_filter, [&](auto left_it, auto left_end) {
       static const auto always_true = [](const auto&) { return true; };
       this->_scan<false>(always_true, left_it, left_end, chunk_id, matches_out, true);
     });
@@ -151,7 +153,7 @@ void SingleColumnTableScanImpl::handle_segment(const BaseDictionarySegment& base
     auto comparator_with_value = [comparator, search_value_id](auto value) {
       return comparator(value, search_value_id);
     };
-    left_iterable.with_iterators(mapped_chunk_offsets.get(), [&](auto left_it, auto left_end) {
+    left_iterable.with_iterators(position_filter, [&](auto left_it, auto left_end) {
       if (_predicate_condition == PredicateCondition::GreaterThan ||
           _predicate_condition == PredicateCondition::GreaterThanEquals) {
         // For GreaterThan(Equals), INVALID_VALUE_ID would compare greater than the search_value_id, even though the
