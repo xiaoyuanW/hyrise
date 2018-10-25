@@ -173,7 +173,6 @@ set(
     tasks/operator_task_test.cpp
     testing_assert.cpp
     testing_assert.hpp
-    utils/div_with_rounding_test.cpp
     utils/format_bytes_test.cpp
     utils/format_duration_test.cpp
     utils/numa_memory_resource_test.cpp
@@ -269,8 +268,6 @@ set(
     gmock
     sqlite3
     ${FILESYSTEM_LIBRARY}
-    ${Boost_SYSTEM_LIBRARY}
-    ${Boost_THREAD_LIBRARY}
     ${CMAKE_DL_LIBS}
 )
 
