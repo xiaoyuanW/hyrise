@@ -21,7 +21,7 @@ namespace opossum {
  *   in order to avoid having to look up each value ID of the attribute vector in the dictionary. This also
  *   enables us to detect if all or none of the values in the segment satisfy the expression.
  */
-class SingleColumnTableScanImpl : public BaseSingleColumnTableScanImpl {
+class SingleColumnTableScanImpl : public BaseSingleColumnTableScanImpl {  // TODO Rename to ConstantTableScan?
  public:
   SingleColumnTableScanImpl(const std::shared_ptr<const Table>& in_table, const ColumnID left_column_id,
                             const PredicateCondition& predicate_condition, const AllTypeVariant& right_value);

@@ -60,9 +60,9 @@ void SingleColumnTableScanImpl::handle_segment(const BaseValueSegment& base_segm
       };
       left_segment_iterable.with_iterators(position_filter, [&](auto left_it, auto left_end) {
         if (left_segment.is_nullable()) {
-          _scan<true>(comparator_with_value, left_it, left_end, chunk_id, matches_out, true);
+          _scan_with_iterators<true>(comparator_with_value, left_it, left_end, chunk_id, matches_out, true);
         } else {
-          _scan<false>(comparator_with_value, left_it, left_end, chunk_id, matches_out, true);
+          _scan_with_iterators<false>(comparator_with_value, left_it, left_end, chunk_id, matches_out, true);
         }
       });
     });
@@ -91,7 +91,7 @@ void SingleColumnTableScanImpl::handle_segment(const BaseEncodedSegment& base_se
           return comparator(value, typed_right_value);
         };
         left_segment_iterable.with_iterators(position_filter, [&](auto left_it, auto left_end) {
-          _scan<true>(comparator_with_value, left_it, left_end, chunk_id, matches_out, true);
+          _scan_with_iterators<true>(comparator_with_value, left_it, left_end, chunk_id, matches_out, true);
         });
       });
     });
@@ -139,7 +139,7 @@ void SingleColumnTableScanImpl::handle_segment(const BaseDictionarySegment& base
   if (_right_value_matches_all(base_segment, search_value_id)) {
     left_iterable.with_iterators(position_filter, [&](auto left_it, auto left_end) {
       static const auto always_true = [](const auto&) { return true; };
-      this->_scan<false>(always_true, left_it, left_end, chunk_id, matches_out, true);
+      this->_scan_with_iterators<false>(always_true, left_it, left_end, chunk_id, matches_out, true);
     });
 
     return;
@@ -158,10 +158,10 @@ void SingleColumnTableScanImpl::handle_segment(const BaseDictionarySegment& base
           _predicate_condition == PredicateCondition::GreaterThanEquals) {
         // For GreaterThan(Equals), INVALID_VALUE_ID would compare greater than the search_value_id, even though the
         // value is NULL. Thus, we need to check for is_null as well.
-        this->_scan<true>(comparator_with_value, left_it, left_end, chunk_id, matches_out, true);
+        this->_scan_with_iterators<true>(comparator_with_value, left_it, left_end, chunk_id, matches_out, true);
       } else {
         // No need for NULL checks here, because INVALID_VALUE_ID is always greater.
-        this->_scan<false>(comparator_with_value, left_it, left_end, chunk_id, matches_out, true);
+        this->_scan_with_iterators<false>(comparator_with_value, left_it, left_end, chunk_id, matches_out, true);
       }
     });
   });

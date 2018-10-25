@@ -6,6 +6,7 @@
 
 #include <x86intrin.h>
 
+#include "abstract_table_scan_impl.hpp"
 #include "storage/segment_iterables.hpp"
 #include "types.hpp"
 #include "utils/assert.hpp"
@@ -17,15 +18,13 @@ class Table;
 /**
  * @brief the base class of all table scan impls
  */
-class BaseTableScanImpl {
+class BaseTableScanImpl : public AbstractTableScanImpl {  // TODO rename to AbstractSingleColumnScanImpl
  public:
   BaseTableScanImpl(std::shared_ptr<const Table> in_table, const ColumnID left_column_id,
                     const PredicateCondition predicate_condition)
       : _in_table{in_table}, _left_column_id{left_column_id}, _predicate_condition{predicate_condition} {}
 
   virtual ~BaseTableScanImpl() = default;
-
-  virtual std::string description() const = 0;
 
   virtual std::shared_ptr<PosList> scan_chunk(ChunkID chunk_id) = 0;
 
@@ -36,17 +35,17 @@ class BaseTableScanImpl {
    */
 
   template <bool CheckForNull, typename BinaryFunctor, typename LeftIterator>
-  void __attribute__((noinline)) _scan(const BinaryFunctor& func, LeftIterator& left_it, LeftIterator& left_end,  // TODO rename to scan_with_iterators
+  void __attribute__((noinline)) _scan_with_iterators(const BinaryFunctor& func, LeftIterator& left_it, LeftIterator& left_end,  // TODO rename to scan_with_iterators
                                        const ChunkID chunk_id, PosList& matches_out, bool functor_is_vectorizable) {
     // Can't use a default argument for this because default arguments are non-type deduced contexts
     auto false_type = std::false_type{};
-    _scan<CheckForNull>(func, left_it, left_end, chunk_id, matches_out, functor_is_vectorizable, false_type);
+    _scan_with_iterators<CheckForNull>(func, left_it, left_end, chunk_id, matches_out, functor_is_vectorizable, false_type);
   }
 
   template <bool CheckForNull, typename BinaryFunctor, typename LeftIterator, typename RightIterator>
   // noinline reduces compile time drastically
   void __attribute__((noinline))
-  _scan(const BinaryFunctor& func, LeftIterator& left_it, LeftIterator& left_end, const ChunkID chunk_id,
+  _scan_with_iterators(const BinaryFunctor& func, LeftIterator& left_it, LeftIterator& left_end, const ChunkID chunk_id,
         PosList& matches_out, [[maybe_unused]] bool functor_is_vectorizable, [[maybe_unused]] RightIterator& right_it) {
     // SIMD has no benefit for iterators that block vectorization (mostly iterators that do not operate on contiguous
     // storage). Because of that, it is only enabled for std::vector (currently used by FixedSizeByteAlignedVector).
@@ -61,7 +60,7 @@ class BaseTableScanImpl {
 #if !IS_DEBUG
     if constexpr (LeftIterator::IsVectorizable) {
       if (functor_is_vectorizable && left_end - left_it > 1000) {
-        _simd_scan<CheckForNull>(func, left_it, left_end, chunk_id, matches_out, right_it);
+        _simd_scan_with_iterators<CheckForNull>(func, left_it, left_end, chunk_id, matches_out, right_it);
       }
     }
 #endif
@@ -89,7 +88,7 @@ class BaseTableScanImpl {
   template <bool CheckForNull, typename BinaryFunctor, typename LeftIterator, typename RightIterator>
   // noinline reduces compile time drastically
   void __attribute__((noinline))
-  _simd_scan(const BinaryFunctor& func, LeftIterator& left_it, LeftIterator& left_end, const ChunkID chunk_id,
+  _simd_scan_with_iterators(const BinaryFunctor& func, LeftIterator& left_it, LeftIterator& left_end, const ChunkID chunk_id,
              PosList& matches_out, [[maybe_unused]] RightIterator& right_it) {
     // Concept: Partition the vector into blocks of BLOCK_SIZE entries. The remainder is handled outside of this optimization. For each
     // row write 0 to `offsets` if the row does not match, or `chunk_offset + 1` if the row matches. The reason why we need `+1` is given below. This set can be
