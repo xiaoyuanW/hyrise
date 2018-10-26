@@ -722,7 +722,7 @@ void Aggregate::_write_groupby_output(PosList& pos_list) {
   auto input_table = input_table_left();
 
   for (auto group_column_index = ColumnID{0}; group_column_index < _groupby_column_ids.size(); ++group_column_index) {
-    resolve_data_type(input_table->column_data_type(group_column_index), [&](const auto type) {
+    resolve_data_type(input_table->column_data_type(_groupby_column_ids[group_column_index]), [&](const auto type) {
       using Type = typename decltype(type)::type;
 
       auto base_segment_accessors = std::vector<std::unique_ptr<BaseSegmentAccessor<Type>>>();
