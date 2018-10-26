@@ -1,3 +1,6 @@
+#include <boost/algorithm/string.hpp>
+#include <boost/lexical_cast.hpp>
+
 #include <chrono>
 #include <fstream>
 #include <iostream>
@@ -10,8 +13,6 @@
 #include "cxxopts.hpp"
 #include "global.hpp"
 #include "json.hpp"
-#include "planviz/lqp_visualizer.hpp"
-#include "planviz/sql_query_plan_visualizer.hpp"
 #include "scheduler/current_scheduler.hpp"
 #include "scheduler/node_queue_scheduler.hpp"
 #include "scheduler/topology.hpp"
@@ -21,6 +22,8 @@
 #include "storage/storage_manager.hpp"
 #include "tpch/tpch_db_generator.hpp"
 #include "tpch/tpch_queries.hpp"
+#include "visualization/lqp_visualizer.hpp"
+#include "visualization/sql_query_plan_visualizer.hpp"
 
 /**
  * This benchmark measures Hyrise's performance executing the TPC-H *queries*, it doesn't (yet) support running the
@@ -45,11 +48,12 @@ int main(int argc, char* argv[]) {
     ("jit", "Enable jit", cxxopts::value<bool>()->default_value("false"))
     ("lazy_load", "Enable lazy load in jit", cxxopts::value<bool>()->default_value("false"))
     ("interpret", "Interpret jit codde", cxxopts::value<bool>()->default_value("false"))
-    ("jit_validate", "Use jit validate", cxxopts::value<bool>()->default_value("false")); // NOLINT
+    ("jit_validate", "Use jit validate", cxxopts::value<bool>()->default_value("false"))
+    ("q,queries", "Specify queries to run (comma-separated query ids, e.g. \"--queries 1,3,19\"), default is all", cxxopts::value<std::string>()); // NOLINT
   // clang-format on
 
   std::unique_ptr<opossum::BenchmarkConfig> config;
-  std::vector<opossum::QueryID> query_ids;
+  std::string comma_separated_queries;
   float scale_factor;
   bool& jit = opossum::Global::get().jit;
   bool& lazy_load = opossum::Global::get().lazy_load;
@@ -60,11 +64,14 @@ int main(int argc, char* argv[]) {
     // JSON config file was passed in
     const auto json_config = opossum::CLIConfigParser::parse_json_config_file(argv[1]);
     scale_factor = json_config.value("scale", 0.1f);
+
     query_ids = json_config.value("queries", std::vector<opossum::QueryID>());
     jit = json_config.value("jit", false);
     lazy_load = json_config.value("lazy_load", false);
     interpret = json_config.value("interpret", false);
     jit_validate = json_config.value("jit_validate", false);
+
+    comma_separated_queries = json_config.value("queries", std::string(""));
 
     config = std::make_unique<opossum::BenchmarkConfig>(
         opossum::CLIConfigParser::parse_basic_options_json_config(json_config));
@@ -78,9 +85,8 @@ int main(int argc, char* argv[]) {
       std::cout << opossum::CLIConfigParser::detailed_help(cli_options) << std::endl;
       return 0;
     }
-
     if (cli_parse_result.count("queries")) {
-      query_ids = cli_parse_result["queries"].as<std::vector<opossum::QueryID>>();
+      comma_separated_queries = cli_parse_result["queries"].as<std::string>();
     }
 
     jit = cli_parse_result["jit"].as<bool>();
@@ -97,10 +103,19 @@ int main(int argc, char* argv[]) {
   auto bool_to_str = [](bool value) { return value ? "true" : "false"; };
   auto bool_to_verb = [](bool value) { return value ? "enabled" : "disabled"; };
 
+  std::vector<opossum::QueryID> query_ids;
+
   // Build list of query ids to be benchmarked and display it
-  if (query_ids.empty()) {
+  if (comma_separated_queries.empty()) {
     std::transform(opossum::tpch_queries.begin(), opossum::tpch_queries.end(), std::back_inserter(query_ids),
                    [](auto& pair) { return pair.first; });
+  } else {
+    // Split the input into query ids, ignoring leading, trailing, or duplicate commas
+    auto query_ids_str = std::vector<std::string>();
+    boost::trim_if(comma_separated_queries, boost::is_any_of(","));
+    boost::split(query_ids_str, comma_separated_queries, boost::is_any_of(","), boost::token_compress_on);
+    std::transform(query_ids_str.begin(), query_ids_str.end(), std::back_inserter(query_ids),
+                   boost::lexical_cast<opossum::QueryID, std::string>);
   }
 
   config->out << "- Jitting is " << bool_to_verb(jit) << std::endl;
@@ -113,6 +128,12 @@ int main(int argc, char* argv[]) {
     config->out << (query_id) << ", ";
   }
   config->out << "]" << std::endl;
+
+  // TODO(leander): Enable support for queries that contain multiple statements requiring execution
+  if (config->enable_scheduler) {
+    Assert(std::find(query_ids.begin(), query_ids.end(), opossum::QueryID{15}) == query_ids.end(),
+           "TPC-H query 15 is not supported for multithreaded benchmarking.");
+  }
 
   // Set up TPCH benchmark
   opossum::NamedQueries queries;

@@ -58,7 +58,7 @@ void JitAggregate::before_query(const Table& in_table, Table& out_table, JitRunt
 // We thus rely on the SFINAE pattern to provide a fallback implementation that throws an exception.
 // This is why this operation must be performed in a separate function.
 template <typename ColumnDataType>
-typename std::enable_if<std::is_arithmetic<ColumnDataType>::value, void>::type compute_averages(
+std::enable_if_t<std::is_arithmetic_v<ColumnDataType>, void> compute_averages(
     const std::vector<ColumnDataType>& sum_values, const std::vector<int64_t>& count_values,
     std::vector<double>& avg_values) {
   for (auto i = 0u; i < sum_values.size(); ++i) {
@@ -74,7 +74,7 @@ typename std::enable_if<std::is_arithmetic<ColumnDataType>::value, void>::type c
 
 // Fallback implementation for non-numeric data types to make the compiler happy (see above).
 template <typename ColumnDataType>
-typename std::enable_if<!std::is_arithmetic<ColumnDataType>::value, void>::type compute_averages(
+std::enable_if_t<!std::is_arithmetic_v<ColumnDataType>, void> compute_averages(
     const std::vector<ColumnDataType>& sum_values, const std::vector<int64_t>& count_values,
     std::vector<double>& avg_values) {
   Fail("Invalid aggregate");
