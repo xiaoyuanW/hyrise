@@ -18,6 +18,7 @@
 #include "storage/storage_manager.hpp"
 #include "types.hpp"
 #include "utils/load_table.hpp"
+#include "expression/expression_functional.hpp"
 
 using namespace opossum;  // NOLINT
 #endif
@@ -43,8 +44,14 @@ int main() {
   // get_table->set_transaction_context(context);
   get_table->execute();
 
-  auto table_scan =
-      std::make_shared<opossum::TableScan>(get_table, opossum::ColumnID{0}, PredicateCondition::LessThan, 200);
+  const auto output_table = get_table->get_output();
+  const auto column_id = opossum::ColumnID{0};
+  const auto& column_definition = output_table->column_definitions().at(column_id);
+
+  const auto column_expression = expression_functional::pqp_column_(column_id, column_definition.data_type, column_definition.nullable, column_definition.name);
+
+  auto predicate = std::make_shared<BinaryPredicateExpression>(PredicateCondition::LessThan, column_expression, expression_functional::value_(200));
+  auto table_scan = std::make_shared<opossum::TableScan>(get_table, predicate);
   // table_scan->set_transaction_context(context);
   table_scan->execute();
   auto delete_op = std::make_shared<opossum::Delete>("tmp", table_scan);
@@ -53,8 +60,8 @@ int main() {
   context->commit();
 
   context = opossum::TransactionManager::get().new_transaction_context();
-  table_scan =
-      std::make_shared<opossum::TableScan>(get_table, opossum::ColumnID{0}, PredicateCondition::GreaterThan, 10000);
+  predicate = std::make_shared<BinaryPredicateExpression>(PredicateCondition::GreaterThan, column_expression, expression_functional::value_(10000));
+  table_scan = std::make_shared<opossum::TableScan>(get_table, predicate);
   // table_scan->set_transaction_context(context);
   table_scan->execute();
   delete_op = std::make_shared<opossum::Delete>("tmp", table_scan);
@@ -75,8 +82,8 @@ int main() {
   get_table->set_transaction_context(context);
   get_table->execute(); */
 
-  auto filter =
-      std::make_shared<opossum::TableScan>(get_table, opossum::ColumnID{0}, PredicateCondition::GreaterThanEquals, 0);
+  predicate = std::make_shared<BinaryPredicateExpression>(PredicateCondition::GreaterThanEquals, column_expression, expression_functional::value_(0));
+  auto filter = std::make_shared<opossum::TableScan>(get_table, predicate);
   filter->execute();
 
   // auto validate = std::make_shared<opossum::Validate>(get_table);

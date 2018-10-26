@@ -44,7 +44,6 @@ int main(int argc, char* argv[]) {
   // clang-format off
   cli_options.add_options()
     ("s,scale", "Database scale factor (1.0 ~ 1GB)", cxxopts::value<float>()->default_value("0.1"))
-    ("queries", "Specify queries to run, default is all", cxxopts::value<std::vector<opossum::QueryID>>())
     ("jit", "Enable jit", cxxopts::value<bool>()->default_value("false"))
     ("lazy_load", "Enable lazy load in jit", cxxopts::value<bool>()->default_value("false"))
     ("interpret", "Interpret jit codde", cxxopts::value<bool>()->default_value("false"))
@@ -59,6 +58,8 @@ int main(int argc, char* argv[]) {
   bool& lazy_load = opossum::Global::get().lazy_load;
   bool& interpret = opossum::Global::get().interpret;
   bool& jit_validate = opossum::Global::get().jit_validate;
+
+  std::vector<opossum::QueryID> query_ids;
 
   if (opossum::CLIConfigParser::cli_has_json_config(argc, argv)) {
     // JSON config file was passed in
@@ -102,8 +103,6 @@ int main(int argc, char* argv[]) {
 
   auto bool_to_str = [](bool value) { return value ? "true" : "false"; };
   auto bool_to_verb = [](bool value) { return value ? "enabled" : "disabled"; };
-
-  std::vector<opossum::QueryID> query_ids;
 
   // Build list of query ids to be benchmarked and display it
   if (comma_separated_queries.empty()) {
