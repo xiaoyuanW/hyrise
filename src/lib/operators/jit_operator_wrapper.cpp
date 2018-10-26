@@ -100,6 +100,7 @@ void JitOperatorWrapper::_prepare() {
 }
 
 void JitOperatorWrapper::_choose_execute_func() {
+  std::lock_guard<std::mutex> guard(_specialize_mutex);
   if (_execute_func) return;
 
   // std::cout << "Before make loads lazy:" << std::endl << description(DescriptionMode::MultiLine) << std::endl;
