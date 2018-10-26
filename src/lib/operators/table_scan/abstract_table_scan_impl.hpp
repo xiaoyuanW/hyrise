@@ -94,7 +94,7 @@ class AbstractTableScanImpl {
     constexpr size_t BLOCK_SIZE = SIMD_SIZE / sizeof(ValueID);
 
     // Continue doing this until we have too few rows left to run over a whole block
-    while (left_end - left_it > BLOCK_SIZE) {
+    while (static_cast<size_t>(left_end - left_it) > BLOCK_SIZE) {
       alignas(SIMD_SIZE) std::array<ChunkOffset, SIMD_SIZE / sizeof(ChunkOffset)> offsets;
 
       // The pragmas promise to the compiler that there are no data dependencies within the loop. If you run into any
@@ -137,13 +137,13 @@ class AbstractTableScanImpl {
       // Now write the matches into matches_out. For better understanding, first look at the non-AVX12VL block.
 #ifdef __AVX512VL__
       // Build a mask where a bit indicates if the row in `offsets` matched the criterion.
-      const auto mask = _mm512_cmpneq_epu32_mask(*static_cast<__m512i*>(&offsets), __m512i{});
+      const auto mask = _mm512_cmpneq_epu32_mask(*reinterpret_cast<__m512i*>(&offsets), __m512i{});
 
       if (!mask) continue;
 
       // Compress `offsets`, that is move all values where the mask is set to 1 to the front. This is essentially
       // std::remove(offsets.begin(), offsets.end(), ChunkOffset{0});
-      *static_cast<__m512i*>(&offsets) = _mm512_maskz_compress_epi32(mask, *static_cast<__m512i*>(&offsets));
+      *reinterpret_cast<__m512i*>(&offsets) = _mm512_maskz_compress_epi32(mask, *reinterpret_cast<__m512i*>(&offsets));
 
       // Copy all offsets into `matches_out` - even those that are set to 0. This does not matter because they will
       // be overwritten in the next round anyway. Copying more than necessary is better than stopping at the number
