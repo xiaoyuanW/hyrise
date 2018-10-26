@@ -17,6 +17,7 @@
 #include "scheduler/current_scheduler.hpp"
 #include "scheduler/job_task.hpp"
 #include "storage/create_iterable_from_segment.hpp"
+#include "resolve_type.hpp"
 #include "type_comparison.hpp"
 #include "utils/aligned_size.hpp"
 #include "utils/assert.hpp"
@@ -548,10 +549,6 @@ void Aggregate::_aggregate() {
     _output_column_definitions.emplace_back(input_table->column_name(column_id),
                                             input_table->column_data_type(column_id));
 
-    auto groupby_segment =
-        make_shared_by_data_type<BaseSegment, ValueSegment>(input_table->column_data_type(column_id), true);
-    _groupby_segments.push_back(std::static_pointer_cast<BaseValueSegment>(groupby_segment));
-    _output_segments.push_back(groupby_segment);
   }
   /**
    * Write group-by columns.
@@ -724,15 +721,28 @@ std::enable_if_t<func == AggregateFunction::Avg && !std::is_arithmetic_v<Aggrega
 void Aggregate::_write_groupby_output(PosList& pos_list) {
   auto input_table = input_table_left();
 
-  for (size_t group_column_index = 0; group_column_index < _groupby_column_ids.size(); ++group_column_index) {
-    auto base_segments = std::vector<std::shared_ptr<const BaseSegment>>();
-    for (const auto& chunk : input_table->chunks()) {
-      base_segments.push_back(chunk->get_segment(_groupby_column_ids[group_column_index]));
-    }
-    _groupby_segments[group_column_index]->reserve(pos_list.size());
-    for (const auto row_id : pos_list) {
-      _groupby_segments[group_column_index]->append((*base_segments[row_id.chunk_id])[row_id.chunk_offset]);
-    }
+  for (auto group_column_index = ColumnID{0}; group_column_index < _groupby_column_ids.size(); ++group_column_index) {
+    resolve_data_type(input_table->column_data_type(group_column_index), [&](const auto type) {
+      using Type = typename decltype(type)::type;
+
+      auto base_segment_accessors = std::vector<std::unique_ptr<BaseSegmentAccessor<Type>>>();
+      for (const auto& chunk : input_table->chunks()) {
+        base_segment_accessors.push_back(create_segment_accessor<Type>(chunk->get_segment(_groupby_column_ids[group_column_index])));
+      }
+
+      auto values = pmr_concurrent_vector<Type>(pos_list.size());
+      auto null_values = pmr_concurrent_vector<bool>(pos_list.size());
+
+      for (auto i = size_t{0}; i < pos_list.size(); ++i) {
+        const auto& optional_value = (*base_segment_accessors[pos_list[i].chunk_id]).access(pos_list[i].chunk_offset);
+        values[i] = *optional_value;
+        null_values[i] = static_cast<bool>(optional_value);
+      }
+
+      auto groupby_segment = std::make_shared<ValueSegment<Type>>(std::move(values), std::move(null_values));
+      _groupby_segments.push_back(std::static_pointer_cast<BaseValueSegment>(groupby_segment));
+      _output_segments.push_back(groupby_segment);
+    });
   }
 }
 
