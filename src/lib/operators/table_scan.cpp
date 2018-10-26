@@ -27,6 +27,7 @@
 #include "storage/proxy_chunk.hpp"
 #include "storage/reference_segment.hpp"
 #include "storage/table.hpp"
+#include "sql/sql_query_plan.hpp"
 #include "table_scan/between_table_scan_impl.hpp"
 #include "table_scan/column_comparison_table_scan_impl.hpp"
 #include "table_scan/expression_evaluator_table_scan_impl.hpp"
@@ -228,6 +229,32 @@ std::unique_ptr<AbstractTableScanImpl> TableScan::create_impl() const {
     if (left_column_expression && right_column_expression) {
       return std::make_unique<ColumnComparisonTableScanImpl>(input_table_left(), left_column_expression->column_id,
                                                              predicate_condition, right_column_expression->column_id);
+    }
+
+    // Predicate pattern: <column> <binary predicate_condition> <uncorrelated select>
+    const auto left_pqp_select = std::dynamic_pointer_cast<PQPSelectExpression>(left_operand);
+    const auto right_pqp_select = std::dynamic_pointer_cast<PQPSelectExpression>(right_operand);
+
+    if (left_column_expression && right_pqp_select && !right_pqp_select->is_correlated()) {
+      SQLQueryPlan query_plan{CleanupTemporaries::Yes};
+      auto row_pqp = right_pqp_select->pqp->deep_copy();
+      query_plan.add_tree_by_root(row_pqp);
+
+      const auto tasks = query_plan.create_tasks();
+      CurrentScheduler::schedule_and_wait_for_tasks(tasks);
+
+      const auto result = row_pqp->get_output();
+
+      Assert(result->row_count() == 1 && result->column_count() == 1, "Expected subselect to return single value");
+
+      const auto select_value = (*result->get_chunk(ChunkID{0})->get_segment(ColumnID{0}))[0];
+
+      return std::make_unique<SingleColumnTableScanImpl>(input_table_left(), left_column_expression->column_id,
+                                                         predicate_condition, select_value);
+    }
+
+    if (right_column_expression && left_pqp_select && !left_pqp_select->is_correlated()) {
+      // TODO
     }
   }
 
