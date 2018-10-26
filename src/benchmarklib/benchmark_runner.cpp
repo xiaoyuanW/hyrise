@@ -239,7 +239,7 @@ void BenchmarkRunner::_warmup_query(const NamedQuery& named_query) {
   auto currently_running_clients = std::atomic_uint{0};
 
   auto tasks = std::vector<std::shared_ptr<AbstractTask>>{};
-  auto state = BenchmarkState{_config.warmup_duration};
+  auto state = BenchmarkState{0, _config.max_num_query_runs, _config.warmup_duration, _config.warmup_duration};
 
   while (state.keep_running()) {
     // We want to only schedule as many queries simultaneously as we have simulated clients
