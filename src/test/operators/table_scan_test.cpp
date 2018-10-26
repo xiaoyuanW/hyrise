@@ -19,7 +19,7 @@
 #include "operators/table_scan/expression_evaluator_table_scan_impl.hpp"
 #include "operators/table_scan/is_null_table_scan_impl.hpp"
 #include "operators/table_scan/like_table_scan_impl.hpp"
-#include "operators/table_scan/single_column_table_scan_impl.hpp"
+#include "operators/table_scan/literal_table_scan_impl.hpp"
 #include "operators/table_wrapper.hpp"
 #include "storage/chunk_encoder.hpp"
 #include "storage/encoding_type.hpp"
@@ -97,7 +97,7 @@ class OperatorsTableScanTest : public BaseTest, public ::testing::WithParamInter
     return table_wrapper;
   }
 
-  std::shared_ptr<TableWrapper> get_table_op_with_n_entries(const int num_entries, bool encode) {
+  std::shared_ptr<TableWrapper> get_table_op_with_n_dict_entries(const int num_entries) {
     // Set up dictionary encoded table with a dictionary consisting of num_entries entries.
     TableColumnDefinitions table_column_definitions;
     table_column_definitions.emplace_back("a", DataType::Int);
@@ -108,7 +108,7 @@ class OperatorsTableScanTest : public BaseTest, public ::testing::WithParamInter
       table->append({i});
     }
 
-    if (encode) ChunkEncoder::encode_chunks(table, {ChunkID{0}}, {_encoding_type});
+    ChunkEncoder::encode_chunks(table, {ChunkID{0}}, {_encoding_type});
 
     auto table_wrapper = std::make_shared<opossum::TableWrapper>(std::move(table));
     table_wrapper->execute();
@@ -485,19 +485,9 @@ TEST_P(OperatorsTableScanTest, ScanWithEmptyInput) {
   EXPECT_EQ(scan_2->get_output()->row_count(), static_cast<size_t>(0));
 }
 
-TEST_P(OperatorsTableScanTest, ScanOnWideUnencodedSegment) {
-  // Scan a big table to make sure that SIMD optimizations are used
-  const auto table_wrapper_dict_32 = get_table_op_with_n_entries((1 << 16) + 1, false);
-  auto scan_2 = std::make_shared<TableScan>(table_wrapper_dict_32,
-                                            OperatorScanPredicate{ColumnID{0}, PredicateCondition::GreaterThan, 65500});
-  scan_2->execute();
-
-  EXPECT_EQ(scan_2->get_output()->row_count(), static_cast<size_t>(37));
-}
-
 TEST_P(OperatorsTableScanTest, ScanOnWideDictionarySegment) {
   // 2**8 + 1 values require a data type of 16bit.
-  const auto table_wrapper_dict_16 = get_table_op_with_n_entries((1 << 8) + 1, true);
+  const auto table_wrapper_dict_16 = get_table_op_with_n_dict_entries((1 << 8) + 1);
   auto scan_1 = std::make_shared<TableScan>(
       table_wrapper_dict_16, greater_than_(get_column_expression(table_wrapper_dict_16, ColumnID{0}), 200));
   scan_1->execute();
@@ -505,7 +495,7 @@ TEST_P(OperatorsTableScanTest, ScanOnWideDictionarySegment) {
   EXPECT_EQ(scan_1->get_output()->row_count(), static_cast<size_t>(57));
 
   // 2**16 + 1 values require a data type of 32bit.
-  const auto table_wrapper_dict_32 = get_table_op_with_n_entries((1 << 16) + 1, true);
+  const auto table_wrapper_dict_32 = get_table_op_with_n_dict_entries((1 << 16) + 1);
   auto scan_2 = std::make_shared<TableScan>(
       table_wrapper_dict_32, greater_than_(get_column_expression(table_wrapper_dict_32, ColumnID{0}), 65500));
   scan_2->execute();
@@ -683,8 +673,8 @@ TEST_P(OperatorsTableScanTest, GetImpl) {
   const auto column_an = pqp_column_(ColumnID{0}, DataType::String, true, "a");
 
   // clang-format off
-  EXPECT_TRUE(dynamic_cast<SingleColumnTableScanImpl*>(TableScan{get_table_op(), equals_(column_a, 5)}.create_impl().get()));  // NOLINT
-  EXPECT_TRUE(dynamic_cast<SingleColumnTableScanImpl*>(TableScan{get_table_op(), equals_(5, column_a)}.create_impl().get()));  // NOLINT
+  EXPECT_TRUE(dynamic_cast<LiteralTableScanImpl*>(TableScan{get_table_op(), equals_(column_a, 5)}.create_impl().get()));  // NOLINT
+  EXPECT_TRUE(dynamic_cast<LiteralTableScanImpl*>(TableScan{get_table_op(), equals_(5, column_a)}.create_impl().get()));  // NOLINT
   EXPECT_TRUE(dynamic_cast<ColumnComparisonTableScanImpl*>(TableScan{get_table_op(),
                                                                      equals_(column_b, column_a)}.create_impl().get()));  // NOLINT
   EXPECT_TRUE(dynamic_cast<LikeTableScanImpl*>(TableScan{get_int_string_table_op(),

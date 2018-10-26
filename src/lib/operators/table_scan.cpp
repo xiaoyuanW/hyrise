@@ -32,7 +32,7 @@
 #include "table_scan/expression_evaluator_table_scan_impl.hpp"
 #include "table_scan/is_null_table_scan_impl.hpp"
 #include "table_scan/like_table_scan_impl.hpp"
-#include "table_scan/single_column_table_scan_impl.hpp"
+#include "table_scan/literal_table_scan_impl.hpp"
 #include "type_cast.hpp"
 #include "utils/assert.hpp"
 #include "utils/performance_warning.hpp"
@@ -219,12 +219,12 @@ std::unique_ptr<AbstractTableScanImpl> TableScan::create_impl() const {
 
     // Predicate pattern: <column> <binary predicate_condition> <non-null value>
     if (left_column_expression && right_value) {
-      return std::make_unique<SingleColumnTableScanImpl>(input_table_left(), left_column_expression->column_id,
-                                                         predicate_condition, *right_value);
+      return std::make_unique<LiteralTableScanImpl>(input_table_left(), left_column_expression->column_id,
+                                                    predicate_condition, *right_value);
     }
     if (right_column_expression && left_value) {
-      return std::make_unique<SingleColumnTableScanImpl>(input_table_left(), right_column_expression->column_id,
-                                                         flip_predicate_condition(predicate_condition), *left_value);
+      return std::make_unique<LiteralTableScanImpl>(input_table_left(), right_column_expression->column_id,
+                                                    flip_predicate_condition(predicate_condition), *left_value);
     }
 
     // Predicate pattern: <column> <binary predicate_condition> <column>
