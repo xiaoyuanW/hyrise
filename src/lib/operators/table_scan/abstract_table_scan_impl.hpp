@@ -26,7 +26,7 @@ class AbstractTableScanImpl {
 
   template <bool CheckForNull, typename BinaryFunctor, typename LeftIterator>
   void __attribute__((noinline))
-  _scan_with_iterators(const BinaryFunctor& func, LeftIterator& left_it, LeftIterator& left_end, const ChunkID chunk_id,
+  _scan_with_iterators(const BinaryFunctor func, LeftIterator left_it, LeftIterator left_end, const ChunkID chunk_id,
                        PosList& matches_out, bool functor_is_vectorizable) const {
     // Can't use a default argument for this because default arguments are non-type deduced contexts
     auto false_type = std::false_type{};
@@ -37,9 +37,9 @@ class AbstractTableScanImpl {
   template <bool CheckForNull, typename BinaryFunctor, typename LeftIterator, typename RightIterator>
   // noinline reduces compile time drastically
   void __attribute__((noinline))
-  _scan_with_iterators(const BinaryFunctor& func, LeftIterator& left_it, LeftIterator& left_end, const ChunkID chunk_id,
+  _scan_with_iterators(const BinaryFunctor func, LeftIterator left_it, LeftIterator left_end, const ChunkID chunk_id,
                        PosList& matches_out, [[maybe_unused]] bool functor_is_vectorizable,
-                       [[maybe_unused]] RightIterator& right_it) const {
+                       [[maybe_unused]] RightIterator right_it) const {
     // SIMD has no benefit for iterators that block vectorization (mostly iterators that do not operate on contiguous
     // storage). Because of that, it is only enabled for std::vector (currently used by FixedSizeByteAlignedVector).
     // Also, the AnySegmentIterator is not vectorizable because it relies on virtual method calls. While the check for
@@ -81,9 +81,9 @@ class AbstractTableScanImpl {
   template <bool CheckForNull, typename BinaryFunctor, typename LeftIterator, typename RightIterator>
   // noinline reduces compile time drastically
   void __attribute__((noinline))
-  _simd_scan_with_iterators(const BinaryFunctor& func, LeftIterator& left_it, LeftIterator& left_end,
+  _simd_scan_with_iterators(const BinaryFunctor func, LeftIterator left_it, LeftIterator left_end,
                             const ChunkID chunk_id, PosList& matches_out,
-                            [[maybe_unused]] RightIterator& right_it) const {
+                            [[maybe_unused]] RightIterator right_it) const {
     // Concept: Partition the vector into blocks of BLOCK_SIZE entries. The remainder is handled outside of this
     // optimization. For each row write 0 to `offsets` if the row does not match, or `chunk_offset + 1` if the row
     // matches. The reason why we need `+1` is given below. This set can be parallelized using auto-vectorization/SIMD.
