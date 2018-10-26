@@ -134,8 +134,6 @@ std::shared_ptr<const Table> TableScan::_on_execute() {
           auto& filtered_pos_list = filtered_pos_lists[pos_list_in];
 
           if (!filtered_pos_list) {
-            // TODO this can be optimized if pos_list_in is the PosList that we scanned on
-
             filtered_pos_list = std::make_shared<PosList>(matches_out->size());
 
             size_t offset = 0;

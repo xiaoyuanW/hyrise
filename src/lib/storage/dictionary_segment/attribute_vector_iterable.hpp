@@ -59,7 +59,7 @@ class AttributeVectorIterable : public PointAccessibleSegmentIterable<AttributeV
 
     void increment() {
       ++_attribute_it;
-      ++_chunk_offset;  // TODO remove this
+      ++_chunk_offset;
     }
 
     bool equal(const Iterator& other) const { return _attribute_it == other._attribute_it; }

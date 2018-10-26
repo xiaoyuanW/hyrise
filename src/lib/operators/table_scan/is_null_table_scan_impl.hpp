@@ -20,7 +20,8 @@ class IsNullTableScanImpl : public AbstractSingleColumnTableScanImpl {
 
   std::string description() const override;
 
-  // We need to override scan_chunk because we do not want ReferenceSegments to be resolved (which would remove NullValues from the referencing PosList)
+  // We need to override scan_chunk because we do not want ReferenceSegments to be resolved (which would remove
+  // NullValues from the referencing PosList)
   std::shared_ptr<PosList> scan_chunk(const ChunkID chunk_id) const override;
 
  protected:

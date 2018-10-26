@@ -84,13 +84,14 @@ class AbstractTableScanImpl {
   _simd_scan_with_iterators(const BinaryFunctor& func, LeftIterator& left_it, LeftIterator& left_end,
                             const ChunkID chunk_id, PosList& matches_out,
                             [[maybe_unused]] RightIterator& right_it) const {
-    // Concept: Partition the vector into blocks of BLOCK_SIZE entries. The remainder is handled outside of this optimization. For each
-    // row write 0 to `offsets` if the row does not match, or `chunk_offset + 1` if the row matches. The reason why we need `+1` is given below. This set can be
-    // parallelized using auto-vectorization/SIMD. Afterwards, add all matching rows into `matches_out`.
+    // Concept: Partition the vector into blocks of BLOCK_SIZE entries. The remainder is handled outside of this
+    // optimization. For each row write 0 to `offsets` if the row does not match, or `chunk_offset + 1` if the row
+    // matches. The reason why we need `+1` is given below. This set can be parallelized using auto-vectorization/SIMD.
+    // Afterwards, add all matching rows into `matches_out`.
 
     auto matches_out_index = matches_out.size();
-    constexpr long SIMD_SIZE = 64;  // Assuming a SIMD register size of 512 bit
-    constexpr long BLOCK_SIZE = SIMD_SIZE / sizeof(ValueID);
+    constexpr size_t SIMD_SIZE = 64;  // Assuming a SIMD register size of 512 bit
+    constexpr size_t BLOCK_SIZE = SIMD_SIZE / sizeof(ValueID);
 
     // Continue doing this until we have too few rows left to run over a whole block
     while (left_end - left_it > BLOCK_SIZE) {
@@ -102,11 +103,13 @@ class AbstractTableScanImpl {
       //
       // Also, when using clang, this causes an error to be thrown if the loop could not be vectorized. This, however
       // does not guarantee that every instruction in the loop is using SIMD.
+
+      // NOLINTNEXTLINE
       ;  // clang-format off
       #pragma GCC ivdep
       #pragma clang loop vectorize(assume_safety)
       // clang-format on
-      for (auto i = 0l; i < BLOCK_SIZE; ++i) {
+      for (auto i = size_t{0}; i < BLOCK_SIZE; ++i) {
         const auto& left = *left_it;
 
         bool matches;
@@ -134,25 +137,25 @@ class AbstractTableScanImpl {
       // Now write the matches into matches_out. For better understanding, first look at the non-AVX12VL block.
 #ifdef __AVX512VL__
       // Build a mask where a bit indicates if the row in `offsets` matched the criterion.
-      const auto mask = _mm512_cmpneq_epu32_mask(*(__m512i*)&offsets, __m512i{});
+      const auto mask = _mm512_cmpneq_epu32_mask(*static_cast<__m512i*>(&offsets), __m512i{});
 
       if (!mask) continue;
 
       // Compress `offsets`, that is move all values where the mask is set to 1 to the front. This is essentially
       // std::remove(offsets.begin(), offsets.end(), ChunkOffset{0});
-      *(__m512i*)&offsets = _mm512_maskz_compress_epi32(mask, *(__m512i*)&offsets);
+      *static_cast<__m512i*>(&offsets) = _mm512_maskz_compress_epi32(mask, *static_cast<__m512i*>(&offsets));
 
       // Copy all offsets into `matches_out` - even those that are set to 0. This does not matter because they will
       // be overwritten in the next round anyway. Copying more than necessary is better than stopping at the number
       // of matching rows because we do not need a branch for this.
-      for (auto i = 0; i < BLOCK_SIZE; ++i) {
+      for (auto i = size_t{0}; i < BLOCK_SIZE; ++i) {
         matches_out[matches_out_index + i].chunk_offset = offsets[i] - 1;
       }
 
       // Count the number of matches and increase the index of the next write to matches_out accordingly
       matches_out_index += __builtin_popcount(mask);
 #else
-      for (auto i = 0; i < BLOCK_SIZE; ++i) {
+      for (auto i = size_t{0}; i < BLOCK_SIZE; ++i) {
         if (offsets[i]) {
           matches_out[matches_out_index++].chunk_offset = offsets[i] - 1;
         }

@@ -73,10 +73,11 @@ std::shared_ptr<PosList> ColumnComparisonTableScanImpl::scan_chunk(ChunkID chunk
         left_segment_iterable.with_iterators([&](auto left_it, auto left_end) {
           right_segment_iterable.with_iterators([&](auto right_it, auto right_end) {
             with_comparator(_predicate_condition, [&](auto comparator) {
-		        auto comparator_on_values = [comparator](const auto& left, const auto& right) {
-		          return comparator(left.value(), right.value());
-		        };
-              _scan_with_iterators<true>(comparator_on_values, left_it, left_end, chunk_id, *matches_out, true, right_it);
+              auto comparator_on_values = [comparator](const auto& left, const auto& right) {
+                return comparator(left.value(), right.value());
+              };
+              _scan_with_iterators<true>(comparator_on_values, left_it, left_end,
+                                         chunk_id, *matches_out, true, right_it);
             });
           });
         });

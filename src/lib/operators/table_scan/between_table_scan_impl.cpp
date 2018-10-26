@@ -72,6 +72,7 @@ void BetweenTableScanImpl::_scan_segment(const BaseDictionarySegment& segment, c
 
   auto column_iterable = create_iterable_from_attribute_vector(segment);
 
+  // NOLINTNEXTLINE - cpplint is drunk
   if (left_value_id == ValueID{0} && right_value_id == static_cast<ValueID>(segment.unique_values_count())) {
     // all values match
     column_iterable.with_iterators(position_filter, [&](auto left_it, auto left_end) {
