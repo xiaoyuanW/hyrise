@@ -490,8 +490,7 @@ bool JitAwareLQPTranslator::_node_is_jittable(const std::shared_ptr<AbstractLQPN
   }
 
   if (auto predicate_node = std::dynamic_pointer_cast<PredicateNode>(node)) {
-    return _expressions_are_jittable({predicate_node->predicate}) &&
-    predicate_node->scan_type == ScanType::TableScan;
+    return _expressions_are_jittable({predicate_node->predicate}) && predicate_node->scan_type == ScanType::TableScan;
   }
 
   if (Global::get().jit_validate && node->type == LQPNodeType::Validate) {

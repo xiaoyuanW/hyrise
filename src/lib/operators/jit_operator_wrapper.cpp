@@ -118,7 +118,8 @@ void JitOperatorWrapper::_choose_execute_func() {
   // We want to perform two specialization passes if the operator chain contains a JitAggregate operator, since the
   // JitAggregate operator contains multiple loops that need unrolling.
   auto two_specialization_passes = static_cast<bool>(std::dynamic_pointer_cast<JitAggregate>(_sink()));
-  const auto mode = Global::get().interpret ? JitExecutionMode::Interpret : JitExecutionMode::Compile;
+  const auto mode = JitExecutionMode::
+      Interpret;   // Global::get().interpret ? JitExecutionMode::Interpret : JitExecutionMode::Compile;
   switch (mode) {  // _execution_mode
     case JitExecutionMode::Compile:
       // this corresponds to "opossum::JitReadTuples::execute(opossum::JitRuntimeContext&) const"
@@ -141,11 +142,11 @@ std::shared_ptr<const Table> JitOperatorWrapper::_on_execute() {
     context.transaction_id = transaction_context()->transaction_id();
     context.snapshot_commit_id = transaction_context()->snapshot_commit_id();
   }
-  _source()->before_query(*in_table, context);
+  _source()->before_query(*in_table, _input_parameter_values, context);
   _sink()->before_query(*in_table, *out_table, context);
 
   for (opossum::ChunkID chunk_id{0}; chunk_id < in_table->chunk_count(); ++chunk_id) {
-    _source()->before_chunk(*in_table, chunk_id, context);
+    _source()->before_chunk(*in_table, chunk_id, _input_parameter_values, context);
     _execute_func(_source().get(), context);
     _sink()->after_chunk(in_table, *out_table, context);
     // break, if limit is reached
@@ -166,7 +167,16 @@ std::shared_ptr<AbstractOperator> JitOperatorWrapper::_on_deep_copy(
 }
 
 void JitOperatorWrapper::_on_set_parameters(const std::unordered_map<ParameterID, AllTypeVariant>& parameters) {
-  _source()->set_parameters(parameters);
+  const auto& input_parameters = _source()->input_parameters();
+  _input_parameter_values.resize(input_parameters.size());
+  auto itr = _input_parameter_values.begin();
+  for (auto& parameter : input_parameters) {
+    auto search = parameters.find(parameter.parameter_id);
+    if (search != parameters.end()) {
+      *itr = search->second;
+    }
+    ++itr;
+  }
 }
 
 void JitOperatorWrapper::_on_set_transaction_context(const std::weak_ptr<TransactionContext>& transaction_context) {

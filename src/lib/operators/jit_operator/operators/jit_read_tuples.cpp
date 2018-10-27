@@ -35,13 +35,13 @@ std::string JitReadTuples::description() const {
          << (input_parameter.tuple_value.data_type() == DataType::Null
                  ? "null"
                  : data_type_to_string.left.at(input_parameter.tuple_value.data_type()))
-         << " x" << input_parameter.tuple_value.tuple_index() << " = Par#" << input_parameter.parameter_id
-         << " with val=" << (input_parameter.value ? *input_parameter.value : "not set") << ", ";
+         << " x" << input_parameter.tuple_value.tuple_index() << " = Par#" << input_parameter.parameter_id << ", ";
   }
   return desc.str();
 }
 
-void JitReadTuples::before_query(const Table& in_table, JitRuntimeContext& context) const {
+void JitReadTuples::before_query(const Table& in_table, const std::vector<AllTypeVariant>& parameter_values,
+                                 JitRuntimeContext& context) const {
   // Create a runtime tuple of the appropriate size
   context.tuple.resize(_num_tuple_values);
   if (_row_count_expression) {
@@ -73,14 +73,16 @@ void JitReadTuples::before_query(const Table& in_table, JitRuntimeContext& conte
     if (!input_literal.use_value_id) set_value_from_input(input_literal.tuple_value, input_literal.value);
   }
   // Copy all parameter values to the runtime tuple
+  DebugAssert(_input_parameters.size() == parameter_values.size(), "Wrong number of parameters");
+  auto parameter_value_itr = parameter_values.cbegin();
   for (const auto& input_parameter : _input_parameters) {
-    DebugAssert(input_parameter.value,
-                "Value for parameter with id #" + std::to_string(input_parameter.parameter_id) + " has not been set.");
-    if (!input_parameter.use_value_id) set_value_from_input(input_parameter.tuple_value, *input_parameter.value);
+    if (!input_parameter.use_value_id) set_value_from_input(input_parameter.tuple_value, *parameter_value_itr++);
   }
 }
 
-void JitReadTuples::before_chunk(const Table& in_table, const ChunkID chunk_id, JitRuntimeContext& context) const {
+void JitReadTuples::before_chunk(const Table& in_table, const ChunkID chunk_id,
+                                 const std::vector<AllTypeVariant>& parameter_values,
+                                 JitRuntimeContext& context) const {
   const auto& in_chunk = *in_table.get_chunk(chunk_id);
   context.inputs.clear();
   context.chunk_offset = 0;
@@ -157,10 +159,9 @@ void JitReadTuples::before_chunk(const Table& in_table, const ChunkID chunk_id, 
       value = literal.value;
       tuple_index = literal.tuple_value.tuple_index();
     } else {
-      DebugAssert(value_id_predicate.input_parameter_index, "Neither input literal nor parameter index have been set.")
-          const auto& parameter = _input_parameters[*value_id_predicate.input_parameter_index];
-      DebugAssert(parameter.value, "Value for parameter with id #" + std::to_string(parameter.parameter_id) +
-                                       " has not been set.") value = *parameter.value;
+      DebugAssert(value_id_predicate.input_parameter_index, "Neither input literal nor parameter index have been set.");
+      const auto& parameter = _input_parameters[*value_id_predicate.input_parameter_index];
+      value = parameter_values[*value_id_predicate.input_parameter_index];
       tuple_index = parameter.tuple_value.tuple_index();
     }
     const auto casted_value = cast_all_type_variant_to_type(value, input_column.data_type);
@@ -259,7 +260,7 @@ JitTupleValue JitReadTuples::add_parameter_value(const DataType data_type, const
   }
 
   const auto tuple_value = JitTupleValue(use_value_id ? DataTypeValueID : data_type, is_nullable, _num_tuple_values++);
-  _input_parameters.push_back({parameter_id, tuple_value, std::nullopt, use_value_id});
+  _input_parameters.push_back({parameter_id, tuple_value, use_value_id});
   return tuple_value;
 }
 
@@ -299,26 +300,19 @@ void JitReadTuples::add_value_id_predicate(const JitExpression& jit_expression) 
   _value_id_predicates.push_back({*column_id, expression, literal_id, parameter_id});
 }
 
-void JitReadTuples::set_parameters(const std::unordered_map<ParameterID, AllTypeVariant>& parameters) {
-  for (auto& parameter : _input_parameters) {
-    auto search = parameters.find(parameter.parameter_id);
-    if (search != parameters.end()) parameter.value = search->second;
-  }
-}
-
 size_t JitReadTuples::add_temporary_value() {
   // Somebody wants to store a temporary value in the runtime tuple. We don't really care about the value itself,
   // but have to remember to make some space for it when we create the runtime tuple.
   return _num_tuple_values++;
 }
 
-std::vector<JitInputColumn> JitReadTuples::input_columns() const { return _input_columns; }
+const std::vector<JitInputColumn>& JitReadTuples::input_columns() const { return _input_columns; }
 
-std::vector<JitInputLiteral> JitReadTuples::input_literals() const { return _input_literals; }
+const std::vector<JitInputLiteral>& JitReadTuples::input_literals() const { return _input_literals; }
 
-std::vector<JitInputParameter> JitReadTuples::input_parameters() const { return _input_parameters; }
+const std::vector<JitInputParameter>& JitReadTuples::input_parameters() const { return _input_parameters; }
 
-std::vector<JitValueIDPredicate> JitReadTuples::value_id_predicates() const { return _value_id_predicates; }
+const std::vector<JitValueIDPredicate>& JitReadTuples::value_id_predicates() const { return _value_id_predicates; }
 
 std::optional<ColumnID> JitReadTuples::find_input_column(const JitTupleValue& tuple_value) const {
   const auto it = std::find_if(_input_columns.begin(), _input_columns.end(), [&tuple_value](const auto& input_column) {

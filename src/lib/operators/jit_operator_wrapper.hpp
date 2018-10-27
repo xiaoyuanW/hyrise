@@ -56,6 +56,7 @@ class JitOperatorWrapper : public AbstractReadOnlyOperator {
   std::list<std::shared_ptr<AbstractJittable>> _jit_operators;
   bool _insert_loads;
   std::function<void(const JitReadTuples*, JitRuntimeContext&)> _execute_func;
+  std::vector<AllTypeVariant> _input_parameter_values;
   std::mutex _specialize_mutex;
 };
 
