@@ -18,6 +18,10 @@ class JitValidate : public AbstractJittable {
 
  protected:
   void _consume(JitRuntimeContext& context) const final;
+
+ public:
+  __attribute__((optnone))
+  static TransactionID _load(const copyable_atomic<TransactionID>& tid);
 };
 
 }  // namespace opossum
