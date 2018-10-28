@@ -180,29 +180,31 @@ std::shared_ptr<const Table> JitOperatorWrapper::_on_execute() {
   _sink()->after_query(*out_table, context);
   auto after_query_time = timer.lap();
 
-  auto& operators = JitEvaluationHelper::get().result()["operators"];
-  auto add_time = [&operators](const std::string& name, const auto& time) {
-    const auto micro_s = std::chrono::duration_cast<std::chrono::microseconds>(time).count();
-    if (micro_s > 0) {
-      nlohmann::json jit_op = {{"name", name}, {"prepare", false}, {"walltime", micro_s}};
-      operators.push_back(jit_op);
-    }
-  };
+  if (Global::get().jit_evaluate) {
+    auto& operators = JitEvaluationHelper::get().result()["operators"];
+    auto add_time = [&operators](const std::string& name, const auto& time) {
+      const auto micro_s = std::chrono::duration_cast<std::chrono::microseconds>(time).count();
+      if (micro_s > 0) {
+        nlohmann::json jit_op = {{"name", name}, {"prepare", false}, {"walltime", micro_s}};
+        operators.push_back(jit_op);
+      }
+    };
 
-  add_time("_JitBeforeQuery", before_query_time);
-  add_time("_JitAfterQuery", after_query_time);
-  add_time("_JitBeforChunk", before_chunk_time);
-  add_time("_JitAfterChunk", after_chunk_time);
-  add_time("_Function", function_time);
+    add_time("_JitBeforeQuery", before_query_time);
+    add_time("_JitAfterQuery", after_query_time);
+    add_time("_JitBeforChunk", before_chunk_time);
+    add_time("_JitAfterChunk", after_chunk_time);
+    add_time("_Function", function_time);
 
 #if JIT_MEASURE
-  std::chrono::nanoseconds operator_total_time{0};
-  for (size_t index = 0; index < JitOperatorType::Size; ++index) {
-    add_time("_" + jit_operator_type_to_string.left.at(static_cast<JitOperatorType>(index)), context.times[index]);
-    operator_total_time += context.times[index];
-  }
-  add_time("_Jit_OperatorsTotal", operator_total_time);
+    std::chrono::nanoseconds operator_total_time{0};
+    for (size_t index = 0; index < JitOperatorType::Size; ++index) {
+      add_time("_" + jit_operator_type_to_string.left.at(static_cast<JitOperatorType>(index)), context.times[index]);
+      operator_total_time += context.times[index];
+    }
+    add_time("_Jit_OperatorsTotal", operator_total_time);
 #endif
+  }
 
   return out_table;
 }
