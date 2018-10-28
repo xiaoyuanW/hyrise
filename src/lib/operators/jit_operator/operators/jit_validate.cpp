@@ -6,11 +6,16 @@
 
 namespace opossum {
 
+template <TableType input_table_type>
+TransactionID JitValidate<input_table_type>::_load(const copyable_atomic<TransactionID>& tid) {
+  return tid.load();
+}
+
 namespace {
 
-__attribute__((optnone)) bool jit_is_row_visible(CommitID our_tid, CommitID snapshot_commit_id,
-                                                 ChunkOffset chunk_offset, const MvccData& mvcc_data) {
-  const auto row_tid = mvcc_data.tids[chunk_offset].load();
+bool jit_is_row_visible(const CommitID our_tid, const CommitID snapshot_commit_id,
+                                                 const ChunkOffset chunk_offset, const MvccData& mvcc_data) {
+  const auto row_tid = JitValidate<TableType::Data>::_load(mvcc_data.tids[chunk_offset]);
   const auto begin_cid = mvcc_data.begin_cids[chunk_offset];
   const auto end_cid = mvcc_data.end_cids[chunk_offset];
   return Validate::is_row_visible(our_tid, snapshot_commit_id, row_tid, begin_cid, end_cid);

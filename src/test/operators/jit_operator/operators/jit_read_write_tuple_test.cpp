@@ -60,7 +60,7 @@ TEST_F(JitReadWriteTupleTest, LiteralValuesAreInitialized) {
   // Since we only test literal values here an empty input table is sufficient
   JitRuntimeContext context;
   Table input_table(TableColumnDefinitions{}, TableType::Data);
-  read_tuples->before_query(input_table, context);
+  read_tuples->before_query(input_table, std::vector<AllTypeVariant>(), context);
 
   ASSERT_EQ(int_value.get<int32_t>(context), 1);
   ASSERT_EQ(float_value.get<float>(context), 1.23f);
@@ -91,13 +91,13 @@ TEST_F(JitReadWriteTupleTest, CopyTable) {
   // Initialize operators with actual input table
   auto input_table = load_table("src/test/tables/int_float_null_sorted_asc.tbl", 2);
   auto output_table = write_tuples->create_output_table(2);
-  read_tuples->before_query(*input_table, context);
+  read_tuples->before_query(*input_table, std::vector<AllTypeVariant>(), context);
   const auto dummy_table = Table::create_dummy_table(TableColumnDefinitions());
   write_tuples->before_query(*dummy_table, *output_table, context);
 
   // Pass each chunk through the pipeline
   for (ChunkID chunk_id{0}; chunk_id < input_table->chunk_count(); ++chunk_id) {
-    read_tuples->before_chunk(*input_table, chunk_id, context);
+    read_tuples->before_chunk(*input_table, chunk_id, std::vector<AllTypeVariant>(), context);
     read_tuples->execute(context);
     write_tuples->after_chunk(dummy_table, *output_table, context);
   }

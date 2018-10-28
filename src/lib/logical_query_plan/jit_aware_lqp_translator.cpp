@@ -383,17 +383,6 @@ std::shared_ptr<const JitExpression> JitAwareLQPTranslator::_try_translate_expre
       Fail("Column doesn't exist in input_node");
 
     case ExpressionType::Predicate: {
-      const auto* predicate_expression = dynamic_cast<const AbstractPredicateExpression*>(&expression);
-      // Remove in jit unnecessary predicate [<bool expression> != false] added by sql translator
-      if (predicate_expression->predicate_condition == PredicateCondition::NotEquals &&
-          expression.arguments[1]->type == ExpressionType::Value) {
-        const auto& value = std::static_pointer_cast<ValueExpression>(expression.arguments[1])->value;
-        if (data_type_from_all_type_variant(value) == DataType::Int && boost::get<int32_t>(value) == 0 &&
-            !variant_is_null(value)) {
-          return _try_translate_expression_to_jit_expression(*expression.arguments[0], jit_source, input_node, false,
-                                                             true);
-        }
-      }
       use_value_id = can_translate_predicate_to_predicate_value_id_expression(expression, input_node);
     }
     case ExpressionType::Arithmetic:
@@ -536,23 +525,7 @@ bool JitAwareLQPTranslator::_node_is_jittable(const std::shared_ptr<AbstractLQPN
   }
 
   if (auto predicate_node = std::dynamic_pointer_cast<PredicateNode>(node)) {
-    // predicate node is not checked with _expressions_are_jittable as first argument of predicate should not be checked
-    const auto predicate_expression = std::static_pointer_cast<AbstractPredicateExpression>(predicate_node->predicate);
-    switch (predicate_expression->predicate_condition) {
-      case PredicateCondition::In:
-      case PredicateCondition::Like:
-      case PredicateCondition::NotLike:
-        return false;
-      default:
-        break;
-    }
-    if (predicate_expression->arguments.size() == 2 &&
-        !_expressions_are_jittable({predicate_expression->arguments[1]},
-                                   use_value_id && can_translate_predicate_to_predicate_value_id_expression(
-                                                       *predicate_node->predicate, nullptr))) {
-      return false;
-    }
-    return predicate_node->scan_type == ScanType::TableScan;
+    return _expressions_are_jittable({predicate_node->predicate}) && predicate_node->scan_type == ScanType::TableScan;
   }
 
   if (Global::get().jit_validate && node->type == LQPNodeType::Validate) {

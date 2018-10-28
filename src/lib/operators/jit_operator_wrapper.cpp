@@ -115,6 +115,7 @@ void JitOperatorWrapper::_prepare() {
 }
 
 void JitOperatorWrapper::_choose_execute_func() {
+  std::lock_guard<std::mutex> guard(_specialize_mutex);
   if (_execute_func) return;
 
   // std::cout << "Before make loads lazy:" << std::endl << description(DescriptionMode::MultiLine) << std::endl;
@@ -161,12 +162,12 @@ std::shared_ptr<const Table> JitOperatorWrapper::_on_execute() {
   std::chrono::nanoseconds function_time{0};
 
   Timer timer;
-  _source()->before_query(*in_table, context);
+  _source()->before_query(*in_table, _input_parameter_values, context);
   _sink()->before_query(*in_table, *out_table, context);
   auto before_query_time = timer.lap();
 
   for (opossum::ChunkID chunk_id{0}; chunk_id < in_table->chunk_count(); ++chunk_id) {
-    _source()->before_chunk(*in_table, chunk_id, context);
+    _source()->before_chunk(*in_table, chunk_id, _input_parameter_values, context);
     before_chunk_time += timer.lap();
     _execute_func(_source().get(), context);
     function_time += timer.lap();
@@ -215,7 +216,16 @@ std::shared_ptr<AbstractOperator> JitOperatorWrapper::_on_deep_copy(
 }
 
 void JitOperatorWrapper::_on_set_parameters(const std::unordered_map<ParameterID, AllTypeVariant>& parameters) {
-  _source()->set_parameters(parameters);
+  const auto& input_parameters = _source()->input_parameters();
+  _input_parameter_values.resize(input_parameters.size());
+  auto itr = _input_parameter_values.begin();
+  for (auto& parameter : input_parameters) {
+    auto search = parameters.find(parameter.parameter_id);
+    if (search != parameters.end()) {
+      *itr = search->second;
+    }
+    ++itr;
+  }
 }
 
 void JitOperatorWrapper::_on_set_transaction_context(const std::weak_ptr<TransactionContext>& transaction_context) {

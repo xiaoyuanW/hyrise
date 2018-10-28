@@ -2,13 +2,13 @@
 
 #include <iostream>
 
+#include "utils/singleton.hpp"
+
 namespace opossum {
 
 // singleton
-class JitEvaluationHelper {
+class JitEvaluationHelper : public Singleton<JitEvaluationHelper> {
  public:
-  static JitEvaluationHelper& get();
-
   nlohmann::json& experiment() { return _experiment; }
   nlohmann::json& globals() { return _globals; }
   nlohmann::json& queries() { return _queries; }
@@ -19,6 +19,10 @@ class JitEvaluationHelper {
   nlohmann::json _globals;
   nlohmann::json _queries;
   nlohmann::json _result;
+
+  Global() = default;
+
+  friend class Singleton;
 };
 
 }  // namespace opossum

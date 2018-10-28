@@ -1,11 +1,11 @@
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <optional>
 #include <queue>
 #include <unordered_map>
 #include <unordered_set>
-#include <functional>
 
 namespace opossum {
 
@@ -39,7 +39,7 @@ void lqp_insert_node(const std::shared_ptr<AbstractLQPNode>& parent_node, const 
                      const std::shared_ptr<AbstractLQPNode>& node);
 
 /**
- * @return whether all paths to all leafs contain a Validate node - i.e. the LQP can be used in an MVCC aware context
+ * @return whether all paths to all leaves contain a Validate node - i.e. the LQP can be used in an MVCC aware context
  */
 bool lqp_is_validated(const std::shared_ptr<AbstractLQPNode>& lqp);
 
@@ -83,5 +83,11 @@ void visit_lqp(LQP& lqp, Visitor visitor) {
     }
   }
 }
+
+/**
+ * @return The node @param lqp as well as the root nodes of all LQPs in subselects and, recursively, LQPs in their
+ *         subselects
+ */
+std::vector<std::shared_ptr<AbstractLQPNode>> lqp_find_subplan_roots(const std::shared_ptr<AbstractLQPNode>& lqp);
 
 }  // namespace opossum

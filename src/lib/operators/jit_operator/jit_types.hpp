@@ -3,6 +3,7 @@
 #include <boost/preprocessor/seq/for_each.hpp>
 
 #include <chrono>
+#include <unordered_map>
 
 #include "all_type_variant.hpp"
 #include "storage/base_value_segment.hpp"

@@ -64,7 +64,7 @@ class SQLiteTestRunner : public BaseTestWithParam<TestConfiguration> {
 
       _sqlite->create_table_from_tbl(table_file, table_name);
 
-      std::shared_ptr<Table> table = load_table(table_file);
+      std::shared_ptr<Table> table = load_table(table_file, 10);
       StorageManager::get().add_table(table_name, std::move(table));
     }
 
@@ -83,7 +83,7 @@ class SQLiteTestRunner : public BaseTestWithParam<TestConfiguration> {
   std::unique_ptr<SQLiteWrapper> _sqlite;
 };
 
-std::vector<TestConfiguration> build_combinations() {
+std::vector<TestConfiguration> read_queries_from_file() {
   std::vector<std::string> queries;
   std::ifstream file("src/test/sql/sqlite_testrunner/sqlite_testrunner_queries.sql");
   std::string query;
@@ -111,9 +111,6 @@ std::vector<TestConfiguration> build_combinations() {
 TEST_P(SQLiteTestRunner, CompareToSQLite) {
   const auto& [query, use_jit, use_mvcc] = GetParam();
 
-  SCOPED_TRACE("SQLite " + query + " " + (use_jit ? "with JIT" : "without JIT") + " " +
-               (use_mvcc ? "with MVCC" : "without MVCC"));
-
   std::shared_ptr<LQPTranslator> lqp_translator;
   if (use_jit) {
     lqp_translator = std::make_shared<JitAwareLQPTranslator>();
@@ -124,6 +121,9 @@ TEST_P(SQLiteTestRunner, CompareToSQLite) {
   std::cout << "SQLite " + query + " " + (use_jit ? "with JIT" : "without JIT") + " " +
                    (use_mvcc ? "with MVCC" : "without MVCC")
             << std::endl;
+
+  SCOPED_TRACE("SQLite " + query + " " + (use_jit ? "with JIT" : "without JIT") + " " +
+               (use_mvcc ? "with MVCC" : "without MVCC"));
 
   const auto prepared_statement_cache = std::make_shared<PreparedStatementCache>();
 
@@ -158,6 +158,6 @@ TEST_P(SQLiteTestRunner, CompareToSQLite) {
 }
 
 INSTANTIATE_TEST_CASE_P(SQLiteTestRunnerInstances, SQLiteTestRunner,
-                        testing::ValuesIn(build_combinations()), );  // NOLINT
+                        testing::ValuesIn(read_queries_from_file()), );  // NOLINT
 
 }  // namespace opossum
