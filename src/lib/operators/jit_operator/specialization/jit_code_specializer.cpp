@@ -90,9 +90,11 @@ std::shared_ptr<llvm::Module> JitCodeSpecializer::specialize_function(
     _optimize(context, false);
   }
 
-  int32_t num_instr = 0;
-  _visit<llvm::Instruction>(*context.root_function, [&](llvm::Instruction& inst) { num_instr++; });
-  JitEvaluationHelper::get().result()["num_instructions"] = num_instr;
+  if (Global::get().jit_evaluate) {
+    int32_t num_instr = 0;
+    _visit<llvm::Instruction>(*context.root_function, [&](llvm::Instruction& inst) { num_instr++; });
+    JitEvaluationHelper::get().result()["num_instructions"] = num_instr;
+  }
 
   if (false) print(context);
   if (false) print_function(context.root_function);
