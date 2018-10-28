@@ -20,7 +20,7 @@ class JitEvaluationHelper : public Singleton<JitEvaluationHelper> {
   nlohmann::json _queries;
   nlohmann::json _result;
 
-  Global() = default;
+  JitEvaluationHelper() = default;
 
   friend class Singleton;
 };
