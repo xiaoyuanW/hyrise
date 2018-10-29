@@ -96,13 +96,11 @@ std::shared_ptr<JitOperatorWrapper> JitAwareLQPTranslator::_try_translate_sub_pl
   bool has_validate = false;
   bool validate_after_filter = false;
   bool allow_aggregate = true;
-  bool has_filter = false;
 
   // Traverse query tree until a non-jittable nodes is found in each branch
   _visit(node, [&](auto& current_node) {
     const auto is_root_node = current_node == node;
     if (_node_is_jittable(current_node, use_value_id, allow_aggregate, is_root_node)) {
-      has_filter |= current_node->type == LQPNodeType::Predicate;
       if (count_node(current_node)) ++jittable_node_count;
       has_validate |= current_node->type == LQPNodeType::Validate;
       validate_after_filter |= !has_validate && current_node->type == LQPNodeType::Predicate;
