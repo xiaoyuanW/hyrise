@@ -96,7 +96,8 @@ std::shared_ptr<llvm::Module> JitCodeSpecializer::specialize_function(
     JitEvaluationHelper::get().result()["num_instructions"] = num_instr;
   }
 
-  if (false) print(context);
+  if (JitEvaluationHelper::get().experiment().count("show_llvm") &&
+      JitEvaluationHelper::get().experiment()["show_llvm"].get<bool>()) print(context);
   if (false) print_function(context.root_function);
 
   return context.module;
