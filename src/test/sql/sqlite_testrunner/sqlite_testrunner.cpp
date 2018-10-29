@@ -106,6 +106,8 @@ TEST_P(SQLiteTestRunner, CompareToSQLite) {
 
   SCOPED_TRACE("SQLite " + query + (use_jit ? " with JIT" : " without JIT"));
 
+  std::cout << "SQLite " + query + (use_jit ? " with JIT" : " without JIT") << std::endl;
+
   const auto prepared_statement_cache = std::make_shared<PreparedStatementCache>();
 
   auto sql_pipeline = SQLPipelineBuilder{query}
