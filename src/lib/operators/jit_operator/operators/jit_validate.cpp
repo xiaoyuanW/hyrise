@@ -6,57 +6,46 @@
 
 namespace opossum {
 
-template <TableType input_table_type>
-TransactionID JitValidate<input_table_type>::_load(const copyable_atomic<TransactionID>& tid) {
-  return tid.load();
+JitValidate::JitValidate(const TableType input_table_type) : AbstractJittable(JitOperatorType::Validate),
+                                                             _input_table_type(input_table_type) {}
+
+std::string JitValidate::description() const {
+  return "[Validate]";
 }
 
-namespace {
+void JitValidate::set_input_table_type(const TableType input_table_type) {
+  _input_table_type = input_table_type;
+}
 
-bool jit_is_row_visible(const CommitID our_tid, const CommitID snapshot_commit_id,
-                                                 const ChunkOffset chunk_offset, const MvccData& mvcc_data) {
-  const auto row_tid = JitValidate<TableType::Data>::_load(mvcc_data.tids[chunk_offset]);
+void JitValidate::_consume(JitRuntimeContext& context) const {
+  if (_input_table_type == TableType::References) {
+    const auto row_id = (*context.pos_list)[context.chunk_offset];
+    const auto referenced_chunk = context.referenced_table->get_chunk(row_id.chunk_id);
+    const auto mvcc_data = referenced_chunk->mvcc_data();
+    if (_is_row_visible(context.transaction_id, context.snapshot_commit_id, row_id.chunk_offset, *mvcc_data)) {
+      _emit(context);
+    }
+  } else {
+    if (_is_row_visible(context.transaction_id, context.snapshot_commit_id, context.chunk_offset,
+                                        *context.mvcc_data)) {
+      _emit(context);
+    }
+  }
+#if JIT_MEASURE
+  _end(context);
+#endif
+}
+
+bool JitValidate::_is_row_visible(const CommitID our_tid, const CommitID snapshot_commit_id,
+                                     const ChunkOffset chunk_offset, const MvccData& mvcc_data) const {
+  const auto row_tid = _load_atomic_value(mvcc_data.tids[chunk_offset]);
   const auto begin_cid = mvcc_data.begin_cids[chunk_offset];
   const auto end_cid = mvcc_data.end_cids[chunk_offset];
   return Validate::is_row_visible(our_tid, snapshot_commit_id, row_tid, begin_cid, end_cid);
 }
 
-}  // namespace
-
-template <TableType input_table_type>
-JitValidate<input_table_type>::JitValidate() : AbstractJittable(JitOperatorType::Validate) {
-  if constexpr (input_table_type == TableType::References)
-    PerformanceWarning("Jit Validate is used with reference table as input.");
+TransactionID JitValidate::_load_atomic_value(const copyable_atomic<TransactionID>& transaction_id) {
+  return transaction_id.load();
 }
-
-template <TableType input_table_type>
-std::string JitValidate<input_table_type>::description() const {
-  return "[Validate]";
-}
-
-template <TableType input_table_type>
-void JitValidate<input_table_type>::_consume(JitRuntimeContext& context) const {
-  bool row_is_visible;
-  if constexpr (input_table_type == TableType::References) {
-    const auto row_id = (*context.pos_list)[context.chunk_offset];
-    const auto& referenced_chunk = context.referenced_table->get_chunk(row_id.chunk_id);
-    const auto& mvcc_data = referenced_chunk->mvcc_data();
-    row_is_visible =
-        jit_is_row_visible(context.transaction_id, context.snapshot_commit_id, row_id.chunk_offset, *mvcc_data);
-  } else {
-    row_is_visible = jit_is_row_visible(context.transaction_id, context.snapshot_commit_id, context.chunk_offset,
-                                        *context.mvcc_data);
-  }
-  if (row_is_visible) {
-    _emit(context);
-#if JIT_MEASURE
-  } else {
-    _end(context);
-#endif
-  }
-}
-
-template class JitValidate<TableType::Data>;
-template class JitValidate<TableType::References>;
 
 }  // namespace opossum

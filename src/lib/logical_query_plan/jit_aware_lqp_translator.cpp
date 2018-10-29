@@ -71,24 +71,6 @@ const std::unordered_map<LogicalOperator, JitExpressionType> logical_operator_to
 
 namespace opossum {
 
-namespace {
-
-TableType input_table_type(const std::shared_ptr<AbstractLQPNode>& node) {
-  switch (node->type) {
-    case LQPNodeType::Validate:
-    case LQPNodeType::Predicate:
-    case LQPNodeType::Aggregate:
-    case LQPNodeType::Join:
-    case LQPNodeType::Limit:
-    case LQPNodeType::Sort:
-      return TableType::References;
-    default:
-      return TableType::Data;
-  }
-}
-
-}  // namespace
-
 std::shared_ptr<AbstractOperator> JitAwareLQPTranslator::translate_node(
     const std::shared_ptr<AbstractLQPNode>& node) const {
   const auto jit_operator = _try_translate_sub_plan_to_jit_operators(node, false);
@@ -155,14 +137,6 @@ std::shared_ptr<JitOperatorWrapper> JitAwareLQPTranslator::_try_translate_sub_pl
   const auto read_tuples = std::make_shared<JitReadTuples>(use_validate, row_count_expression);
   jit_operator->add_jit_operator(read_tuples);
 
-  const auto add_validate = [&]() {
-    if (input_table_type(input_node) == TableType::Data) {
-      jit_operator->add_jit_operator(std::make_shared<JitValidate<TableType::Data>>());
-    } else {
-      jit_operator->add_jit_operator(std::make_shared<JitValidate<TableType::References>>());
-    }
-  };
-
   // "filter_node". The root node of the subplan computed by a JitFilter.
   auto filter_node = node;
   while (filter_node != input_node && filter_node->type != LQPNodeType::Predicate &&
@@ -180,7 +154,7 @@ std::shared_ptr<JitOperatorWrapper> JitAwareLQPTranslator::_try_translate_sub_pl
     selectivity = 1;
   }
 
-  if (use_validate && !validate_after_filter) add_validate();
+  if (use_validate && !validate_after_filter) jit_operator->add_jit_operator(std::make_shared<JitValidate>());
 
   // If we can reach the input node without encountering a UnionNode or PredicateNode,
   // there is no need to filter any tuples
@@ -208,7 +182,7 @@ std::shared_ptr<JitOperatorWrapper> JitAwareLQPTranslator::_try_translate_sub_pl
     }
   }
 
-  if (use_validate && validate_after_filter) add_validate();
+  if (use_validate && validate_after_filter) jit_operator->add_jit_operator(std::make_shared<JitValidate>());
 
   if (last_node->type == LQPNodeType::Aggregate) {
     // Since aggregate nodes cause materialization, there is at most one JitAggregate operator in each operator chain
