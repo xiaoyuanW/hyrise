@@ -90,6 +90,7 @@ void JitReadTuples::before_chunk(const Table& in_table, const ChunkID chunk_id,
   context.chunk_id = chunk_id;
   if (_has_validate) {
     if (in_chunk.has_mvcc_data()) {
+      // materialize atomic transaction ids as specialization cannot handle atomics
       context.transaction_ids.resize(in_chunk.mvcc_data()->tids.size());
       auto itr = context.transaction_ids.begin();
       for (const auto& tid : in_chunk.mvcc_data()->tids) {
