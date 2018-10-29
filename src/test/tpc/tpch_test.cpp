@@ -172,47 +172,6 @@ TEST_F(TPCHTest, JitOptimalExpressionOperator) {
   global.jit = false;
 }
 
-TEST_F(TPCHTest, JitOptimalExpressionOperator) {
-  auto& global = opossum::Global::get();
-  global.jit = false;
-
-  opossum::JitTableGenerator generator(0.001, opossum::ChunkID(1000));
-  generator.generate_and_store();
-  // const auto table = StorageManager::get().get_table("TABLE_SCAN");
-  // ChunkEncoder::encode_all_chunks(table);
-
-  auto context = opossum::TransactionManager::get().new_transaction_context();
-  auto jit_op = std::make_shared<JitOptimalExpressionOperator>();
-  jit_op->set_transaction_context(context);
-  jit_op->execute();
-  auto res = jit_op->get_output();
-
-  const auto sql_string = "SELECT ID FROM TABLE_AGGREGATE WHERE (A + B + C + D + E + F) > X1";
-
-  auto pipeline =
-          SQLPipelineBuilder{
-                  sql_string}
-                  .with_transaction_context(context)
-                  .create_pipeline();
-
-  const auto res2 = pipeline.get_result_table();
-
-  EXPECT_TABLE_EQ(res, res2, OrderSensitivity::No, TypeCmpMode::Lenient, FloatComparisonMode::RelativeDifference);
-
-  global.jit = true;
-  auto pipeline2 =
-          SQLPipelineBuilder{
-                  sql_string}
-                  .with_transaction_context(context)
-                  .create_pipeline();
-
-  const auto res3 = pipeline2.get_result_table();
-
-  EXPECT_TABLE_EQ(res2, res3, OrderSensitivity::No, TypeCmpMode::Lenient, FloatComparisonMode::RelativeDifference);
-
-  global.jit = false;
-}
-
 TEST_P(TPCHTest, TPCHQueryTest) {
   const auto [query_idx, test_configuration] = GetParam();  // NOLINT
   const auto [query, use_jit] = test_configuration;         // NOLINT
