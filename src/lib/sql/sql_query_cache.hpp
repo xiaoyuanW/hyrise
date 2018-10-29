@@ -12,6 +12,8 @@
 #include "SQLParserResult.h"
 #include "utils/singleton.hpp"
 
+#include "global.hpp"
+
 namespace opossum {
 
 inline constexpr size_t DefaultCacheCapacity = 1024;
@@ -31,7 +33,7 @@ class SQLQueryCache : public Singleton<SQLQueryCache<Value, Key>> {
     if (_cache->capacity() == 0) return;
 
     std::lock_guard<std::mutex> lock(_mutex);
-    // _cache->set(query, value);  // Fabian comment to disable cache
+    if (Global::get().jit_evaluate) _cache->set(query, value);  // Fabian comment to disable cache
   }
 
   // Tries to fetch the cache entry for the query into the result object.
