@@ -146,15 +146,15 @@ struct JitRuntimeContext {
   std::vector<std::shared_ptr<BaseJitSegmentWriter>> outputs;
   JitRuntimeHashmap hashmap;
   Segments out_chunk;
+  TransactionID transaction_id;
+  CommitID snapshot_commit_id;
   std::shared_ptr<const MvccData> mvcc_data;
   std::shared_ptr<const Table> referenced_table;
   std::shared_ptr<const PosList> pos_list;
-  TransactionID transaction_id;
-  CommitID snapshot_commit_id;
+  pmr_vector<TransactionID> transaction_ids;
   int64_t limit_rows;  // signed integer used to allow decrementing below 0
   ChunkID chunk_id;
   std::shared_ptr<PosList> output_pos_list;
-  pmr_vector<TransactionID> transaction_ids;
 };
 
 // The JitTupleValue represents a value in the runtime tuple.

@@ -52,17 +52,18 @@ void JitReadTuples::before_query(const Table& in_table, const std::vector<AllTyp
 
   const auto set_value_from_input = [&context](const JitTupleValue& tuple_value, const AllTypeVariant& value) {
     auto data_type = tuple_value.data_type();
-    // If data_type is null, there is nothing to do as is_null() check on null check will always return true
-    if (data_type != DataType::Null) {
+    if (data_type == DataType::Null) {
+      tuple_value.set_is_null(true, context);
+    } else {
       resolve_data_type(data_type, [&](auto type) {
         using DataType = typename decltype(type)::type;
-        context.tuple.set<DataType>(tuple_value.tuple_index(), boost::get<DataType>(value));
+        tuple_value.set<DataType>(boost::get<DataType>(value), context);
         if (tuple_value.is_nullable()) {
-          context.tuple.set_is_null(tuple_value.tuple_index(), variant_is_null(value));
+          tuple_value.set_is_null(variant_is_null(value), context);
         }
         // Non-jit operators store bool values as int values
         if constexpr (std::is_same_v<DataType, Bool>) {
-          context.tuple.set<bool>(tuple_value.tuple_index(), boost::get<DataType>(value));
+          tuple_value.set<bool>(boost::get<DataType>(value), context);
         }
       });
     }
@@ -88,6 +89,24 @@ void JitReadTuples::before_chunk(const Table& in_table, const ChunkID chunk_id,
   context.chunk_offset = 0;
   context.chunk_size = in_chunk.size();
   context.chunk_id = chunk_id;
+  if (_has_validate) {
+    if (in_chunk.has_mvcc_data()) {
+      // materialize atomic transaction ids as specialization cannot handle atomics
+      context.transaction_ids.resize(in_chunk.mvcc_data()->tids.size());
+      auto itr = context.transaction_ids.begin();
+      for (const auto& tid : in_chunk.mvcc_data()->tids) {
+        *itr++ = tid.load();
+      }
+      context.mvcc_data = in_chunk.mvcc_data();
+    } else {
+      DebugAssert(in_chunk.references_exactly_one_table(),
+                  "Input to Validate contains a Chunk referencing more than one table.");
+      const auto& ref_col_in = std::dynamic_pointer_cast<const ReferenceSegment>(in_chunk.get_segment(ColumnID{0}));
+      context.referenced_table = ref_col_in->referenced_table();
+      context.pos_list = ref_col_in->pos_list();
+    }
+  }
+
   if (_has_validate) {
     if (in_chunk.has_mvcc_data()) {
       // materialize atomic transaction ids as specialization cannot handle atomics
@@ -249,7 +268,7 @@ JitTupleValue JitReadTuples::add_literal_value(const AllTypeVariant& value, cons
   }
 
   const auto data_type = data_type_from_all_type_variant(value);
-  const auto tuple_value = JitTupleValue(use_value_id ? DataTypeValueID : data_type, false, _num_tuple_values++);
+  const auto tuple_value = JitTupleValue(use_value_id ? DataTypeValueID : data_type, variant_is_null(value), _num_tuple_values++);
   _input_literals.push_back({value, tuple_value, use_value_id});
   return tuple_value;
 }
