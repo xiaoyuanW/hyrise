@@ -20,9 +20,9 @@ namespace opossum {
   template class ValueSegmentIterable<type>; \
   JIT_ACTUAL_INSTANTIOAN(ValueSegmentIterable<type>::Iterator, type, true) \
   JIT_ACTUAL_INSTANTIOAN(ValueSegmentIterable<type>::NonNullIterator, type, false) \
-  JIT_ACTUAL_INSTANTIOAN(ReferenceSegmentIterable<type>::Iterator, type, true) \
+  JIT_ACTUAL_INSTANTIOAN(ReferenceSegmentIterable<type>::MultipleChunkIterator, type, true) \
   template class ReferenceSegmentIterable<type>; \
-  JIT_ACTUAL_INSTANTIOAN(ReferenceSegmentIterable<type>::Iterator, type, false)
+  JIT_ACTUAL_INSTANTIOAN(ReferenceSegmentIterable<type>::MultipleChunkIterator, type, false)
 
 // pmr_vector
 

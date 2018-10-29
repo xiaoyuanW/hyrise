@@ -25,7 +25,7 @@ bool is_row_visible(CommitID our_tid, CommitID snapshot_commit_id, ChunkOffset c
 
 bool Validate::is_row_visible(CommitID our_tid, CommitID snapshot_commit_id, const TransactionID row_tid,
                               const CommitID begin_cid, const CommitID end_cid) {
-  // Taken from: https://github.com/hyrise/hyrise/blob/master/docs/documentation/queryexecution/tx.rst
+  // Taken from: https://github.com/hyrise/hyrise-v1/blob/master/docs/documentation/queryexecution/tx.rst
   // auto own_insert = (our_tid == row_tid) && !(snapshot_commit_id >= begin_cid) && !(snapshot_commit_id >= end_cid);
   // auto past_insert = (our_tid != row_tid) && (snapshot_commit_id >= begin_cid) && !(snapshot_commit_id >= end_cid);
   // return own_insert || past_insert;

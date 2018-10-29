@@ -11,8 +11,8 @@
 #include "jit/jit_table_generator.hpp"
 #include "jit_evaluation_helper.hpp"
 #include "operators/jit_operator/specialization/jit_repository.hpp"
-#include "planviz/lqp_visualizer.hpp"
-#include "planviz/sql_query_plan_visualizer.hpp"
+#include "visualization/lqp_visualizer.hpp"
+#include "visualization/sql_query_plan_visualizer.hpp"
 #include "resolve_type.hpp"
 #include "scheduler/current_scheduler.hpp"
 #include "sql/sql_pipeline.hpp"
@@ -105,6 +105,17 @@ void pqp() {
   const std::string query_string = opossum::JitEvaluationHelper::get().queries()[query_id]["query"];
 
   opossum::Global::get().jit_evaluate = true;
+  auto& result = opossum::JitEvaluationHelper::get().result();
+
+  result = nlohmann::json::object();
+  if (experiment.at("engine") == "jit") {
+    opossum::JitEvaluationHelper::get().result()["dynamic_resolved"] = 0;
+    opossum::JitEvaluationHelper::get().result()["static_resolved"] = 0;
+    opossum::JitEvaluationHelper::get().result()["resolved_vtables"] = 0;
+    opossum::JitEvaluationHelper::get().result()["not_resolved_vtables"] = 0;
+    opossum::JitEvaluationHelper::get().result()["inlined_functions"] = 0;
+    opossum::JitEvaluationHelper::get().result()["replaced_values"] = 0;
+  }
   opossum::SQLPipeline pipeline = opossum::SQLPipelineBuilder(query_string)
                                       .with_mvcc(opossum::UseMvcc(mvcc))
                                       .dont_cleanup_temporaries()
@@ -161,9 +172,9 @@ void run() {
   }
 
   result["result_rows"] = table->row_count();
-  result["pipeline_compile_time"] = pipeline.metrics().statement_metrics.front()->compile_time_micros.count();
-  result["pipeline_execution_time"] = pipeline.metrics().statement_metrics.front()->execution_time_micros.count();
-  result["pipeline_optimize_time"] = pipeline.metrics().statement_metrics.front()->optimize_time_micros.count();
+  result["pipeline_compile_time"] = pipeline.metrics().statement_metrics.front()->execution_time_nanos.count() / 1000;
+  result["pipeline_execution_time"] = pipeline.metrics().statement_metrics.front()->execution_time_nanos.count() / 1000;
+  result["pipeline_optimize_time"] = pipeline.metrics().statement_metrics.front()->execution_time_nanos.count() / 1000;
   opossum::Global::get().jit_evaluate = false;
 }
 

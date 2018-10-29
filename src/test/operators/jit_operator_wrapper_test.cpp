@@ -32,11 +32,13 @@ class JitOperatorWrapperTest : public BaseTest {
 
 class MockJitSource : public JitReadTuples {
  public:
-  MOCK_CONST_METHOD2(before_query, void(const Table&, JitRuntimeContext&));
-  MOCK_CONST_METHOD3(before_chunk, void(const Table&, const ChunkID, JitRuntimeContext&));
+  MOCK_METHOD3(before_query, void(const Table&, const std::vector<AllTypeVariant>&, JitRuntimeContext&));
+  MOCK_METHOD4(before_chunk,
+                     bool(const Table&, const ChunkID, const std::vector<AllTypeVariant>&, JitRuntimeContext&));
 
-  void forward_before_chunk(const Table& in_table, const ChunkID chunk_id, JitRuntimeContext& context) const {
-    JitReadTuples::before_chunk(in_table, chunk_id, context);
+  bool forward_before_chunk(const Table& in_table, const ChunkID chunk_id,
+                            const std::vector<AllTypeVariant>& parameter_values, JitRuntimeContext& context) {
+    return JitReadTuples::before_chunk(in_table, chunk_id, parameter_values, context);
   }
 };
 
@@ -107,15 +109,15 @@ TEST_F(JitOperatorWrapperTest, CallsJitOperatorHooks) {
 
   {
     testing::InSequence dummy;
-    EXPECT_CALL(*source, before_query(testing::Ref(*_int_table), testing::_));
+    EXPECT_CALL(*source, before_query(testing::Ref(*_int_table), testing::_, testing::_));
     EXPECT_CALL(*sink, before_query(testing::Ref(*_int_table), testing::_, testing::_));
-    EXPECT_CALL(*source, before_chunk(testing::Ref(*_int_table), testing::Eq(ChunkID(0)), testing::_));
+    EXPECT_CALL(*source, before_chunk(testing::Ref(*_int_table), testing::Eq(ChunkID(0)), testing::_, testing::_));
     EXPECT_CALL(*sink, after_chunk(testing::Eq(_int_table), testing::_, testing::_));
-    EXPECT_CALL(*source, before_chunk(testing::Ref(*_int_table), testing::Eq(ChunkID(1)), testing::_));
+    EXPECT_CALL(*source, before_chunk(testing::Ref(*_int_table), testing::Eq(ChunkID(1)), testing::_, testing::_));
     EXPECT_CALL(*sink, after_chunk(testing::Eq(_int_table), testing::_, testing::_));
     EXPECT_CALL(*sink, after_query(testing::_, testing::_));
 
-    ON_CALL(*source, before_chunk(testing::_, testing::_, testing::_))
+    ON_CALL(*source, before_chunk(testing::_, testing::_, testing::_, testing::_))
         .WillByDefault(testing::Invoke(source.get(), &MockJitSource::forward_before_chunk));
   }
 

@@ -45,13 +45,13 @@ std::string JitReadTuples::description() const {
          << (input_parameter.tuple_value.data_type() == DataType::Null
                  ? "null"
                  : data_type_to_string.left.at(input_parameter.tuple_value.data_type()))
-         << " x" << input_parameter.tuple_value.tuple_index() << " = Par#" << input_parameter.parameter_id
-         << " with val=" << (input_parameter.value ? *input_parameter.value : "not set") << ", ";
+         << " x" << input_parameter.tuple_value.tuple_index() << " = Par#" << input_parameter.parameter_id << ", ";
   }
   return desc.str();
 }
 
-void JitReadTuples::before_query(const Table& in_table, JitRuntimeContext& context) {
+void JitReadTuples::before_query(const Table& in_table, const std::vector<AllTypeVariant>& parameter_values,
+                                 JitRuntimeContext& context) {
   // Create a runtime tuple of the appropriate size
   context.tuple.resize(_num_tuple_values);
 #if JIT_MEASURE
@@ -67,17 +67,18 @@ void JitReadTuples::before_query(const Table& in_table, JitRuntimeContext& conte
 
   const auto set_value_from_input = [&context](const JitTupleValue& tuple_value, const AllTypeVariant& value) {
     auto data_type = tuple_value.data_type();
-    // If data_type is null, there is nothing to do as is_null() check on null check will always return true
-    if (data_type != DataType::Null) {
+    if (data_type == DataType::Null) {
+      tuple_value.set_is_null(true, context);
+    } else {
       resolve_data_type(data_type, [&](auto type) {
         using DataType = typename decltype(type)::type;
-        context.tuple.set<DataType>(tuple_value.tuple_index(), boost::get<DataType>(value));
+        tuple_value.set<DataType>(boost::get<DataType>(value), context);
         if (tuple_value.is_nullable()) {
-          context.tuple.set_is_null(tuple_value.tuple_index(), variant_is_null(value));
+          tuple_value.set_is_null(variant_is_null(value), context);
         }
         // Non-jit operators store bool values as int values
         if constexpr (std::is_same_v<DataType, Bool>) {
-          context.tuple.set<bool>(tuple_value.tuple_index(), boost::get<DataType>(value));
+          tuple_value.set<bool>(boost::get<DataType>(value), context);
         }
       });
     }
@@ -88,10 +89,10 @@ void JitReadTuples::before_query(const Table& in_table, JitRuntimeContext& conte
     if (!input_literal.use_value_id) set_value_from_input(input_literal.tuple_value, input_literal.value);
   }
   // Copy all parameter values to the runtime tuple
+  DebugAssert(_input_parameters.size() == parameter_values.size(), "Wrong number of parameters");
+  auto parameter_value_itr = parameter_values.cbegin();
   for (const auto& input_parameter : _input_parameters) {
-    DebugAssert(input_parameter.value,
-                "Value for parameter with id #" + std::to_string(input_parameter.parameter_id) + " has not been set.");
-    if (!input_parameter.use_value_id) set_value_from_input(input_parameter.tuple_value, *input_parameter.value);
+    if (!input_parameter.use_value_id) set_value_from_input(input_parameter.tuple_value, *parameter_value_itr++);
   }
 
   if (in_table.chunk_count() > 0 && _input_wrappers.empty()) {
@@ -158,7 +159,9 @@ void JitReadTuples::add_input_segment_iterators(JitRuntimeContext& context, cons
   }
 }
 
-bool JitReadTuples::before_chunk(const Table& in_table, const ChunkID chunk_id, JitRuntimeContext& context) {
+bool JitReadTuples::before_chunk(const Table& in_table, const ChunkID chunk_id,
+                                 const std::vector<AllTypeVariant>& parameter_values,
+                                 JitRuntimeContext& context) {
   const auto& in_chunk = *in_table.get_chunk(chunk_id);
   context.inputs.clear();
   context.chunk_offset = 0;
@@ -166,8 +169,13 @@ bool JitReadTuples::before_chunk(const Table& in_table, const ChunkID chunk_id, 
   context.chunk_id = chunk_id;
   if (_has_validate) {
     if (in_chunk.has_mvcc_data()) {
-      auto mvcc_data = in_chunk.mvcc_data();
-      context.mvcc_data = &(*mvcc_data);
+      // materialize atomic transaction ids as specialization cannot handle atomics
+      context.row_tids.resize(in_chunk.mvcc_data()->tids.size());
+      auto itr = context.row_tids.begin();
+      for (const auto& tid : in_chunk.mvcc_data()->tids) {
+        *itr++ = tid.load();
+      }
+      context.mvcc_data = in_chunk.mvcc_data();
     } else {
       DebugAssert(in_chunk.references_exactly_one_table(),
                   "Input to Validate contains a Chunk referencing more than one table.");
@@ -190,10 +198,9 @@ bool JitReadTuples::before_chunk(const Table& in_table, const ChunkID chunk_id, 
       value = literal.value;
       tuple_index = literal.tuple_value.tuple_index();
     } else {
-      DebugAssert(value_id_predicate.input_parameter_index, "Neither input literal nor parameter index have been set.")
-          const auto& parameter = _input_parameters[*value_id_predicate.input_parameter_index];
-      DebugAssert(parameter.value, "Value for parameter with id #" + std::to_string(parameter.parameter_id) +
-                                       " has not been set.") value = *parameter.value;
+      DebugAssert(value_id_predicate.input_parameter_index, "Neither input literal nor parameter index have been set.");
+      const auto& parameter = _input_parameters[*value_id_predicate.input_parameter_index];
+      value = parameter_values[*value_id_predicate.input_parameter_index];
       tuple_index = parameter.tuple_value.tuple_index();
     }
     const auto casted_value = cast_all_type_variant_to_type(value, input_column.data_type);
@@ -299,7 +306,7 @@ JitTupleValue JitReadTuples::add_literal_value(const AllTypeVariant& value, cons
   }
 
   const auto data_type = data_type_from_all_type_variant(value);
-  const auto tuple_value = JitTupleValue(use_value_id ? DataTypeValueID : data_type, false, _num_tuple_values++);
+  const auto tuple_value = JitTupleValue(use_value_id ? DataTypeValueID : data_type, variant_is_null(value), _num_tuple_values++);
   _input_literals.push_back({value, tuple_value, use_value_id});
   return tuple_value;
 }
@@ -315,7 +322,7 @@ JitTupleValue JitReadTuples::add_parameter_value(const DataType data_type, const
   }
 
   const auto tuple_value = JitTupleValue(use_value_id ? DataTypeValueID : data_type, is_nullable, _num_tuple_values++);
-  _input_parameters.push_back({parameter_id, tuple_value, std::nullopt, use_value_id});
+  _input_parameters.push_back({parameter_id, tuple_value, use_value_id});
   return tuple_value;
 }
 
@@ -355,28 +362,21 @@ void JitReadTuples::add_value_id_predicate(const JitExpression& jit_expression) 
   _value_id_predicates.push_back({*column_id, expression, literal_id, parameter_id});
 }
 
-void JitReadTuples::set_parameters(const std::unordered_map<ParameterID, AllTypeVariant>& parameters) {
-  for (auto& parameter : _input_parameters) {
-    auto search = parameters.find(parameter.parameter_id);
-    if (search != parameters.end()) parameter.value = search->second;
-  }
-}
-
 size_t JitReadTuples::add_temporary_value() {
   // Somebody wants to store a temporary value in the runtime tuple. We don't really care about the value itself,
   // but have to remember to make some space for it when we create the runtime tuple.
   return _num_tuple_values++;
 }
 
-std::vector<JitInputColumn> JitReadTuples::input_columns() const { return _input_columns; }
+const std::vector<JitInputColumn>& JitReadTuples::input_columns() const { return _input_columns; }
 
-std::vector<std::shared_ptr<BaseJitSegmentReaderWrapper>> JitReadTuples::input_wrappers() const { return _input_wrappers; }
+const std::vector<std::shared_ptr<BaseJitSegmentReaderWrapper>>& JitReadTuples::input_wrappers() const { return _input_wrappers; }
 
-std::vector<JitInputLiteral> JitReadTuples::input_literals() const { return _input_literals; }
+const std::vector<JitInputLiteral>& JitReadTuples::input_literals() const { return _input_literals; }
 
-std::vector<JitInputParameter> JitReadTuples::input_parameters() const { return _input_parameters; }
+const std::vector<JitInputParameter>& JitReadTuples::input_parameters() const { return _input_parameters; }
 
-std::vector<JitValueIDPredicate> JitReadTuples::value_id_predicates() const { return _value_id_predicates; }
+const std::vector<JitValueIDPredicate>& JitReadTuples::value_id_predicates() const { return _value_id_predicates; }
 
 std::optional<ColumnID> JitReadTuples::find_input_column(const JitTupleValue& tuple_value) const {
   const auto it = std::find_if(_input_columns.begin(), _input_columns.end(), [&tuple_value](const auto& input_column) {

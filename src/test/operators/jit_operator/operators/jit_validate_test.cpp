@@ -10,8 +10,6 @@ namespace {
 // Mock JitOperator that records whether tuples are passed to it
 class MockSink : public AbstractJittable {
  public:
-  MockSink() : AbstractJittable(JitOperatorType::Write) {}
-
   std::string description() const final { return "MockSink"; }
 
   void reset() const { _consume_was_called = false; }
@@ -30,8 +28,6 @@ bool MockSink::_consume_was_called = false;
 // Mock JitOperator that passes on individual tuples
 class MockSource : public AbstractJittable {
  public:
-  MockSource() : AbstractJittable(JitOperatorType::Read) {}
-
   std::string description() const final { return "MockSource"; }
 
   void emit(JitRuntimeContext& context) { _emit(context); }
@@ -49,6 +45,7 @@ class JitValidateTest : public BaseTest {
 
     _transaction_context = std::make_shared<TransactionContext>(5u, 3u);
 
+    // data table has three chunks
     {
       auto& mvcc_data = *_test_table->get_chunk(ChunkID(0))->mvcc_data();
       // deleted -> false
@@ -77,8 +74,8 @@ class JitValidateTest : public BaseTest {
       mvcc_data.end_cids[0] = MvccData::MAX_COMMIT_ID;
       mvcc_data.tids[0].exchange(4u);
       _expected_values.push_back(false);
-      // inserted by own transaction -> true
 
+      // inserted by own transaction -> true
       mvcc_data.begin_cids[1] = 5u;
       mvcc_data.end_cids[1] = MvccData::MAX_COMMIT_ID;
       mvcc_data.tids[1].exchange(5u);
@@ -109,8 +106,15 @@ class JitValidateTest : public BaseTest {
 
   void validate_row(const ChunkID chunk_id, const size_t chunk_offset, JitRuntimeContext& context,
                     const bool expected_value, std::shared_ptr<MockSource> source, std::shared_ptr<MockSink> sink,
-                    const bool no_mvcc = true) {
-    if (no_mvcc) context.mvcc_data = &(*_test_table->get_chunk(chunk_id)->mvcc_data());
+                    const TableType table_type) {
+    if (table_type == TableType::Data) {
+      context.mvcc_data = _test_table->get_chunk(chunk_id)->mvcc_data();
+      context.row_tids.resize(context.mvcc_data->tids.size());
+      auto itr = context.row_tids.begin();
+      for (const auto& transaction_id : context.mvcc_data->tids) {
+        *itr++ = transaction_id.load();
+      }
+    }
     context.chunk_offset = chunk_offset;
     sink->reset();
     source->emit(context);
@@ -129,7 +133,7 @@ TEST_F(JitValidateTest, ValidateOnNonReferenceTable) {
   context.snapshot_commit_id = _transaction_context->snapshot_commit_id();
 
   auto source = std::make_shared<MockSource>();
-  auto validate = std::make_shared<JitValidate<TableType::Data>>();
+  auto validate = std::make_shared<JitValidate>(TableType::Data);
   auto sink = std::make_shared<MockSink>();
 
   // Link operators to pipeline
@@ -138,14 +142,14 @@ TEST_F(JitValidateTest, ValidateOnNonReferenceTable) {
 
   auto expected_value_itr = _expected_values.begin();
 
-  validate_row(ChunkID(0), 0u, context, *expected_value_itr++, source, sink);
-  validate_row(ChunkID(0), 1u, context, *expected_value_itr++, source, sink);
-  validate_row(ChunkID(0), 2u, context, *expected_value_itr++, source, sink);
-  validate_row(ChunkID(1), 0u, context, *expected_value_itr++, source, sink);
-  validate_row(ChunkID(1), 1u, context, *expected_value_itr++, source, sink);
-  validate_row(ChunkID(1), 2u, context, *expected_value_itr++, source, sink);
-  validate_row(ChunkID(2), 0u, context, *expected_value_itr++, source, sink);
-  validate_row(ChunkID(2), 1u, context, *expected_value_itr++, source, sink);
+  validate_row(ChunkID(0), 0u, context, *expected_value_itr++, source, sink, TableType::Data);
+  validate_row(ChunkID(0), 1u, context, *expected_value_itr++, source, sink, TableType::Data);
+  validate_row(ChunkID(0), 2u, context, *expected_value_itr++, source, sink, TableType::Data);
+  validate_row(ChunkID(1), 0u, context, *expected_value_itr++, source, sink, TableType::Data);
+  validate_row(ChunkID(1), 1u, context, *expected_value_itr++, source, sink, TableType::Data);
+  validate_row(ChunkID(1), 2u, context, *expected_value_itr++, source, sink, TableType::Data);
+  validate_row(ChunkID(2), 0u, context, *expected_value_itr++, source, sink, TableType::Data);
+  validate_row(ChunkID(2), 1u, context, *expected_value_itr++, source, sink, TableType::Data);
 }
 
 TEST_F(JitValidateTest, ValidateOnReferenceTable) {
@@ -155,7 +159,7 @@ TEST_F(JitValidateTest, ValidateOnReferenceTable) {
   context.referenced_table = _test_table;
 
   auto source = std::make_shared<MockSource>();
-  auto validate = std::make_shared<JitValidate<TableType::References>>();
+  auto validate = std::make_shared<JitValidate>(TableType::References);
   auto sink = std::make_shared<MockSink>();
 
   // Link operators to pipeline
@@ -167,25 +171,28 @@ TEST_F(JitValidateTest, ValidateOnReferenceTable) {
   // input reference table has 2 chunks
   auto pos_list = std::make_shared<PosList>(4);
   context.pos_list = pos_list;
+
+  // first chunk
   (*pos_list)[0] = RowID(ChunkID(0), 0u);
   (*pos_list)[1] = RowID(ChunkID(0), 1u);
   (*pos_list)[2] = RowID(ChunkID(0), 2u);
   (*pos_list)[3] = RowID(ChunkID(1), 0u);
 
-  validate_row(ChunkID(0), 0u, context, *expected_value_itr++, source, sink, false);
-  validate_row(ChunkID(0), 1u, context, *expected_value_itr++, source, sink, false);
-  validate_row(ChunkID(0), 2u, context, *expected_value_itr++, source, sink, false);
-  validate_row(ChunkID(0), 3u, context, *expected_value_itr++, source, sink, false);
+  validate_row(ChunkID(0), 0u, context, *expected_value_itr++, source, sink, TableType::References);
+  validate_row(ChunkID(0), 1u, context, *expected_value_itr++, source, sink, TableType::References);
+  validate_row(ChunkID(0), 2u, context, *expected_value_itr++, source, sink, TableType::References);
+  validate_row(ChunkID(0), 3u, context, *expected_value_itr++, source, sink, TableType::References);
 
+  // second chunk
   (*pos_list)[0] = RowID(ChunkID(1), 1u);
   (*pos_list)[1] = RowID(ChunkID(1), 2u);
   (*pos_list)[2] = RowID(ChunkID(2), 0u);
   (*pos_list)[3] = RowID(ChunkID(2), 1u);
 
-  validate_row(ChunkID(1), 0u, context, *expected_value_itr++, source, sink, false);
-  validate_row(ChunkID(1), 1u, context, *expected_value_itr++, source, sink, false);
-  validate_row(ChunkID(1), 2u, context, *expected_value_itr++, source, sink, false);
-  validate_row(ChunkID(1), 3u, context, *expected_value_itr++, source, sink, false);
+  validate_row(ChunkID(1), 0u, context, *expected_value_itr++, source, sink, TableType::References);
+  validate_row(ChunkID(1), 1u, context, *expected_value_itr++, source, sink, TableType::References);
+  validate_row(ChunkID(1), 2u, context, *expected_value_itr++, source, sink, TableType::References);
+  validate_row(ChunkID(1), 3u, context, *expected_value_itr++, source, sink, TableType::References);
 }
 
 }  // namespace opossum

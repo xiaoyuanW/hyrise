@@ -3,6 +3,8 @@
 #include <chrono>
 #include <map>
 
+#include "utils/singleton.hpp"
+
 namespace opossum {
 
 struct OperatorTimes {
@@ -12,16 +14,19 @@ struct OperatorTimes {
 
 enum class OperatorType;
 
-struct Global {
-  static Global& get();
-
+struct Global : public Singleton<Global> {
   bool jit = false;
-  bool lazy_load = false;
-  bool jit_validate = false;
+  bool lazy_load = true;
+  bool jit_validate = true;
   bool deep_copy_exists = false;
   bool jit_evaluate = false;
   bool interpret = false;
   std::map<OperatorType, OperatorTimes> times;
+
+ private:
+  Global() = default;
+
+  friend class Singleton;
 };
 
 }  // namespace opossum

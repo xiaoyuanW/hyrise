@@ -114,7 +114,8 @@ void AbstractOperator::execute() {
     papi_values[i] = 0;
   }
 #endif
-  result["operators"].push_back(op);
+
+  if (Global::get().jit_evaluate) result["operators"].push_back(op);
 
   performance_timer.lap();
 
@@ -163,14 +164,17 @@ void AbstractOperator::execute() {
     op2[papi_events[i].get<std::string>()] = papi_values[i];
   }
 #endif
-  result["operators"].push_back(op2);
 
-  auto find = Global::get().times.find(_type);
-  if (find != Global::get().times.end()) {
-    find->second.preparation_time += preparation_time;
-    find->second.execution_time += _performance_data->walltime;
-  } else {
-    Global::get().times.emplace(_type, OperatorTimes{preparation_time, _performance_data->walltime});
+  if (Global::get().jit_evaluate) {
+    result["operators"].push_back(op2);
+
+    auto find = Global::get().times.find(_type);
+    if (find != Global::get().times.end()) {
+      find->second.preparation_time += preparation_time;
+      find->second.execution_time += _performance_data->walltime;
+    } else {
+      Global::get().times.emplace(_type, OperatorTimes{preparation_time, _performance_data->walltime});
+    }
   }
 
   DTRACE_PROBE5(HYRISE, OPERATOR_EXECUTED, name().c_str(), _performance_data->walltime.count(),

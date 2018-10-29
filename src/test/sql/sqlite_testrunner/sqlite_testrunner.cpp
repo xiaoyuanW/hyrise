@@ -15,7 +15,6 @@
 
 #include "concurrency/transaction_context.hpp"
 #include "concurrency/transaction_manager.hpp"
-#include "global.hpp"
 #include "logical_query_plan/jit_aware_lqp_translator.hpp"
 #include "logical_query_plan/lqp_translator.hpp"
 #include "operators/print.hpp"
@@ -32,16 +31,13 @@
 
 namespace opossum {
 
-using TestConfiguration = std::tuple<std::string, bool, bool>;  // SQL Query, use_jit, use_mvcc
+using TestConfiguration = std::pair<std::string, bool>;  // SQL Query, use_jit
 
 class SQLiteTestRunner : public BaseTestWithParam<TestConfiguration> {
  protected:
   void SetUp() override {
     StorageManager::get().reset();
     _sqlite = std::make_unique<SQLiteWrapper>();
-    auto& global = Global::get();
-    global.lazy_load = true;
-    global.jit_validate = true;
 
     std::ifstream file("src/test/sql/sqlite_testrunner/sqlite_testrunner.tables");
     std::string line;
@@ -64,7 +60,7 @@ class SQLiteTestRunner : public BaseTestWithParam<TestConfiguration> {
 
       _sqlite->create_table_from_tbl(table_file, table_name);
 
-      std::shared_ptr<Table> table = load_table(table_file);
+      std::shared_ptr<Table> table = load_table(table_file, 10);
       StorageManager::get().add_table(table_name, std::move(table));
     }
 
@@ -74,16 +70,10 @@ class SQLiteTestRunner : public BaseTestWithParam<TestConfiguration> {
     SQLQueryCache<SQLQueryPlan>::get().clear();
   }
 
-  void TearDown() override {
-    auto& global = Global::get();
-    global.lazy_load = false;
-    global.jit_validate = false;
-  }
-
   std::unique_ptr<SQLiteWrapper> _sqlite;
 };
 
-std::vector<TestConfiguration> build_combinations() {
+std::vector<TestConfiguration> read_queries_from_file() {
   std::vector<std::string> queries;
   std::ifstream file("src/test/sql/sqlite_testrunner/sqlite_testrunner_queries.sql");
   std::string query;
@@ -96,23 +86,16 @@ std::vector<TestConfiguration> build_combinations() {
 
   std::vector<TestConfiguration> tests;
   for (const auto& query : queries) {
-    tests.push_back({query, false, true});
+    tests.push_back({query, false});
     if constexpr (HYRISE_JIT_SUPPORT) {
-      tests.push_back({query, true, true});
-      // If validate is not present, there is the possibility that one JitOperatorWrapper can combine more operators
-      if (boost::starts_with(query, "SELECT")) {
-        tests.push_back({query, true, false});
-      }
+      tests.push_back({query, true});
     }
   }
   return tests;
 }
 
 TEST_P(SQLiteTestRunner, CompareToSQLite) {
-  const auto& [query, use_jit, use_mvcc] = GetParam();
-
-  SCOPED_TRACE("SQLite " + query + " " + (use_jit ? "with JIT" : "without JIT") + " " +
-               (use_mvcc ? "with MVCC" : "without MVCC"));
+  const auto& [query, use_jit] = GetParam();
 
   std::shared_ptr<LQPTranslator> lqp_translator;
   if (use_jit) {
@@ -121,16 +104,13 @@ TEST_P(SQLiteTestRunner, CompareToSQLite) {
     lqp_translator = std::make_shared<LQPTranslator>();
   }
 
-  std::cout << "SQLite " + query + " " + (use_jit ? "with JIT" : "without JIT") + " " +
-                   (use_mvcc ? "with MVCC" : "without MVCC")
-            << std::endl;
+  SCOPED_TRACE("SQLite " + query + (use_jit ? " with JIT" : " without JIT"));
 
   const auto prepared_statement_cache = std::make_shared<PreparedStatementCache>();
 
   auto sql_pipeline = SQLPipelineBuilder{query}
                           .with_prepared_statement_cache(prepared_statement_cache)
                           .with_lqp_translator(lqp_translator)
-                          .with_mvcc(UseMvcc(use_mvcc))
                           .create_pipeline();
 
   const auto& result_table = sql_pipeline.get_result_table();
@@ -158,6 +138,6 @@ TEST_P(SQLiteTestRunner, CompareToSQLite) {
 }
 
 INSTANTIATE_TEST_CASE_P(SQLiteTestRunnerInstances, SQLiteTestRunner,
-                        testing::ValuesIn(build_combinations()), );  // NOLINT
+                        testing::ValuesIn(read_queries_from_file()), );  // NOLINT
 
 }  // namespace opossum

@@ -53,7 +53,7 @@ std::shared_ptr<const Table> JitOptimalExpressionOperator::_on_execute() {
     // const auto tpl =
 
     // const auto l_id = read_tuples.add_literal_value(0);
-    read_tuples.before_query(*table, context);
+    read_tuples.before_query(*table, std::vector<AllTypeVariant>(), context);
 
     // auto expected_entries = table->row_count();
 
@@ -67,7 +67,7 @@ std::shared_ptr<const Table> JitOptimalExpressionOperator::_on_execute() {
     Timer timer;
 
     for (opossum::ChunkID chunk_id{0}; chunk_id < table->chunk_count(); ++chunk_id) {
-      read_tuples.before_chunk(*table, chunk_id, context);
+      read_tuples.before_chunk(*table, chunk_id, std::vector<AllTypeVariant>(), context);
 
       for (; context.chunk_offset < context.chunk_size; ++context.chunk_offset) {
         /*

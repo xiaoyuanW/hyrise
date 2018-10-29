@@ -16,7 +16,7 @@ namespace opossum {
 
 JitOperatorWrapper::JitOperatorWrapper(
     const std::shared_ptr<const AbstractOperator>& left, const JitExecutionMode execution_mode,
-    const std::list<std::shared_ptr<AbstractJittable>>& jit_operators, const bool insert_loads,
+    const std::vector<std::shared_ptr<AbstractJittable>>& jit_operators, const bool insert_loads,
     const std::function<void(const JitReadTuples*, JitRuntimeContext&)>& execute_func)
     : AbstractReadOnlyOperator{OperatorType::JitOperatorWrapper, left},
       _execution_mode{execution_mode},
@@ -43,7 +43,7 @@ const std::string JitOperatorWrapper::description(DescriptionMode description_mo
 
 void JitOperatorWrapper::add_jit_operator(const std::shared_ptr<AbstractJittable>& op) { _jit_operators.push_back(op); }
 
-const std::list<std::shared_ptr<AbstractJittable>>& JitOperatorWrapper::jit_operators() const { return _jit_operators; }
+const std::vector<std::shared_ptr<AbstractJittable>>& JitOperatorWrapper::jit_operators() const { return _jit_operators; }
 
 const std::shared_ptr<JitReadTuples> JitOperatorWrapper::_source() const {
   return std::dynamic_pointer_cast<JitReadTuples>(_jit_operators.front());
@@ -54,15 +54,18 @@ const std::shared_ptr<AbstractJittableSink> JitOperatorWrapper::_sink() const {
 }
 
 void JitOperatorWrapper::insert_loads(const bool lazy) {
-  // if constexpr (!JIT_LAZY_LOAD) return;
-
   const auto input_wrappers = _source()->input_wrappers();
-
+  std::vector<std::shared_ptr<AbstractJittable>> jit_operators;
   if constexpr (!JIT_LAZY_LOAD) {
-    auto itr = ++_jit_operators.cbegin();
-    for (size_t index = 0; index < _source()->input_columns().size(); ++index) {
-      itr = _jit_operators.insert(itr, std::make_shared<JitReadValue>(_source()->input_columns()[index], input_wrappers[index]));
+    const auto input_col_num = _source()->input_columns().size();
+    const auto operators_size = _jit_operators.size();
+    jit_operators.resize(operators_size + input_col_num);
+    jit_operators[0] = _jit_operators[0];
+    std::copy(_jit_operators.cbegin() + 1, _jit_operators.cbegin() + operators_size, jit_operators.begin() + input_col_num + 1);
+    for (size_t index = 0; index < input_col_num; ++index) {
+      jit_operators[index + 1] = std::make_shared<JitReadValue>(_source()->input_columns()[index], input_wrappers[index]);
     }
+    _jit_operators = jit_operators;
     return;
   }
 #if JIT_OLD_LAZY_LOAD
@@ -79,7 +82,6 @@ void JitOperatorWrapper::insert_loads(const bool lazy) {
     inverted_input_columns[input_columns[input_column_index].tuple_value.tuple_index()] = input_column_index;
   }
 
-  std::list<std::shared_ptr<AbstractJittable>> jit_operators;
   std::vector<std::map<size_t, bool>> accessed_column_ids;
   accessed_column_ids.reserve(jit_operators.size());
   std::map<size_t, bool> column_id_used_by_one_operator;
@@ -132,10 +134,35 @@ void JitOperatorWrapper::_prepare() {
   _choose_execute_func();
 }
 
+namespace {
+
+TableType input_table_type(const std::shared_ptr<const AbstractOperator>& node) {
+  if (const auto in_table = node->get_output()) {
+    return in_table->type();
+  }
+  switch (node->type()) {
+    case OperatorType::TableWrapper:
+    case OperatorType::GetTable:
+    case OperatorType::Aggregate:
+      return TableType::Data;
+    default:
+      return TableType::References;
+  }
+}
+
+}  // namespace
+
+
 void JitOperatorWrapper::_choose_execute_func() {
+  std::lock_guard<std::mutex> guard(_specialize_mutex);
   if (_execute_func) return;
 
   if (_source()->input_wrappers().empty()) _source()->create_default_input_wrappers();
+  for (auto& jit_operator : _jit_operators) {
+    if (auto jit_validate = std::dynamic_pointer_cast<JitValidate>(jit_operator)) {
+      jit_validate->set_input_table_type(input_table_type(input_left()));
+    }
+  }
 
   // std::cout << "Before make loads lazy:" << std::endl << description(DescriptionMode::MultiLine) << std::endl;
   if (_insert_loads) insert_loads(Global::get().lazy_load);
@@ -168,7 +195,7 @@ void JitOperatorWrapper::_choose_execute_func() {
 }
 
 std::shared_ptr<const Table> JitOperatorWrapper::_on_execute() {
-  const auto& in_table = input_left()->get_output();
+  const auto in_table = input_left()->get_output();
   auto out_table = _sink()->create_output_table(in_table->max_chunk_size());
 
   JitRuntimeContext context;
@@ -183,7 +210,7 @@ std::shared_ptr<const Table> JitOperatorWrapper::_on_execute() {
 
   Timer timer;
 
-  _source()->before_query(*in_table, context);
+  _source()->before_query(*in_table, _input_parameter_values, context);
   _sink()->before_query(*in_table, *out_table, context);
   auto before_query_time = timer.lap();
 
@@ -196,7 +223,7 @@ std::shared_ptr<const Table> JitOperatorWrapper::_on_execute() {
       std::cout << "chunk no " << chunk_id << std::endl;
     }
      */
-    const bool same_type = _source()->before_chunk(*in_table, chunk_id, context);
+    const bool same_type = _source()->before_chunk(*in_table, chunk_id, _input_parameter_values, context);
     before_chunk_time += timer.lap();
     if (same_type) {
       _execute_func(_source().get(), context);
@@ -214,29 +241,31 @@ std::shared_ptr<const Table> JitOperatorWrapper::_on_execute() {
   _sink()->after_query(*out_table, context);
   auto after_query_time = timer.lap();
 
-  auto& operators = JitEvaluationHelper::get().result()["operators"];
-  auto add_time = [&operators](const std::string& name, const auto& time) {
-    const auto micro_s = std::chrono::duration_cast<std::chrono::microseconds>(time).count();
-    if (micro_s > 0) {
-      nlohmann::json jit_op = {{"name", name}, {"prepare", false}, {"walltime", micro_s}};
-      operators.push_back(jit_op);
-    }
-  };
+  if (Global::get().jit_evaluate) {
+    auto& operators = JitEvaluationHelper::get().result()["operators"];
+    auto add_time = [&operators](const std::string& name, const auto& time) {
+      const auto micro_s = std::chrono::duration_cast<std::chrono::microseconds>(time).count();
+      if (micro_s > 0) {
+        nlohmann::json jit_op = {{"name", name}, {"prepare", false}, {"walltime", micro_s}};
+        operators.push_back(jit_op);
+      }
+    };
 
-  add_time("_JitBeforeQuery", before_query_time);
-  add_time("_JitAfterQuery", after_query_time);
-  add_time("_JitBeforChunk", before_chunk_time);
-  add_time("_JitAfterChunk", after_chunk_time);
-  add_time("_Function", function_time);
+    add_time("_JitBeforeQuery", before_query_time);
+    add_time("_JitAfterQuery", after_query_time);
+    add_time("_JitBeforChunk", before_chunk_time);
+    add_time("_JitAfterChunk", after_chunk_time);
+    add_time("_Function", function_time);
 
 #if JIT_MEASURE
-  std::chrono::nanoseconds operator_total_time{0};
-  for (size_t index = 0; index < JitOperatorType::Size; ++index) {
-    add_time("_" + jit_operator_type_to_string.left.at(static_cast<JitOperatorType>(index)), context.times[index]);
-    operator_total_time += context.times[index];
-  }
-  add_time("_Jit_OperatorsTotal", operator_total_time);
+    std::chrono::nanoseconds operator_total_time{0};
+    for (size_t index = 0; index < JitOperatorType::Size; ++index) {
+      add_time("_" + jit_operator_type_to_string.left.at(static_cast<JitOperatorType>(index)), context.times[index]);
+      operator_total_time += context.times[index];
+    }
+    add_time("_Jit_OperatorsTotal", operator_total_time);
 #endif
+  }
 
   return out_table;
 }
@@ -250,7 +279,16 @@ std::shared_ptr<AbstractOperator> JitOperatorWrapper::_on_deep_copy(
 }
 
 void JitOperatorWrapper::_on_set_parameters(const std::unordered_map<ParameterID, AllTypeVariant>& parameters) {
-  _source()->set_parameters(parameters);
+  const auto& input_parameters = _source()->input_parameters();
+  _input_parameter_values.resize(input_parameters.size());
+  auto itr = _input_parameter_values.begin();
+  for (auto& parameter : input_parameters) {
+    auto search = parameters.find(parameter.parameter_id);
+    if (search != parameters.end()) {
+      *itr = search->second;
+    }
+    ++itr;
+  }
 }
 
 void JitOperatorWrapper::_on_set_transaction_context(const std::weak_ptr<TransactionContext>& transaction_context) {

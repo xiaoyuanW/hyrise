@@ -30,7 +30,6 @@ struct JitInputLiteral {
 struct JitInputParameter {
   ParameterID parameter_id;
   JitTupleValue tuple_value;
-  std::optional<AllTypeVariant> value;
   bool use_value_id;
 };
 
@@ -59,10 +58,10 @@ class JitReadTuples : public AbstractJittable {
 
   std::string description() const final;
 
-  virtual void before_query(const Table& in_table, JitRuntimeContext& context);
-  virtual bool before_chunk(const Table& in_table, const ChunkID chunk_id, JitRuntimeContext& context);
-
-  void create_default_input_wrappers();
+  virtual void before_query(const Table& in_table, const std::vector<AllTypeVariant>& parameter_values,
+                            JitRuntimeContext& context);
+  virtual bool before_chunk(const Table& in_table, const ChunkID chunk_id,
+                            const std::vector<AllTypeVariant>& parameter_values, JitRuntimeContext& context);
 
   JitTupleValue add_input_column(const DataType data_type, const bool is_nullable, const ColumnID column_id,
                                  const bool use_value_id = false);
@@ -74,11 +73,13 @@ class JitReadTuples : public AbstractJittable {
 
   void set_parameters(const std::unordered_map<ParameterID, AllTypeVariant>& parameters);
 
-  std::vector<JitInputColumn> input_columns() const;
-  std::vector<std::shared_ptr<BaseJitSegmentReaderWrapper>> input_wrappers() const;
-  std::vector<JitInputLiteral> input_literals() const;
-  std::vector<JitInputParameter> input_parameters() const;
-  std::vector<JitValueIDPredicate> value_id_predicates() const;
+  const std::vector<std::shared_ptr<BaseJitSegmentReaderWrapper>>& input_wrappers() const;
+  const std::vector<JitInputColumn>& input_columns() const;
+  const std::vector<JitInputLiteral>& input_literals() const;
+  const std::vector<JitInputParameter>& input_parameters() const;
+  const std::vector<JitValueIDPredicate>& value_id_predicates() const;
+
+  void create_default_input_wrappers();
 
   std::optional<ColumnID> find_input_column(const JitTupleValue& tuple_value) const;
   std::optional<AllTypeVariant> find_literal_value(const JitTupleValue& tuple_value) const;

@@ -69,7 +69,6 @@ class TPCHTest : public BaseTestWithParam<std::pair<const size_t, TestConfigurat
 TEST_F(TPCHTest, JitOptimalHashJoinOperator) {
   auto& global = opossum::Global::get();
   global.jit = false;
-  global.lazy_load = false;
 
   float scale_factor = 0.1f;
   TpchDbGenerator{scale_factor, 10'000}.generate_and_store();
@@ -94,7 +93,6 @@ TEST_F(TPCHTest, JitOptimalHashJoinOperator) {
 TEST_F(TPCHTest, JitOptimalTableScanOperator) {
   auto& global = opossum::Global::get();
   global.jit = false;
-  global.lazy_load = true;
 
   opossum::JitTableGenerator generator(0.001, opossum::ChunkID(1000));
   generator.generate_and_store();
@@ -131,13 +129,11 @@ TEST_F(TPCHTest, JitOptimalTableScanOperator) {
   EXPECT_TABLE_EQ(res2, res3, OrderSensitivity::No, TypeCmpMode::Lenient, FloatComparisonMode::RelativeDifference);
 
   global.jit = false;
-  global.lazy_load = false;
 }
 
 TEST_F(TPCHTest, JitOptimalExpressionOperator) {
   auto& global = opossum::Global::get();
   global.jit = false;
-  global.lazy_load = true;
 
   opossum::JitTableGenerator generator(0.001, opossum::ChunkID(1000));
   generator.generate_and_store();
@@ -174,7 +170,47 @@ TEST_F(TPCHTest, JitOptimalExpressionOperator) {
   EXPECT_TABLE_EQ(res2, res3, OrderSensitivity::No, TypeCmpMode::Lenient, FloatComparisonMode::RelativeDifference);
 
   global.jit = false;
-  global.lazy_load = false;
+}
+
+TEST_F(TPCHTest, JitOptimalExpressionOperator) {
+  auto& global = opossum::Global::get();
+  global.jit = false;
+
+  opossum::JitTableGenerator generator(0.001, opossum::ChunkID(1000));
+  generator.generate_and_store();
+  // const auto table = StorageManager::get().get_table("TABLE_SCAN");
+  // ChunkEncoder::encode_all_chunks(table);
+
+  auto context = opossum::TransactionManager::get().new_transaction_context();
+  auto jit_op = std::make_shared<JitOptimalExpressionOperator>();
+  jit_op->set_transaction_context(context);
+  jit_op->execute();
+  auto res = jit_op->get_output();
+
+  const auto sql_string = "SELECT ID FROM TABLE_AGGREGATE WHERE (A + B + C + D + E + F) > X1";
+
+  auto pipeline =
+          SQLPipelineBuilder{
+                  sql_string}
+                  .with_transaction_context(context)
+                  .create_pipeline();
+
+  const auto res2 = pipeline.get_result_table();
+
+  EXPECT_TABLE_EQ(res, res2, OrderSensitivity::No, TypeCmpMode::Lenient, FloatComparisonMode::RelativeDifference);
+
+  global.jit = true;
+  auto pipeline2 =
+          SQLPipelineBuilder{
+                  sql_string}
+                  .with_transaction_context(context)
+                  .create_pipeline();
+
+  const auto res3 = pipeline2.get_result_table();
+
+  EXPECT_TABLE_EQ(res2, res3, OrderSensitivity::No, TypeCmpMode::Lenient, FloatComparisonMode::RelativeDifference);
+
+  global.jit = false;
 }
 
 TEST_P(TPCHTest, TPCHQueryTest) {
@@ -195,7 +231,7 @@ TEST_P(TPCHTest, TPCHQueryTest) {
     _sqlite_wrapper->create_table(*table, tpch_table_name);
   }
 
-  SCOPED_TRACE("TPC-H " + std::to_string(query_idx) + " " + (use_jit ? "with JIT" : "without JIT"));
+  SCOPED_TRACE("TPC-H " + std::to_string(query_idx) + (use_jit ? " with JIT" : " without JIT"));
 
   std::shared_ptr<const Table> sqlite_result_table, hyrise_result_table;
 
@@ -213,8 +249,6 @@ TEST_P(TPCHTest, TPCHQueryTest) {
   }
   auto sql_pipeline = SQLPipelineBuilder{query}.with_lqp_translator(lqp_translator).disable_mvcc().create_pipeline();
 
-  global.lazy_load = true;
-
   // TPC-H 15 needs special patching as it contains a DROP VIEW that doesn't return a table as last statement
   if (query_idx == 15) {
     Assert(sql_pipeline.statement_count() == 3u, "Expected 3 statements in TPC-H 15") sql_pipeline.get_result_table();
@@ -228,8 +262,6 @@ TEST_P(TPCHTest, TPCHQueryTest) {
     sqlite_result_table = _sqlite_wrapper->execute_query(query);
     hyrise_result_table = sql_pipeline.get_result_table();
   }
-
-  global.lazy_load = false;
 
   // EXPECT_TABLE_EQ crashes if one table is a nullptr
   ASSERT_TRUE(hyrise_result_table);

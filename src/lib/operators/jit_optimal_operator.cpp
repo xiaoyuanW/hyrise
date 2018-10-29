@@ -47,7 +47,7 @@ std::shared_ptr<const Table> JitOptimalOperator::_on_execute() {
     // constexpr auto x_id = 1;
     const auto tpl = read_tuples.add_input_column(DataType::Int, false, col_a, false);
     // const auto l_id = read_tuples.add_literal_value(0);
-    read_tuples.before_query(*right_table, context);
+    read_tuples.before_query(*right_table, std::vector<AllTypeVariant>(), context);
 
     auto jit_aggregate = JitAggregate();
     jit_aggregate.add_groupby_column("s_suppkey", tpl);
@@ -60,7 +60,7 @@ std::shared_ptr<const Table> JitOptimalOperator::_on_execute() {
     row_ids.reserve(expected_entries);
 
     for (opossum::ChunkID chunk_id{0}; chunk_id < right_table->chunk_count(); ++chunk_id) {
-      read_tuples.before_chunk(*right_table, chunk_id, context);
+      read_tuples.before_chunk(*right_table, chunk_id, std::vector<AllTypeVariant>(), context);
 
       for (; context.chunk_offset < context.chunk_size; ++context.chunk_offset) {
         /*
@@ -130,7 +130,7 @@ std::shared_ptr<const Table> JitOptimalOperator::_on_execute() {
     // constexpr auto x_id = 1;
     // const auto x_tpl = read_tuples.add_input_column(DataType::Int, false, col_x, false);
     // const auto l_id = read_tuples.add_literal_value(0);
-    read_tuples.before_query(*left_table, context);
+    read_tuples.before_query(*left_table, std::vector<AllTypeVariant>(), context);
 
     auto jit_aggregate = JitAggregate();
     jit_aggregate.add_groupby_column("l_suppkey", tpl);
@@ -153,7 +153,7 @@ std::shared_ptr<const Table> JitOptimalOperator::_on_execute() {
       auto output_pos_list2 = std::make_shared<PosList>();
       output_pos_list2->reserve(expected_size);
 
-      read_tuples.before_chunk(*left_table, chunk_id, context);
+      read_tuples.before_chunk(*left_table, chunk_id, std::vector<AllTypeVariant>(), context);
 
       for (; context.chunk_offset < context.chunk_size; ++context.chunk_offset) {
         /*
