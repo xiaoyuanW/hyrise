@@ -45,14 +45,17 @@ const std::shared_ptr<AbstractJittableSink> JitOperatorWrapper::_sink() const {
 
 void JitOperatorWrapper::insert_loads(const bool lazy) {
   if constexpr (!JIT_LAZY_LOAD) return;
+  std::vector<std::shared_ptr<AbstractJittable>> jit_operators;
   if (!lazy) {
     const auto input_col_num = _source()->input_columns().size();
     const auto operators_size = _jit_operators.size();
-    _jit_operators.resize(operators_size + input_col_num);
-    std::copy(_jit_operators.cbegin() + 1, _jit_operators.cbegin() + operators_size - 1, _jit_operators.begin() + input_col_num + 1);
+    jit_operators.resize(operators_size + input_col_num);
+    jit_operators[0] = _jit_operators[0];
+    std::copy(_jit_operators.cbegin() + 1, _jit_operators.cbegin() + operators_size, jit_operators.begin() + input_col_num + 1);
     for (size_t index = 0; index < input_col_num; ++index) {
-      _jit_operators[index + 1] = std::make_shared<JitReadValue>(_source()->input_columns()[index], index);
+      jit_operators[index + 1] = std::make_shared<JitReadValue>(_source()->input_columns()[index], index);
     }
+    _jit_operators = jit_operators;
     return;
   }
   std::map<size_t, size_t> inverted_input_columns;
@@ -61,7 +64,6 @@ void JitOperatorWrapper::insert_loads(const bool lazy) {
     inverted_input_columns[input_columns[input_column_index].tuple_value.tuple_index()] = input_column_index;
   }
 
-  std::vector<std::shared_ptr<AbstractJittable>> jit_operators;
   std::vector<std::map<size_t, bool>> accessed_column_ids;
   accessed_column_ids.reserve(jit_operators.size());
   std::map<size_t, bool> column_id_used_by_one_operator;
