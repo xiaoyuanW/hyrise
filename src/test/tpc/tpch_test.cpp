@@ -176,8 +176,6 @@ TEST_P(TPCHTest, TPCHQueryTest) {
   const auto [query_idx, test_configuration] = GetParam();  // NOLINT
   const auto [query, use_jit] = test_configuration;         // NOLINT
 
-  auto& global = opossum::Global::get();
-
   /**
    * Generate the TPC-H tables with a scale factor appropriate for this query
    */
