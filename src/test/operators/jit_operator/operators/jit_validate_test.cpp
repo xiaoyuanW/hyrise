@@ -10,8 +10,6 @@ namespace {
 // Mock JitOperator that records whether tuples are passed to it
 class MockSink : public AbstractJittable {
  public:
-  MockSink() : AbstractJittable(JitOperatorType::Write) {}
-
   std::string description() const final { return "MockSink"; }
 
   void reset() const { _consume_was_called = false; }
@@ -30,8 +28,6 @@ bool MockSink::_consume_was_called = false;
 // Mock JitOperator that passes on individual tuples
 class MockSource : public AbstractJittable {
  public:
-  MockSource() : AbstractJittable(JitOperatorType::Read) {}
-
   std::string description() const final { return "MockSource"; }
 
   void emit(JitRuntimeContext& context) { _emit(context); }
@@ -113,6 +109,11 @@ class JitValidateTest : public BaseTest {
                     const TableType table_type) {
     if (table_type == TableType::Data) {
       context.mvcc_data = _test_table->get_chunk(chunk_id)->mvcc_data();
+      context.row_tids.resize(context.mvcc_data->tids.size());
+      auto itr = context.row_tids.begin();
+      for (const auto& transaction_id : context.mvcc_data->tids) {
+        *itr++ = transaction_id.load();
+      }
     }
     context.chunk_offset = chunk_offset;
     sink->reset();

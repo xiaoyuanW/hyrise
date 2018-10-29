@@ -16,7 +16,7 @@ namespace opossum {
 
 JitOperatorWrapper::JitOperatorWrapper(
     const std::shared_ptr<const AbstractOperator>& left, const JitExecutionMode execution_mode,
-    const std::list<std::shared_ptr<AbstractJittable>>& jit_operators, const bool insert_loads,
+    const std::vector<std::shared_ptr<AbstractJittable>>& jit_operators, const bool insert_loads,
     const std::function<void(const JitReadTuples*, JitRuntimeContext&)>& execute_func)
     : AbstractReadOnlyOperator{OperatorType::JitOperatorWrapper, left},
       _execution_mode{execution_mode},
@@ -43,7 +43,7 @@ const std::string JitOperatorWrapper::description(DescriptionMode description_mo
 
 void JitOperatorWrapper::add_jit_operator(const std::shared_ptr<AbstractJittable>& op) { _jit_operators.push_back(op); }
 
-const std::list<std::shared_ptr<AbstractJittable>>& JitOperatorWrapper::jit_operators() const { return _jit_operators; }
+const std::vector<std::shared_ptr<AbstractJittable>>& JitOperatorWrapper::jit_operators() const { return _jit_operators; }
 
 const std::shared_ptr<JitReadTuples> JitOperatorWrapper::_source() const {
   return std::dynamic_pointer_cast<JitReadTuples>(_jit_operators.front());
@@ -55,11 +55,17 @@ const std::shared_ptr<AbstractJittableSink> JitOperatorWrapper::_sink() const {
 
 void JitOperatorWrapper::insert_loads(const bool lazy) {
   if constexpr (!JIT_LAZY_LOAD) return;
+  std::vector<std::shared_ptr<AbstractJittable>> jit_operators;
   if (!lazy) {
-    auto itr = ++_jit_operators.cbegin();
-    for (size_t index = 0; index < _source()->input_columns().size(); ++index) {
-      itr = _jit_operators.insert(itr, std::make_shared<JitReadValue>(_source()->input_columns()[index], index));
+    const auto input_col_num = _source()->input_columns().size();
+    const auto operators_size = _jit_operators.size();
+    jit_operators.resize(operators_size + input_col_num);
+    jit_operators[0] = _jit_operators[0];
+    std::copy(_jit_operators.cbegin() + 1, _jit_operators.cbegin() + operators_size, jit_operators.begin() + input_col_num + 1);
+    for (size_t index = 0; index < input_col_num; ++index) {
+      jit_operators[index + 1] = std::make_shared<JitReadValue>(_source()->input_columns()[index], index);
     }
+    _jit_operators = jit_operators;
     return;
   }
   std::map<size_t, size_t> inverted_input_columns;
@@ -68,7 +74,6 @@ void JitOperatorWrapper::insert_loads(const bool lazy) {
     inverted_input_columns[input_columns[input_column_index].tuple_value.tuple_index()] = input_column_index;
   }
 
-  std::list<std::shared_ptr<AbstractJittable>> jit_operators;
   std::vector<std::map<size_t, bool>> accessed_column_ids;
   accessed_column_ids.reserve(jit_operators.size());
   std::map<size_t, bool> column_id_used_by_one_operator;
@@ -114,13 +119,32 @@ void JitOperatorWrapper::_prepare() {
   _choose_execute_func();
 }
 
+namespace {
+
+TableType input_table_type(const std::shared_ptr<const AbstractOperator>& node) {
+  if (const auto in_table = node->get_output()) {
+    return in_table->type();
+  }
+  switch (node->type()) {
+    case OperatorType::TableWrapper:
+    case OperatorType::GetTable:
+    case OperatorType::Aggregate:
+      return TableType::Data;
+    default:
+      return TableType::References;
+  }
+}
+
+}  // namespace
+
+
 void JitOperatorWrapper::_choose_execute_func() {
   std::lock_guard<std::mutex> guard(_specialize_mutex);
   if (_execute_func) return;
 
   for (auto& jit_operator : _jit_operators) {
     if (auto jit_validate = std::dynamic_pointer_cast<JitValidate>(jit_operator)) {
-      jit_validate->set_input_table_type(input_left()->get_output()->type());
+      jit_validate->set_input_table_type(input_table_type(input_left()));
     }
   }
 
@@ -154,7 +178,7 @@ void JitOperatorWrapper::_choose_execute_func() {
 }
 
 std::shared_ptr<const Table> JitOperatorWrapper::_on_execute() {
-  const auto& in_table = input_left()->get_output();
+  const auto in_table = input_left()->get_output();
   auto out_table = _sink()->create_output_table(in_table->max_chunk_size());
 
   JitRuntimeContext context;

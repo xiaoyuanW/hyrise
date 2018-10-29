@@ -23,7 +23,7 @@ class JitOperatorWrapper : public AbstractReadOnlyOperator {
   explicit JitOperatorWrapper(
       const std::shared_ptr<const AbstractOperator>& left,
       const JitExecutionMode execution_mode = JitExecutionMode::Compile,
-      const std::list<std::shared_ptr<AbstractJittable>>& jit_operators = {}, const bool insert_loads = true,
+      const std::vector<std::shared_ptr<AbstractJittable>>& jit_operators = {}, const bool insert_loads = true,
       const std::function<void(const JitReadTuples*, JitRuntimeContext&)>& execute_func = nullptr);
 
   const std::string name() const final;
@@ -33,7 +33,7 @@ class JitOperatorWrapper : public AbstractReadOnlyOperator {
   // The operators will later be chained by the JitOperatorWrapper.
   void add_jit_operator(const std::shared_ptr<AbstractJittable>& op);
 
-  const std::list<std::shared_ptr<AbstractJittable>>& jit_operators() const;
+  const std::vector<std::shared_ptr<AbstractJittable>>& jit_operators() const;
 
  protected:
   std::shared_ptr<const Table> _on_execute() override;
@@ -53,7 +53,7 @@ class JitOperatorWrapper : public AbstractReadOnlyOperator {
 
   JitExecutionMode _execution_mode;
   JitCodeSpecializer _module;
-  std::list<std::shared_ptr<AbstractJittable>> _jit_operators;
+  std::vector<std::shared_ptr<AbstractJittable>> _jit_operators;
   bool _insert_loads;
   std::function<void(const JitReadTuples*, JitRuntimeContext&)> _execute_func;
   std::vector<AllTypeVariant> _input_parameter_values;
