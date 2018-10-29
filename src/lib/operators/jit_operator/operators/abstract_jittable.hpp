@@ -16,7 +16,7 @@ namespace opossum {
  */
 class AbstractJittable {
  public:
-  explicit AbstractJittable(const JitOperatorType type) : jit_operator_type(type) {}
+  explicit AbstractJittable(const JitOperatorType type = JitOperatorType::Size) : jit_operator_type(type) {}
   virtual ~AbstractJittable() = default;
 
   void set_next_operator(const std::shared_ptr<AbstractJittable>& next_operator) { _next_operator = next_operator; }
