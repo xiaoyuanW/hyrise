@@ -146,7 +146,7 @@ struct JitRuntimeContext {
   std::vector<std::shared_ptr<BaseJitSegmentWriter>> outputs;
   JitRuntimeHashmap hashmap;
   Segments out_chunk;
-  const MvccData* mvcc_data;
+  std::shared_ptr<const MvccData> mvcc_data;
   std::shared_ptr<const Table> referenced_table;
   std::shared_ptr<const PosList> pos_list;
   TransactionID transaction_id;

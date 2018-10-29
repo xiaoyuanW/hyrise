@@ -103,6 +103,12 @@ void JitOperatorWrapper::_choose_execute_func() {
   std::lock_guard<std::mutex> guard(_specialize_mutex);
   if (_execute_func) return;
 
+  for (auto& jit_operator : _jit_operators) {
+    if (auto jit_validate = std::dynamic_pointer_cast<JitValidate>(jit_operator)) {
+      jit_validate->set_input_table_type(input_left()->get_output()->type());
+    }
+  }
+
   // std::cout << "Before make loads lazy:" << std::endl << description(DescriptionMode::MultiLine) << std::endl;
   if (_insert_loads) insert_loads(Global::get().lazy_load);
   // std::cout << "Specialising: " << (_execution_mode == JitExecutionMode::Compile ? "true" : "false") << std::endl;

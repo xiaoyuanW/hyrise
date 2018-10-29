@@ -9,19 +9,25 @@ namespace opossum {
 /* The JitValidate operator validates visibility of tuples
  * within the context of a given transaction
  */
-template <TableType input_table_type = TableType::Data>
 class JitValidate : public AbstractJittable {
  public:
-  JitValidate();
+  JitValidate(const TableType input_table_type = TableType::Data);
 
   std::string description() const final;
+
+  void set_input_table_type(const TableType input_table_type);
 
  protected:
   void _consume(JitRuntimeContext& context) const final;
 
- public:
-  __attribute__((optnone))
-  static TransactionID _load(const copyable_atomic<TransactionID>& tid);
+ private:
+  bool _is_row_visible(const CommitID our_tid, const CommitID snapshot_commit_id,
+                     const ChunkOffset chunk_offset, const MvccData& mvcc_data) const;
+
+  // Function not optmized due to specialization issues with atomic
+  __attribute__((optnone)) static TransactionID _load_atomic_value(const copyable_atomic<TransactionID>& transaction_id);
+
+  TableType _input_table_type;
 };
 
 }  // namespace opossum
