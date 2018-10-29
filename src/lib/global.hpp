@@ -16,8 +16,8 @@ enum class OperatorType;
 
 struct Global : public Singleton<Global> {
   bool jit = false;
-  bool lazy_load = false;
-  bool jit_validate = false;
+  bool lazy_load = true;
+  bool jit_validate = true;
   bool deep_copy_exists = false;
   bool interpret = false;
   std::map<OperatorType, OperatorTimes> times;
