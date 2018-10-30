@@ -21,6 +21,9 @@
 #include "utils/assert.hpp"
 #include "utils/timer.hpp"
 
+#include "jit_evaluation_helper.hpp"
+#include "global.hpp"
+
 namespace opossum {
 
 JoinHash::JoinHash(const std::shared_ptr<const AbstractOperator>& left,
@@ -166,6 +169,14 @@ class JoinHash::JoinHashImpl : public AbstractJoinOperatorImpl {
   }
 
   std::shared_ptr<const Table> _on_execute() override {
+
+    std::chrono::nanoseconds create_hash_map{0};
+    std::chrono::nanoseconds probe_hash_map{0};
+    std::chrono::nanoseconds create_output{0};
+    std::chrono::nanoseconds prepare{0};
+
+    Timer timer;
+
     /*
     Preparing output table by adding columns from left table.
     */
@@ -218,6 +229,8 @@ class JoinHash::JoinHashImpl : public AbstractJoinOperatorImpl {
       right_chunk_offsets->operator[](i) = offset_right;
       offset_right += right_in_table->get_chunk(i)->size();
     }
+
+    prepare = timer.lap();
 
     Timer performance_timer;
 
@@ -300,6 +313,8 @@ class JoinHash::JoinHashImpl : public AbstractJoinOperatorImpl {
 
     CurrentScheduler::wait_for_tasks(jobs);
 
+    create_hash_map = timer.lap();
+
     // Probe phase
     std::vector<PosList> left_pos_lists;
     std::vector<PosList> right_pos_lists;
@@ -323,6 +338,8 @@ class JoinHash::JoinHashImpl : public AbstractJoinOperatorImpl {
     } else {
       probe<RightType, HashedType>(radix_right, hashtables, left_pos_lists, right_pos_lists, _mode);
     }
+
+    probe_hash_map = timer.lap();
 
     auto only_output_right_input = _inputs_swapped && (_mode == JoinMode::Semi || _mode == JoinMode::Anti);
 
@@ -377,6 +394,24 @@ class JoinHash::JoinHashImpl : public AbstractJoinOperatorImpl {
       }
 
       _output_table->append_chunk(output_segments);
+    }
+
+    create_output = timer.lap();
+
+    if (Global::get().jit_evaluate) {
+      auto& operators = JitEvaluationHelper::get().result()["operators"];
+      auto add_time = [&operators](const std::string& name, const auto& time) {
+        const auto micro_s = std::chrono::duration_cast<std::chrono::microseconds>(time).count();
+        if (micro_s > 0) {
+          nlohmann::json jit_op = {{"name", name}, {"prepare", false}, {"walltime", micro_s}};
+          operators.push_back(jit_op);
+        }
+      };
+
+      add_time("_create_hash_map", create_hash_map);
+      add_time("_probe_hash_map", probe_hash_map);
+      add_time("_create_output", create_output);
+      add_time("_prepare", prepare);
     }
 
     return _output_table;
