@@ -42,7 +42,7 @@ std::shared_ptr<const Table> JitOptimalOperator::_on_execute() {
     auto read_tuples = JitReadTuples(true);
     const auto col_a = right_table->column_id_by_name("s_suppkey");
     // const auto col_x = right_table->column_id_by_name("X100000");
-    constexpr auto a_id = 0;
+    // constexpr auto a_id = 0;
     // read_tuples.add_input_column(DataType::Int, false, col_a, false);
     // constexpr auto x_id = 1;
     const auto tpl = read_tuples.add_input_column(DataType::Int, false, col_a, false);
@@ -69,7 +69,7 @@ std::shared_ptr<const Table> JitOptimalOperator::_on_execute() {
         }
         */
         // context.inputs.front()->read_value(context);
-        static_cast<OwnJitSegmentReader*>(context.inputs.front().get())->read_value(context);
+        // static_cast<OwnJitSegmentReader*>(context.inputs.front().get())->read_value(context);
 
         /*
 
@@ -87,8 +87,9 @@ std::shared_ptr<const Table> JitOptimalOperator::_on_execute() {
           continue;
         }
         */
+        int value = static_cast<OwnJitSegmentReader*>(context.inputs.front().get())->read_and_get_value(context).value;
 
-        uint64_t hash_value = std::hash<int>()(context.tuple.get<int>(a_id));
+        uint64_t hash_value = std::hash<int>()(value);  // context.tuple.get<int>(a_id)
         auto& hash_bucket = hashmap.indices[hash_value];
 
         bool found_match = false;
@@ -96,7 +97,7 @@ std::shared_ptr<const Table> JitOptimalOperator::_on_execute() {
 
         for (const auto& index : hash_bucket) {
           // Compare all values of the row to the currently consumed tuple.
-          bool equal = context.tuple.get<int>(a_id) == hashmap.columns[0].get<int>(index);
+          bool equal = value == hashmap.columns[0].get<int>(index);  // context.tuple.get<int>(a_id)
           if (equal) {
             found_match = true;
             row_index = index;
@@ -106,7 +107,7 @@ std::shared_ptr<const Table> JitOptimalOperator::_on_execute() {
 
         if (!found_match) {
           row_index = hashmap.columns[0].grow_by_one<int>(JitVariantVector::InitialValue::Zero);
-          hashmap.columns[0].set(row_index, context.tuple.get<int>(a_id));
+          hashmap.columns[0].set(row_index, value);  // context.tuple.get<int>(a_id)
           hash_bucket.emplace_back(row_index);
           row_ids.push_back({RowID(context.chunk_id, context.chunk_offset)});
         } else {
@@ -125,7 +126,7 @@ std::shared_ptr<const Table> JitOptimalOperator::_on_execute() {
     auto read_tuples = JitReadTuples(true);
     const auto col_a = left_table->column_id_by_name("l_suppkey");
     // const auto col_x = left_table->column_id_by_name("ID");
-    constexpr auto a_id = 0;
+    // constexpr auto a_id = 0;
     const auto tpl = read_tuples.add_input_column(DataType::Int, false, col_a, false);
     // constexpr auto x_id = 1;
     // const auto x_tpl = read_tuples.add_input_column(DataType::Int, false, col_x, false);
@@ -162,7 +163,7 @@ std::shared_ptr<const Table> JitOptimalOperator::_on_execute() {
         }
         */
         // context.inputs.front()->read_value(context);
-        static_cast<OwnJitSegmentReader*>(context.inputs.front().get())->read_value(context);
+        // static_cast<OwnJitSegmentReader*>(context.inputs.front().get())->read_value(context);
 
         /*
 
@@ -182,7 +183,9 @@ std::shared_ptr<const Table> JitOptimalOperator::_on_execute() {
 
         */
 
-        uint64_t hash_value = std::hash<int>()(context.tuple.get<int>(a_id));
+        int value = static_cast<OwnJitSegmentReader*>(context.inputs.front().get())->read_and_get_value(context).value;
+
+        uint64_t hash_value = std::hash<int>()(value);  // context.tuple.get<int>(a_id)
         const auto it = hashmap.indices.find(hash_value);
         if (it == hashmap.indices.end()) {
           continue;
@@ -195,7 +198,7 @@ std::shared_ptr<const Table> JitOptimalOperator::_on_execute() {
 
         for (const auto& index : hash_bucket) {
           // Compare all values of the row to the currently consumed tuple.
-          bool equal = context.tuple.get<int>(a_id) == hashmap.columns[0].get<int>(index);
+          bool equal = value == hashmap.columns[0].get<int>(index);  // context.tuple.get<int>(a_id)
           if (equal) {
             found_match = true;
             row_index = index;
