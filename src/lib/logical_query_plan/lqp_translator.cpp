@@ -304,7 +304,7 @@ std::shared_ptr<AbstractOperator> LQPTranslator::_translate_join_node(
 
   if (predicate_condition == PredicateCondition::Equals && join_node->join_mode != JoinMode::Outer) {
     return std::make_shared<JoinHash>(input_left_operator, input_right_operator, join_node->join_mode,
-                                      operator_join_predicate->column_ids, predicate_condition);
+                                      operator_join_predicate->column_ids, predicate_condition, 1);
   }
 
   return std::make_shared<JoinSortMerge>(input_left_operator, input_right_operator, join_node->join_mode,

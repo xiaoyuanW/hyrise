@@ -211,15 +211,16 @@ void JitCodeSpecializer::_inline_function_calls(SpecializationContext& context) 
     bool print = false;
 
     auto function = call_site.getCalledFunction();
+    // ignore invalid functions
     if (!function) {
       call_sites.pop();
       continue;
     }
-    auto function_name = function->getName().str();
 
-    // auto function_has_opossum_namespace = boost::contains(function.getName().str(), "opossum");
-    auto function_has_opossum_namespace =
-        boost::starts_with(function_name, "_ZNK7opossum") || boost::starts_with(function_name, "_ZN7opossum");
+    const auto function_name = function->getName().str();
+
+    const auto function_has_opossum_namespace = boost::starts_with(function_name, "_ZNK7opossum") ||
+                                                boost::starts_with(function_name, "_ZN7opossum");
 
     print = boost::contains(function_name, "read_value") || boost::contains(function_name, "read_and_get_value")
             || boost::contains(function_name, "increment") /* || boost::contains(function_name, "jit_aggregate_compute") */;
