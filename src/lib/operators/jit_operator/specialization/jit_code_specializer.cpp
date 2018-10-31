@@ -174,15 +174,16 @@ void JitCodeSpecializer::_inline_function_calls(SpecializationContext& context) 
     constexpr bool print = false;
 
     auto function = call_site.getCalledFunction();
+    // ignore invalid functions
     if (!function) {
       call_sites.pop();
       continue;
     }
-    auto function_name = function->getName().str();
 
-    // auto function_has_opossum_namespace = boost::contains(function.getName().str(), "opossum");
-    auto function_has_opossum_namespace =
-        boost::starts_with(function_name, "_ZNK7opossum") || boost::starts_with(function_name, "_ZN7opossum");
+    const auto function_name = function->getName().str();
+
+    const auto function_has_opossum_namespace = boost::starts_with(function_name, "_ZNK7opossum") ||
+                                                boost::starts_with(function_name, "_ZN7opossum");
 
     // A note about "__clang_call_terminate":
     // __clang_call_terminate is generated / used internally by clang to call the std::terminate function when exception
