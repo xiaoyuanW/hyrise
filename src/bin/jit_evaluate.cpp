@@ -172,9 +172,10 @@ void run() {
   }
 
   result["result_rows"] = table->row_count();
-  result["pipeline_compile_time"] = pipeline.metrics().statement_metrics.front()->execution_time_nanos.count() / 1000;
+  result["pipeline_compile_time"] = pipeline.metrics().statement_metrics.front()->sql_translate_time_nanos.count() / 1000 +
+                                    pipeline.metrics().statement_metrics.front()->lqp_translate_time_nanos.count() / 1000;
   result["pipeline_execution_time"] = pipeline.metrics().statement_metrics.front()->execution_time_nanos.count() / 1000;
-  result["pipeline_optimize_time"] = pipeline.metrics().statement_metrics.front()->execution_time_nanos.count() / 1000;
+  result["pipeline_optimize_time"] = pipeline.metrics().statement_metrics.front()->optimize_time_nanos.count() / 1000;
   opossum::Global::get().jit_evaluate = false;
 }
 
