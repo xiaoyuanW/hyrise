@@ -18,7 +18,10 @@ JitFilter::JitFilter(const std::shared_ptr<const JitExpression>& expression)
               "Filter condition must be a boolean");
 }
 
-std::string JitFilter::description() const { return "[Filter] on x" + std::to_string(_condition.tuple_index()); }
+std::string JitFilter::description() const {
+  std::string expression = _expression ? " = " + _expression->to_string() : "";
+  return "[Filter] on x" + std::to_string(_condition.tuple_index()) + expression;
+}
 
 JitTupleValue JitFilter::condition() { return _condition; }
 
