@@ -101,7 +101,6 @@ std::shared_ptr<JitOperatorWrapper> JitAwareLQPTranslator::_try_translate_sub_pl
   _visit(node, [&](auto& current_node) {
     const auto is_root_node = current_node == node;
     if (_node_is_jittable(current_node, use_value_id, allow_aggregate, is_root_node)) {
-      if (count_node(current_node)) ++jittable_node_count;
       has_validate |= current_node->type == LQPNodeType::Validate;
       validate_after_filter |= !has_validate && current_node->type == LQPNodeType::Predicate;
       allow_aggregate &= current_node->type == LQPNodeType::Limit;
@@ -118,8 +117,7 @@ std::shared_ptr<JitOperatorWrapper> JitAwareLQPTranslator::_try_translate_sub_pl
   //   - Always JIT AggregateNodes, as the JitAggregate is significantly faster than the Aggregate operator
   //   - Otherwise, JIT if there are two or more jittable nodes
   if (input_nodes.size() != 1 || jittable_node_count < 1) return nullptr;
-  if (jittable_node_count == 1 && (node->type == LQPNodeType::Projection || node->type == LQPNodeType::Validate ||
-                                   node->type == LQPNodeType::Limit || node->type == LQPNodeType::Predicate))
+  if (jittable_node_count == 1 && (node->type != LQPNodeType::Aggregate))
     return nullptr;
 
   // limit can only be the root node
