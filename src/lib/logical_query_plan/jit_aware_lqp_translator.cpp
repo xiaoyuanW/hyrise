@@ -83,7 +83,7 @@ namespace opossum {
 
 std::shared_ptr<AbstractOperator> JitAwareLQPTranslator::translate_node(
     const std::shared_ptr<AbstractLQPNode>& node) const {
-  const auto jit_operator = _try_translate_sub_plan_to_jit_operators(node, false);
+  const auto jit_operator = _try_translate_sub_plan_to_jit_operators(node, true);
   return jit_operator ? jit_operator : LQPTranslator::translate_node(node);
 }
 
@@ -165,7 +165,7 @@ std::shared_ptr<JitOperatorWrapper> JitAwareLQPTranslator::_try_translate_sub_pl
         _try_translate_expression_to_jit_expression(*boolean_expression, *read_tuples, input_node);
     if (!jit_boolean_expression) {
       // retry jitting current node without using value ids, i.e. without strings
-      // if (use_value_id) return _try_translate_sub_plan_to_jit_operators(node, false);
+      if (use_value_id) return _try_translate_sub_plan_to_jit_operators(node, false);
       return nullptr;
     }
 
@@ -363,11 +363,11 @@ std::shared_ptr<const JitExpression> JitAwareLQPTranslator::_try_translate_expre
             _try_translate_expression_to_jit_expression(*argument, jit_source, input_node, use_value_id);
         if (!jit_expression) return nullptr;
         jit_expression_arguments.emplace_back(jit_expression);
-        /*
+
         if (!use_value_id && jit_expression->result().data_type() == DataType::String) {
           return nullptr;  // string not supported without value ids
         }
-        */
+
       }
 
       const auto jit_expression_type = _expression_to_jit_expression_type(expression);
@@ -436,19 +436,16 @@ bool _expressions_are_jittable(const std::vector<std::shared_ptr<AbstractExpress
           default:
             break;
         }
-        return _expressions_are_jittable(expression->arguments);
-        // , can_translate_predicate_to_predicate_value_id_expression(*expression, nullptr));
+        return _expressions_are_jittable(expression->arguments, can_translate_predicate_to_predicate_value_id_expression(*expression, nullptr));
       }
       case ExpressionType::Arithmetic:
       case ExpressionType::Logical:
-        return _expressions_are_jittable(expression->arguments);
+        return _expressions_are_jittable(expression->arguments, allow_string);
       case ExpressionType::Value: {
         const auto value_expression = std::static_pointer_cast<const ValueExpression>(expression);
-        /*
         if (!allow_string && data_type_from_all_type_variant(value_expression->value) == DataType::String) {
           return false;
         }
-        */
         break;
       }
       case ExpressionType::Parameter: {
@@ -462,7 +459,7 @@ bool _expressions_are_jittable(const std::vector<std::shared_ptr<AbstractExpress
       case ExpressionType::LQPColumn: {
         const auto column = std::dynamic_pointer_cast<const LQPColumnExpression>(expression);
         // Filter or computation on string columns is expensive
-        // if (!allow_string && column->data_type() == DataType::String) return false;
+        if (!allow_string && column->data_type() == DataType::String) return false;
         break;
       }
       default:
@@ -495,7 +492,7 @@ bool JitAwareLQPTranslator::_node_is_jittable(const std::shared_ptr<AbstractLQPN
   }
 
   if (auto predicate_node = std::dynamic_pointer_cast<PredicateNode>(node)) {
-    return _expressions_are_jittable({predicate_node->predicate}) && predicate_node->scan_type == ScanType::TableScan;
+    return _expressions_are_jittable({predicate_node->predicate}, use_value_id) && predicate_node->scan_type == ScanType::TableScan;
   }
 
   if (Global::get().jit_validate && node->type == LQPNodeType::Validate) {
@@ -509,7 +506,7 @@ bool JitAwareLQPTranslator::_node_is_jittable(const std::shared_ptr<AbstractLQPN
   if (auto projection_node = std::dynamic_pointer_cast<ProjectionNode>(node)) {
     for (const auto expression : projection_node->expressions) {
       if (expression->type != ExpressionType::LQPColumn) {
-        if (!_expressions_are_jittable({expression})) return false;
+        if (!_expressions_are_jittable({expression}, use_value_id)) return false;
       }
     }
     return true;
