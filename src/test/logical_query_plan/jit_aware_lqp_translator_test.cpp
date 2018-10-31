@@ -329,7 +329,7 @@ TEST_F(JitAwareLQPTranslatorTest, UnionsGetTransformedToDisjunction) {
   const auto jit_read_tuples = std::dynamic_pointer_cast<JitReadTuples>(jit_operators[0]);
   const auto jit_compute = std::dynamic_pointer_cast<JitCompute>(jit_operators[1]);
   const auto jit_filter = std::dynamic_pointer_cast<JitFilter>(jit_operators[2]);
-  const auto jit_write_tuples = std::dynamic_pointer_cast<JitWriteTuples>(jit_operators[3]);
+  const auto jit_write_tuples = std::dynamic_pointer_cast<JitWriteOffset>(jit_operators[3]);
   ASSERT_NE(jit_read_tuples, nullptr);
   ASSERT_NE(jit_compute, nullptr);
   ASSERT_NE(jit_filter, nullptr);
