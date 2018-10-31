@@ -82,26 +82,27 @@ for key, summarized in summarized_data.iteritems():
 	const_summary = []
 	for scale_factor in range(1, 21):
 		id = floatToString(scale_factor/10.)
-		current_series.append(summarized[id]['total_pipeline'])
 		const = summarized[id]['total_pipeline'] - summarized[id]['total_execute'] + summarized[id]['jit_prepare']
+		current_series.append(summarized[id]['total_pipeline']) # -const
 		const_summary.append(const)
 	data_series[key] = current_series
 	const_data[key] = const_summary
-
+plot_horizontal_lines = True
 ind = []
 for i in range(1, 21):
 	ind.append(i/10.)
 plt.rcParams.update({'font.size': 16})
-plt.rcParams.update({'figure.figsize': [10.5, 6]})
+plt.rcParams.update({'figure.figsize': [10.5, 6 * 1.5]})
 p1 = plt.plot(ind, data_series['opossum'], color='#9D56C2')
 plt.plot(ind, data_series['opossum'], 'x', color='#9D56C2')
-plt.axhline(y=const_data['opossum'][0], linestyle='-', color='#9D56C2')
 p2 = plt.plot(ind, data_series['jit'], color='#DC002D')
 plt.plot(ind, data_series['jit'], 'x', color='#DC002D')
-plt.axhline(y=const_data['jit'][0], linestyle='-', color='#DC002D')
 p3 = plt.plot(ind, data_series['custom'], color='#00A739')
 plt.plot(ind, data_series['custom'], 'x', color='#00A739')
-plt.axhline(y=const_data['custom'][0], linestyle='-.', color='#00A739')
+if plot_horizontal_lines:
+	plt.axhline(y=const_data['opossum'][0], linestyle='-', color='#9D56C2')
+	plt.axhline(y=const_data['jit'][0], linestyle='-', color='#DC002D')
+	plt.axhline(y=const_data['custom'][0], linestyle='-.', color='#00A739')
 
 plt.ylabel('Runtime (s)')
 plt.xlabel('Scale Factor')
@@ -111,6 +112,7 @@ if str2bool(sys.argv[-1]):
 	plt.legend((p2[0], p3[0], p1[0]), (labels[1], labels[2], labels[0]))
 ax = plt.axes()
 ax.yaxis.grid()
+plt.ylim(0, 0.042)
 #plt.show()
 filename = 'tablescan_w_different_scales.svg'
 plt.savefig(filename, transparent=True)
