@@ -117,7 +117,7 @@ std::shared_ptr<JitOperatorWrapper> JitAwareLQPTranslator::_try_translate_sub_pl
   //   - Always JIT AggregateNodes, as the JitAggregate is significantly faster than the Aggregate operator
   //   - Otherwise, JIT if there are two or more jittable nodes
   if (input_nodes.size() != 1 || jittable_node_count < 1) return nullptr;
-  if (jittable_node_count == 1 && (node->type != LQPNodeType::Aggregate))
+  if (jittable_node_count == 1 && (node->type != LQPNodeType::Aggregate && node->type != LQPNodeType::Predicate))
     return nullptr;
 
   // limit can only be the root node
