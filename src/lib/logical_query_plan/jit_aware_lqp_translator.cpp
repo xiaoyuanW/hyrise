@@ -333,7 +333,7 @@ std::shared_ptr<const JitExpression> JitAwareLQPTranslator::_try_translate_expre
     case ExpressionType::Value: {
       const auto* value_expression = dynamic_cast<const ValueExpression*>(&expression);
       const auto tuple_value = jit_source.add_literal_value(value_expression->value, use_value_id);
-      return std::make_shared<JitExpression>(tuple_value);
+      return std::make_shared<JitExpression>(tuple_value, value_expression->value, use_value_id);
     }
     case ExpressionType::Parameter: {
       const auto* parameter = dynamic_cast<const ParameterExpression*>(&expression);
@@ -344,7 +344,7 @@ std::shared_ptr<const JitExpression> JitAwareLQPTranslator::_try_translate_expre
       } else {
         DebugAssert(parameter->value(), "Value must be set");
         const auto tuple_value = jit_source.add_literal_value(*parameter->value(), use_value_id);
-        return std::make_shared<JitExpression>(tuple_value);
+        return std::make_shared<JitExpression>(tuple_value, *parameter->value(), use_value_id);
       }
     }
 
