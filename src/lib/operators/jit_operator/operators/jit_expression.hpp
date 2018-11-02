@@ -4,6 +4,8 @@
 #include <boost/preprocessor/seq.hpp>
 #include <boost/preprocessor/seq/enum.hpp>
 
+#include <variant>
+
 #include "all_type_variant.hpp"
 
 #include "operators/jit_operator/jit_types.hpp"
